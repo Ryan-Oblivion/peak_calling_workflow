@@ -199,6 +199,8 @@ process plot_histone_at_genes_process {
     path("${png_heatmap_upgenes}"), emit: upgene_histone_heatmap
 
     path("${png_heatmap_down_unchanging_genes}"), emit: down_unchanging_gene_histone_heatmap
+
+    path("${png_heatmap_both}"), emit: both_histone_heatmap
     //path("${png_wt_heatmap}"), emit: gene_histone_heatmap_wt
 
 
@@ -224,8 +226,11 @@ process plot_histone_at_genes_process {
 
     out_matrix_scores_down_unchange_genes = "matrix_gene_${histone_label}_lowdown_unchanging_genebody.mat.gz"
 
+    out_matrix_scores_both = "matrix_gene_${histone_label}_up_and_down_unchanging_genebody.mat.gz"
+
     png_heatmap_upgenes = "${histone_label}_histone_features_at_lowup_genebody.png"
     png_heatmap_down_unchanging_genes = "${histone_label}_histone_features_at_lowdown_unchanging_genebody.png"
+    png_heatmap_both = "${histone_label}_histone_features_at_up_and_down_unchanging_genebody.png"
 
     //png_wt_heatmap = "${wt_histone_label}_histone_features_at_lowup_genebody.png"
 
@@ -283,9 +288,25 @@ process plot_histone_at_genes_process {
     --heatmapWidth 8 \
     --sortUsing sum
 
-    
 
-    
+
+    # now plotting both together
+
+    computeMatrix scale-regions -S ${bw_names.join(' ')} \
+    -R wtvslowup_genebody_noZerolength.bed wtvslowdown_nochange_genebody_noZerolength.bed \
+    --beforeRegionStartLength 3000 \
+    --regionBodyLength 5000 \
+    --afterRegionStartLength 3000 \
+    --skipZeros \
+    --numberOfProcessors "max" \
+    -o "${out_matrix_scores_both}"
+
+    plotHeatmap -m "${out_matrix_scores_both}" \
+    -out "${png_heatmap_both}" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 8 \
+    --sortUsing sum
 
 
 
