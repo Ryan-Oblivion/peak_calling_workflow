@@ -6,8 +6,8 @@
 include {
     make_alignment_bw_process_control;
     make_alignment_bw_process_wt;
-    plot_histone_at_genes_process
-    // macs2_call_peaks_process_control;
+    plot_histone_at_genes_process;
+    macs2_call_peaks_process_both
     // macs2_call_peaks_process_wt
 
 }from '../modules/peak_analysis_modules.nf'
@@ -145,7 +145,14 @@ workflow mk_bw_call_peaks_workflow {
 
     // now that i have the meta channels where I grouped them by the histone marks, I can put it into a process to call peaks on all the files for that histone mark and another process will spawn calling peaks for the other histone marks in parallel
 
-    //macs2_call_peaks_process_control(control_bam_meta_ch, ref_genome_ch) // might need ref_genome
+    // i think if i concat the control_bam_meta_ch and the wt_bam_meta_ch I can parallelize the process
+    wt_bam_meta_ch
+        .concat(control_bam_meta_ch)
+        .transpose()
+        //.view()
+        .set{concat_wt_control_bam_meta_ch}
+
+    macs2_call_peaks_process_both(concat_wt_control_bam_meta_ch, ref_genome_ch) // might need ref_genome
     //macs2_call_peaks_process_wt()
 
 

@@ -182,7 +182,7 @@ process plot_histone_at_genes_process {
 
     input:
 
-    debug true
+    //debug true
 
     tuple val(condition_label), val(histone_label), val(replicate_label), val(bw_names), path(bigwig_filepath)
 
@@ -318,32 +318,82 @@ process plot_histone_at_genes_process {
 }
 
 
-process macs2_call_peaks_process_control {
+
+process macs2_call_peaks_process_both {
+
+    debug true
 
     label 'normal_big_resources'
 
-    conda ''
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/macs2_rj'
 
-    publishDir " "
+    publishDir "./peak_files/${condition_label}", mode: 'copy', pattern: '*'
 
 
 
     input:
 
+    tuple val(condition_label), val(histone_label), val(replicate_label), val(meta_name), val(bam_file_name), path(bam_path), path(bai_path)
+
+    path(ref_genome)
+    // condition_label has the same condition multiple times (3 in this run)
+    // the replicate_label had multiple also (3) but not the same (r1,r2,r3)
 
 
     output:
+    path("*broad*"), emit: broadpeaks
 
 
 
     script:
 
+    //num_files = bam_file_name.size()
 
+    
+
+        
     """
     #!/usr/bin/env bash
 
+    ##### macs2 params ######
+
+
+    #########################
+
+    #echo "these are the file names: \${bam_file_name}"
+
+    #bam_list=( \${bam_file_name.join(' ')} )
+
+        
+
+    #bam_basename=\$(basename \${bam_list[i]})
+
+
+    macs2 callpeak \
+    --treatment ${bam_file_name} \
+    --format "BAM" \
+    --gsize "hs" \
+    --keep-dup '1' \
+    --outdir . \
+    --name ${bam_file_name} \
+    --bdg  \
+    --trackline \
+    --SPMR  \
+    --qvalue '0.01' \
+    --to-large \
+    --broad \
+    --cutoff-analysis \
+    --fe-cutoff '2'
+
+
+
+    
+
 
 
 
     """
+    
+
+    
 }
