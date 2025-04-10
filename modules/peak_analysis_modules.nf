@@ -397,3 +397,107 @@ process macs2_call_peaks_process_both {
 
     
 }
+
+process plot_histones_at_peaks_process {
+
+    debug true
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
+
+    label 'normal_big_resources'
+
+    publishDir "./heatmaps", mode: 'copy', pattern: '*'
+
+    input:
+    tuple val(grouping_key), val(condition_label), val(histone_label), val(replicate_label), val(bw_peak_names), path(bw_peak_filepath)
+
+    //tuple val(peak_condition_label), val(peak_histone_label), val(peak_replicate_label), val(peak_names), path(peak_filepath)
+
+
+
+    output:
+
+    path("${heatmap_out_name}"), emit: histone_peak_heatmap
+    path("${profile_out_name}"), emit: profile_peak_heatmap
+
+
+
+
+    script:
+
+    bigwig_file_name = bw_peak_names[0]
+    peak_file_name = bw_peak_names[1]
+
+
+
+    out_matrix_name = "matrix_${grouping_key}.mat.gz"
+
+    heatmap_out_name = "${grouping_key}_bigwig_signal_over_${grouping_key}_peaks_heatmap.png"
+
+    profile_out_name = "${grouping_key}_bigwig_signal_over_${grouping_key}_peaks_profile.png"
+
+    
+    true_bw_name = "${bigwig_file_name}".replaceFirst(/\..*/, '')
+    
+    
+    //name_list = []
+
+    //num_names = bw_names.size()
+
+    // for (int i=0; i< num_names; i++) {
+        
+        
+    //     bw_true_name = "${bw_names[i]}".replaceFirst(/\..*/, '')
+
+    //     name_list << bw_true_name
+    // }
+
+    """
+    #!/usr/bin/env bash
+
+    ###### deeptools parameters ####
+
+
+
+    #################################
+
+    # this will help me debug and make sure the bigwig and peak channels were aligned
+
+    echo "the bigwig file for S flag is: ${bigwig_file_name}, and the peak file for R flag is: ${peak_file_name}"
+
+    computeMatrix scale-regions \
+    -S ${bigwig_file_name} \
+    -R ${peak_file_name}\
+    --outFileName "${out_matrix_name}" \
+    --skipZeros \
+    --beforeRegionStartLength 3000 \
+    --afterRegionStartLength 3000 \
+    --numberOfProcessors max
+
+
+    echo "true bigwig name ${true_bw_name}"
+    plotHeatmap \
+    -m "${out_matrix_name}" \
+    --outFileName "${heatmap_out_name}" \
+    --sortUsing max \
+    --heatmapWidth 8 \
+    --heatmapHeight 60 \
+    --labelRotation 30 \
+    --samplesLabel ${true_bw_name} \
+    --regionsLabel "${true_bw_name} called peaks"
+
+    plotProfile \
+    -m "${out_matrix_name}" \
+    --outFileName "${profile_out_name}" \
+    --plotWidth 8 \
+    --plotHeight 20 \
+    --labelRotation 30 \
+    --samplesLabel ${true_bw_name}
+
+
+
+
+
+
+    """
+}

@@ -31,7 +31,8 @@ wtvslowdown_nochange_ch = Channel.value(params.wtvs_lowdown_nochange)
 
 include {
     mk_bw_call_peaks_workflow;
-    plot_histone_data_workflow
+    plot_histone_data_workflow;
+    plot_histone_calledpeak_workflow
 
 }from './workflows/call_peaks_workflow.nf'
 
@@ -56,11 +57,18 @@ workflow {
 
     wt_bw_meta_ch = mk_bw_call_peaks_workflow.out.wt_meta_bw_ch
 
+    // the mk_bw_call_peaks_workflow workflow also emits the broad peaks that were called so I will grab those
+    all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.broadpeaks_ch
+
 
     // here I want to make a workflow that plots the chromatin features at a list of annotated sites (genes)
     // Also looking at the peaks around tss
 
     plot_histone_data_workflow(control_bw_meta_ch, wt_bw_meta_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch)
+
+    // I will just make another workflow for plotting each histone-rep bigwig with its corresponding histone-rep broadPeak
+
+    plot_histone_calledpeak_workflow(control_bw_meta_ch, wt_bw_meta_ch, all_broadpeaks_ch)
 
 
 
