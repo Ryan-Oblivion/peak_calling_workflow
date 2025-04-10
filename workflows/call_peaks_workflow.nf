@@ -166,6 +166,24 @@ workflow mk_bw_call_peaks_workflow {
 
 }
 
+workflow get_diff_peaks_workflow {
+
+
+    take:
+
+    all_broadpeaks_ch
+
+
+
+    main:
+
+    //all_broadpeaks_ch.view{file -> "this is the broadpeak: $file"}
+
+
+
+
+}
+
 workflow plot_histone_data_workflow {
 
 

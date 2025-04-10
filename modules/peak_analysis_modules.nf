@@ -400,7 +400,7 @@ process macs2_call_peaks_process_both {
 
 process plot_histones_at_peaks_process {
 
-    debug true
+    //debug true
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
 
@@ -481,7 +481,7 @@ process plot_histones_at_peaks_process {
     --outFileName "${heatmap_out_name}" \
     --sortUsing max \
     --heatmapWidth 8 \
-    --heatmapHeight 60 \
+    --heatmapHeight 28 \
     --labelRotation 30 \
     --samplesLabel ${true_bw_name} \
     --regionsLabel "${true_bw_name} called peaks"
@@ -490,7 +490,7 @@ process plot_histones_at_peaks_process {
     -m "${out_matrix_name}" \
     --outFileName "${profile_out_name}" \
     --plotWidth 8 \
-    --plotHeight 20 \
+    --plotHeight 10 \
     --labelRotation 30 \
     --samplesLabel ${true_bw_name}
 

@@ -32,7 +32,8 @@ wtvslowdown_nochange_ch = Channel.value(params.wtvs_lowdown_nochange)
 include {
     mk_bw_call_peaks_workflow;
     plot_histone_data_workflow;
-    plot_histone_calledpeak_workflow
+    plot_histone_calledpeak_workflow;
+    get_diff_peaks_workflow
 
 }from './workflows/call_peaks_workflow.nf'
 
@@ -59,6 +60,10 @@ workflow {
 
     // the mk_bw_call_peaks_workflow workflow also emits the broad peaks that were called so I will grab those
     all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.broadpeaks_ch
+
+    // adding a workflow here to get the differential peaks
+
+    get_diff_peaks_workflow(all_broadpeaks_ch)
 
 
     // here I want to make a workflow that plots the chromatin features at a list of annotated sites (genes)
