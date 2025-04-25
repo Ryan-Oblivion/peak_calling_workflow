@@ -7,8 +7,10 @@ include {
     make_alignment_bw_process_control;
     make_alignment_bw_process_wt;
     plot_histone_at_genes_process;
+    merge_peaks_bedtools_process;
     macs2_call_peaks_process_both;
-    plot_histones_at_peaks_process
+    plot_histones_at_peaks_process;
+    find_idr_in_replicates_process
     // macs2_call_peaks_process_wt
 
 }from '../modules/peak_analysis_modules.nf'
@@ -49,6 +51,8 @@ workflow mk_bw_call_peaks_workflow {
 
         replicate_label = tokens[2]
 
+        bio_label = tokens[3]
+
         bam_file_name = bam_path.name
 
         meta_name = "${tokens[0]}_${tokens[1]}_${tokens[2]}_${tokens[3]}"
@@ -79,6 +83,7 @@ workflow mk_bw_call_peaks_workflow {
         //.view()
     //control_bam_meta_ch.view { v -> "control $v"} // not using multimap. here is how it looks.  [[H1low, H1low, H1low], H3k27me3, [r2, r3, r1], [H1low_H3k27me3_r2_S26_001.trim.st.all.blft.qft.rmdup.sorted.bam, H1low_H3k27me3_r3_S27_001.trim.st.all.blft.qft.rmdup.sorted.bam, H1low_H3k27me3_r1_S25_001.trim.st.all.blft.qft.rmdup.sorted.bam],
 
+    //control_bam_meta_ch.view()
 
     wt_bams_index_tuple_ch
         .map { unique_name, bam_index_tuple -> 
@@ -94,6 +99,8 @@ workflow mk_bw_call_peaks_workflow {
         histone_label = tokens[1]
 
         replicate_label = tokens[2]
+
+        bio_label = tokens[3]
 
         bam_file_name = bam_path.name
 
@@ -163,9 +170,47 @@ workflow mk_bw_call_peaks_workflow {
 
     //broadpeaks_ch.view() // now got the peaks so time to emit this channel.
 
+    // okay, another thing to do is to use bedtools to merge peaks by 1kb, 2kb, and 5kb to see how they look
+
+    merge_peaks_bedtools_process(broadpeaks_ch)
+
+
+
+
+    broadpeaks_ch
+        .map{ peakpath -> 
+        
+        basename = peakpath.baseName
+        file_name = peakpath.name
+
+        tokens = basename.tokenize("_")
+
+        condition = tokens[0]
+        histone = tokens[1]
+        replicate = tokens[2]
+        bio_rep = tokens[3]
+
+        grouping_key = "${condition}_${histone}"
+
+        tuple(grouping_key, condition, histone, replicate, bio_rep, file_name, basename, peakpath)
+        
+        }
+        .groupTuple(by:0, sort:true)
+        //.view()
+        .set{broadpeak_gtuple_meta_ch}
+
+    // split the broadpeaks so i have them grouped by their condition label
+
+
+    // now i want to get the idr peaks per each replicate combination
+
+    find_idr_in_replicates_process(broadpeak_gtuple_meta_ch)
+
 
 }
 
+
+/*
 workflow get_diff_peaks_workflow {
 
 
@@ -182,7 +227,7 @@ workflow get_diff_peaks_workflow {
 
 
 
-}
+}*/
 
 workflow plot_histone_data_workflow {
 
@@ -304,7 +349,7 @@ workflow plot_histone_calledpeak_workflow {
     control_bw_meta_ch2
         .concat(wt_bw_meta_ch2)
         .map { condition, histone, replicate, bigwig_paths ->
-        
+
         
         bigwig_paths
         
@@ -325,7 +370,11 @@ workflow plot_histone_calledpeak_workflow {
 
         replicate = tokens[2]
 
-        grouping_key = "${condition}_${histone}_${replicate}"
+        // i need to get the bio rep
+
+        bio_rep = tokens[3]
+
+        grouping_key = "${condition}_${histone}_${replicate}_${bio_rep}"
 
         tuple(grouping_key, condition, histone, replicate, file_name, paths)
 

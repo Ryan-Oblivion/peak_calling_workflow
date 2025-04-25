@@ -1,8 +1,16 @@
 nextflow.enable.dsl=2
 
+// this is the path where i got hera's bam files from: /lustre/fs4/risc_lab/scratch/hcanaj/K562_cutandtag_H1low_alignedbam_012925_hg38/all_aligned_bams_bw_hg38
+
 
 params.control_bams = 'bam_files/H1low_*{bam,bam.bai}'
-control_bams_index_tuple_ch = Channel.fromFilePairs(params.control_bams)
+params.other_control_bams = 'bam_files/dH1_*{bam,bam.bai}'
+
+
+norm_control_bams_index_tuple_ch = Channel.fromFilePairs(params.control_bams)
+other_control_bams_index_tuple_ch = Channel.fromFilePairs(params.other_control_bams)
+
+control_bams_index_tuple_ch = norm_control_bams_index_tuple_ch.concat(other_control_bams_index_tuple_ch )
 
 //control_bams_index_tuple_ch.view()
 
@@ -32,8 +40,8 @@ wtvslowdown_nochange_ch = Channel.value(params.wtvs_lowdown_nochange)
 include {
     mk_bw_call_peaks_workflow;
     plot_histone_data_workflow;
-    plot_histone_calledpeak_workflow;
-    get_diff_peaks_workflow
+    plot_histone_calledpeak_workflow
+    //get_diff_peaks_workflow
 
 }from './workflows/call_peaks_workflow.nf'
 
@@ -63,17 +71,19 @@ workflow {
 
     // adding a workflow here to get the differential peaks
 
-    get_diff_peaks_workflow(all_broadpeaks_ch)
+    //get_diff_peaks_workflow(all_broadpeaks_ch)
 
 
     // here I want to make a workflow that plots the chromatin features at a list of annotated sites (genes)
     // Also looking at the peaks around tss
 
-    plot_histone_data_workflow(control_bw_meta_ch, wt_bw_meta_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch)
+    ////////// for testing do not run the plotting yet it takes too long //////////////////////////
+
+    //plot_histone_data_workflow(control_bw_meta_ch, wt_bw_meta_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch)
 
     // I will just make another workflow for plotting each histone-rep bigwig with its corresponding histone-rep broadPeak
 
-    plot_histone_calledpeak_workflow(control_bw_meta_ch, wt_bw_meta_ch, all_broadpeaks_ch)
+    //plot_histone_calledpeak_workflow(control_bw_meta_ch, wt_bw_meta_ch, all_broadpeaks_ch)
 
 
 

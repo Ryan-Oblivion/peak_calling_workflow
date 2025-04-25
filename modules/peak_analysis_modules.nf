@@ -2,6 +2,8 @@
 
 process make_alignment_bw_process_control {
 
+    debug true
+
     label 'normal_small_resources'
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
@@ -32,9 +34,9 @@ process make_alignment_bw_process_control {
 
     // there are three  technical replicates for each label above, except histone_label 
 
-    rep1_file = "${bam_file_name[0]}"
-    rep2_file = "${bam_file_name[1]}"
-    rep3_file = "${bam_file_name[2]}"
+    // rep1_file = "${bam_file_name[0]}"
+    // rep2_file = "${bam_file_name[1]}"
+    // rep3_file = "${bam_file_name[2]}"
 
     // rep1_meta_name = "${meta_name[0]}"
     // rep2_meta_name = "${meta_name[1]}"
@@ -49,7 +51,8 @@ process make_alignment_bw_process_control {
     // rep2_k9_file = "${bam_file_name_k9[1]}"
     // rep3_k9_file = "${bam_file_name_k9[0]}"
 
-
+    // doing this because it works in the for loop and now if I am given more data, it can handel it
+    bam_file_list = bam_file_name.join(" ")
 
 
 
@@ -64,9 +67,14 @@ process make_alignment_bw_process_control {
 
     #######################################
 
+    echo "will this work in the for loop? ${bam_file_list}"
 
     # making a bigwig file for each bam file
-    for bam in "${rep1_file}" "${rep2_file}" "${rep3_file}"; do
+    #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
+
+    # need to find a way for this to just take how ever many bam files are put here
+    # so making a list from the channel
+    for bam in ${bam_file_list}; do
         
         # strip the bam file name
         bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
@@ -90,6 +98,8 @@ process make_alignment_bw_process_control {
 
 process make_alignment_bw_process_wt {
 
+    debug true
+
     label 'normal_small_resources'
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
@@ -120,9 +130,9 @@ process make_alignment_bw_process_wt {
 
     // there are three  technical replicates for each label above, except histone_label 
 
-    rep1_file = "${bam_file_name[0]}"
-    rep2_file = "${bam_file_name[1]}"
-    rep3_file = "${bam_file_name[2]}"
+    // rep1_file = "${bam_file_name[0]}"
+    // rep2_file = "${bam_file_name[1]}"
+    // rep3_file = "${bam_file_name[2]}"
 
 
     // rep1_k27_file = "${bam_file_name_k27[2]}"
@@ -133,8 +143,8 @@ process make_alignment_bw_process_wt {
     // rep2_k9_file = "${bam_file_name_k9[1]}"
     // rep3_k9_file = "${bam_file_name_k9[0]}"
 
-
-
+    // doing this because it works in the for loop and now if I am given more data, it can handel it
+    bam_file_list = bam_file_name.join(" ")
 
 
 
@@ -148,9 +158,14 @@ process make_alignment_bw_process_wt {
 
     #######################################
 
+    echo "will this work in the for loop? ${bam_file_list}"
 
     # making a bigwig file for each bam file
-    for bam in "${rep1_file}" "${rep2_file}" "${rep3_file}"; do
+    #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
+
+    # need to find a way for this to just take how ever many bam files are put here
+    # so making a list from the channel
+    for bam in ${bam_file_list}; do
         
         # strip the bam file name
         bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
@@ -356,8 +371,16 @@ process macs2_call_peaks_process_both {
     #!/usr/bin/env bash
 
     ##### macs2 params ######
+    # use this code to find params used
+    # macs2 callpeak --help
 
+    # changed --fe-cutoff from 2 to 1 which is default. to see if it will give results in the bio rep s10 file
+    # that didn't change anything
 
+    # I want to call peaks less stringently so we can bring a bit more noise into the peaks that were called and then idr will find the best ones
+    # so changing --fe-cutoff from 2 to 1, but i will remove it altogether
+    # changing -qvalue from '0.05' to '0.01' probably not using it anymore
+    # using --pvalue 1e-3 
     #########################
 
     #echo "these are the file names: \${bam_file_name}"
@@ -378,24 +401,287 @@ process macs2_call_peaks_process_both {
     --name ${bam_file_name} \
     --bdg  \
     --trackline \
-    --SPMR  \
-    --qvalue '0.01' \
-    --to-large \
+    --pvalue '1e-5' \
     --broad \
     --cutoff-analysis \
-    --fe-cutoff '2'
-
-
-
+    --nolambda
     
+    # use bedtools merge, in another process, on all the broadpeak files  and the option -b for merging at 1kb, 2kb, 5kb. generate different merged files for the same data to compare
 
-
+    # I need to remove nolambda because scrm r1 only is calling 7 peaks and the IDR tool needs at least 20 peaks to run
+    # this is according to the IDR error output
 
 
     """
     
 
     
+}
+
+process merge_peaks_bedtools_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+
+    label 'normal_big_resources'
+
+    publishDir "merged_broadpeaks/", mode: 'copy', pattern:'*'
+
+
+    input:
+    path(peakpath)
+
+
+    output:
+    path("*_merged.bed"), emit: all_merged_broadpeaks
+
+
+
+    script:
+
+    peak_basename = peakpath.baseName
+    peak_filename = peakpath.name
+
+    merged_1kb = "${peak_basename}_1kb_merged.bed"
+    merged_2kb = "${peak_basename}_2kb_merged.bed"
+    merged_5kb = "${peak_basename}_5kb_merged.bed"
+
+    """
+    #!/usr/bin/env bash
+
+    ###### bedtools merge parameters to use ##########
+
+
+    ##################################################
+
+    # doing 1kb first
+    bedtools merge \
+    -i ${peak_filename} \
+    -d 1000 \
+    -c 1 \
+    -o count \
+    > ${merged_1kb}
+
+    # doing 2kb first
+    bedtools merge \
+    -i ${peak_filename} \
+    -d 2000 \
+    -c 1 \
+    -o count \
+    > ${merged_2kb}
+
+    # doing 5kb first
+    bedtools merge \
+    -i ${peak_filename} \
+    -d 5000 \
+    -c 1 \
+    -o count \
+    > ${merged_5kb}
+
+
+
+
+    """
+
+
+
+
+
+
+}
+
+
+process find_idr_in_replicates_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/idr-2.0_rj'
+    label 'super_big_resources'
+    publishDir "idr_results/${histone[0]}/${condition[0]}", mode: 'copy', pattern:'*'
+
+
+    input:
+
+    tuple val(grouping_key), val(condition), val(histone), val(replicate), val(bio_rep), val(file_name), val(basename), path(peakpath)
+    // for the file_name there will be three replicates, all in order. this will be the case for each instance this process is called when parallelized
+    // idr takes only 2 replicates at a time
+    // we will do rep 1 and 2, then rep 2 and 3, then rep 1/2 and 2/3
+    // this process will only work for if we have three replicates in our data
+
+
+    output:
+    // now i need to output the final idr broadpeak and then get all the others for this experiment histone mark and combine them
+    // I can create another process that will filter these using the blacklist and bedtools intersect but lets look at it as is for now. 
+    path("*broadPeak"), emit: idr_peaks
+
+    path("*.png"), emit:idr_pngs
+
+
+
+    script:
+
+    // the conditions is always the same but it has three in the val above. ex: [Hlow, Hlow, Hlow]
+    condition_label = condition[0] // so i can just use one of them to rebuild a file name if needed
+
+    // same with the histone ex: [H3k27me3, H3k27me3, H3k27me3]
+    histone_label = histone[0]
+
+    // the replicates are in order but not the same ex: [r1, r2, r3]
+    // but i can still store the correct thing
+    rep_label1 = replicate[0]
+    rep_label2 = replicate[1]
+    rep_label3 = replicate[2]
+
+    // same with bio_reps, they are in order and correspond properly with the order of rep_labels
+    bio_label1 = bio_rep[0]
+    bio_label2 = bio_rep[1]
+    bio_label3 = bio_rep[2]
+
+    // these will be the broadpeak file names, the paths are already in the process directory so i can use the correct name in order. the paths will not be in order
+    peak1 = file_name[0]
+    peak2 = file_name[1]
+    peak3 = file_name[2]
+
+    // making the sorted filename
+    sort_peak1 = "sorted_${peak1}.gz"
+    sort_peak2 = "sorted_${peak2}.gz"
+    sort_peak3 = "sorted_${peak3}.gz"
+
+    // now to create the output names for checking each replicate
+
+    idr_out_1_2_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_${params.return_idr}.broadPeak"
+    idr_out_2_3_name = "IDR_${condition_label}_${histone_label}_${rep_label2}_vs_${rep_label3}_${params.return_idr}.broadPeak"
+    idr_out_1_3_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label3}_${params.return_idr}.broadPeak"
+    idr_out_final_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_${params.return_idr}.broadPeak"
+
+    // name for pooled broad peak files 
+    broadpeak_pool = "broadpeak_pool.broadPeak"
+    sort_broadpeak_pool = "sort_${broadpeak_pool}.gz"
+
+    // now creating the file name for the idr's of all the reps
+
+    // idr_final_sorted_file = "${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_IDR_${params.return_idr}.broadPeak.gz"
+
+    """
+    #!/usr/bin/env bash
+
+    ###### idr parameters ########
+    # plot_idr = 0.05 // the default is 0.05 to report in the png plots which peaks passed this threshold
+    # return_idr = 1  // the default is all peaks will be returned even if the report plots the ones that pass a certain number. 1 as default here will give back all peaks like idr has set
+
+    #--peak-list is not provided
+    #Peaks are grouped by overlap and then merged. The merged peak aggregate value is determined by --peak-merge-method.
+
+    #Peaks that don't overlap another peak in every other replicate are not included unless --use-nonoverlapping-peaks is set.
+    ##############################
+
+    # i need to pool the 3 reps so i can have the pooled file for input in idr
+    cat ${peak1} ${peak2} ${peak3} > ${broadpeak_pool}
+
+    # i have to gzip the file
+    #gzip -nc \${peak1} > "\${peak1}.gz"
+    #gzip -nc \${peak2} > "\${peak2}.gz"
+    #gzip -nc \${peak3} > "\${peak3}.gz"
+
+
+    # now sorting all the peaks by their pvalue column
+    sort -k8,8nr "${peak1}" | gzip > ${sort_peak1}
+    sort -k8,8nr "${peak2}" | gzip > ${sort_peak2}
+    sort -k8,8nr "${peak3}"| gzip > ${sort_peak3}
+    sort -k8,8nr ${broadpeak_pool} | gzip > "${sort_broadpeak_pool}"
+
+    # now i have everything to put into idr
+    # i think its best to return all peaks that passed the merging criteria for rep1 vs rep2 and rep2 vs rep3
+    # then when i do rep1_2 vs rep2_3 I only return the peaks that have the 0.05 IDR threshold passed; these peaks will also be the ones that pass the merging threshold.
+    # you can change this idr by changing the value in the --return_idr parameter when running nextflow
+
+    # i will make a if then statement where i will choose to run the idr if the length of the peak file is larger than 21 lines
+    peak1_length=\$(less ${sort_peak1} | wc -l )
+    peak2_length=\$(less ${sort_peak2} | wc -l )
+    peak3_length=\$(less ${sort_peak3} | wc -l )
+
+    # rep 1 vs 2
+    
+    if ((\$peak1_length > 21 && \$peak2_length > 21)); then
+        idr --samples ${sort_peak1} ${sort_peak2} \
+        --input-file-type broadPeak \
+        --output-file ${idr_out_1_2_name} \
+        --rank p.value \
+        --idr-threshold ${params.return_idr} \
+        --soft-idr-threshold ${params.plot_idr} \
+        --plot \
+        --use-best-multisummit-IDR
+    fi
+
+    # now rep 2 vs 3
+
+    if ((\$peak2_length > 21 && \$peak3_length > 21)); then
+        idr --samples ${sort_peak2} ${sort_peak3} \
+        --input-file-type broadPeak \
+        --output-file ${idr_out_2_3_name} \
+        --rank p.value \
+        --idr-threshold ${params.return_idr} \
+        --soft-idr-threshold ${params.plot_idr} \
+        --plot \
+        --use-best-multisummit-IDR
+    fi
+
+    # now doing 1 vs 3
+
+    if ((\$peak1_length > 21 && \$peak3_length > 21)); then
+        idr --samples ${sort_peak1} ${sort_peak3} \
+        --input-file-type broadPeak \
+        --output-file ${idr_out_1_3_name} \
+        --rank p.value \
+        --idr-threshold ${params.return_idr} \
+        --soft-idr-threshold ${params.plot_idr} \
+        --plot \
+        --use-best-multisummit-IDR
+    fi
+
+    # maybe we dont look at the final output and just select the output of peak pairs that has the most peaks that pass the 0.05 threshold
+    # this is according to section 4d of the encode 3 pipeline 'https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0#heading=h.9ecc41kilcvq' 
+    # I will instead load all the files into R and use only the one from each condition that has the max number of peaks called
+    # then I will merge the two files; the max from hlow and the max from scrm to get the masterpeak
+    
+    #idr_1_2_count=\$(less \${idr_out_1_2_name} | wc -l)
+    #idr_1_3_count=\$(less \${idr_out_1_3_name} | wc -l)
+    #idr_2_3_count=\$(less \${idr_out_2_3_name} | wc -l)
+
+
+        
+
+
+    # now the final output
+
+    if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
+        idr --samples ${idr_out_1_2_name} ${idr_out_2_3_name} \
+        --input-file-type broadPeak \
+        --output-file ${idr_out_final_name} \
+        --rank p.value \
+        --idr-threshold ${params.return_idr} \
+        --soft-idr-threshold ${params.plot_idr} \
+        --plot \
+        --use-best-multisummit-IDR
+    fi
+
+
+    # will have to ask johanna what this next bit of code does, but i can convert it to work here in nextflow as i did above
+    # it checks to see if column 12 is greater than or equal to the idr_thresh_transformed, if so print all the columns
+
+    # dont need this since it might be using the wrong column and IDR already has a parameter to get only peaks passing the threshold
+    
+    # IDR_THRESH_TRANSFORMED=\$(awk -v p=0.05 'BEGIN{print -log(p)/log(10)}')
+
+    # can change this to print 0 instead of listing all of them in. that will print all the columns
+    
+    # if you read the documentation, broad peak outputs do not have a summit columns (10,18,22 for 2 replicates), so that means i am actually using column 11 not 12 for broad peaks not narrow peaks
+    #awk 'BEGIN{OFS="\t"} \$11>='"\${IDR_THRESH_TRANSFORMED}"' {print \$0}' \${idr_out_final_name} | \
+    sort | uniq | sort -k7n,7n | gzip -nc > \${idr_final_sorted_file}
+
+
+
+    """
+
+
+
 }
 
 process plot_histones_at_peaks_process {
