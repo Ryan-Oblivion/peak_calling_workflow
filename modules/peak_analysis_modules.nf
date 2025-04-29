@@ -550,6 +550,9 @@ process find_idr_in_replicates_process {
     idr_out_2_3_name = "IDR_${condition_label}_${histone_label}_${rep_label2}_vs_${rep_label3}_${params.return_idr}.broadPeak"
     idr_out_1_3_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label3}_${params.return_idr}.broadPeak"
     idr_out_final_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_${params.return_idr}.broadPeak"
+    idr_out_final_merged_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_2_merged_${params.return_idr}.broadPeak"
+
+    concat_peaks_name = "concat_IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_${params.return_idr}_pairs.broadPeak"
 
     // name for pooled broad peak files 
     broadpeak_pool = "broadpeak_pool.broadPeak"
@@ -608,7 +611,9 @@ process find_idr_in_replicates_process {
         --soft-idr-threshold ${params.plot_idr} \
         --plot \
         --use-best-multisummit-IDR
-    fi
+    else
+        touch ${idr_out_1_2_name}
+    fi 
 
     # now rep 2 vs 3
 
@@ -621,7 +626,9 @@ process find_idr_in_replicates_process {
         --soft-idr-threshold ${params.plot_idr} \
         --plot \
         --use-best-multisummit-IDR
-    fi
+    else
+        touch ${idr_out_2_3_name}
+    fi 
 
     # now doing 1 vs 3
 
@@ -634,7 +641,9 @@ process find_idr_in_replicates_process {
         --soft-idr-threshold ${params.plot_idr} \
         --plot \
         --use-best-multisummit-IDR
-    fi
+    else
+        touch ${idr_out_1_3_name}
+    fi 
 
     # maybe we dont look at the final output and just select the output of peak pairs that has the most peaks that pass the 0.05 threshold
     # this is according to section 4d of the encode 3 pipeline 'https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0#heading=h.9ecc41kilcvq' 
@@ -650,17 +659,35 @@ process find_idr_in_replicates_process {
 
 
     # now the final output
-
+    # this would be merging according to idr standards, keeping all the peaks from the 2 of the 3 pairs
+    
     if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
         idr --samples ${idr_out_1_2_name} ${idr_out_2_3_name} \
         --input-file-type broadPeak \
-        --output-file ${idr_out_final_name} \
+        --output-file ${idr_out_final_merged_name} \
         --rank p.value \
-        --idr-threshold ${params.return_idr} \
-        --soft-idr-threshold ${params.plot_idr} \
         --plot \
         --use-best-multisummit-IDR
     fi
+
+
+    # just concatenate them and see
+    
+    cat ${idr_out_1_2_name} ${idr_out_2_3_name} ${idr_out_1_3_name} > ${concat_peaks_name}
+    
+
+
+
+    #if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
+        #idr --samples \${idr_out_1_2_name} \${idr_out_2_3_name} \
+        --input-file-type broadPeak \
+        --output-file \${idr_out_final_name} \
+        --idr-threshold \${params.return_idr} \
+        --soft-idr-threshold \${params.plot_idr} \
+        --rank p.value \
+        --plot \
+        --use-best-multisummit-IDR
+    #fi
 
 
     # will have to ask johanna what this next bit of code does, but i can convert it to work here in nextflow as i did above
@@ -680,6 +707,42 @@ process find_idr_in_replicates_process {
 
     """
 
+
+
+}
+
+process multiqc_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/multiqc_rj'
+    label 'normal_small_resources'
+    publishDir "./dup_info"
+
+    input:
+    tuple val(condition) , val(histone), path(log_files)
+
+
+    output:
+
+    path("*"), emit: multiqc_dup_info
+
+    script:
+
+    // log_basename = log_files[0].baseName
+    // tokens = log_basename.tokenize("_")
+    // condition = tokens[0]
+    // histone = tokens[1]
+
+
+    """
+    #!/usr/bin/env bash
+
+    multiqc . 
+    
+    mv multiqc_report.html multiqc_${histone}_report.html
+
+
+
+    """
 
 
 }

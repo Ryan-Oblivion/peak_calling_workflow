@@ -14,6 +14,7 @@ output: html_notebook
 # this might not work if the script is already in the dir that you want it to be
 #peak_project_dir = paste0(current_dir, "/pipelines/peak_calling_analysis_pipeline")
 
+#setwd(peak_project_dir)
 #setwd(current_dir)
 
 ```
@@ -46,6 +47,7 @@ expr_condition_peak_list = list.files(path="./peak_files/", pattern="*H3k27me3*"
 
 mPeak = GRanges()
 
+
 for (file in expr_condition_peak_list) {
   
   
@@ -58,6 +60,7 @@ for (file in expr_condition_peak_list) {
   
   # modified this to makesure the start and stop are seen as numeric.
   mPeak = GRanges( seqnames = peakRes$V1, IRanges(start = as.numeric(peakRes$V2), end = as.numeric(peakRes$V3)), strand = "*") %>% append(mPeak, .)
+  
 }
 
 masterPeak = reduce(mPeak)
@@ -76,6 +79,9 @@ bamDir_bamlist = list.files(path = "./bam_files/", pattern = "*H3k27me3.*bam$", 
 
 # to make this automated I should change it from k27me3_peak_list to expr_condition_peak_list
 countmatrix = matrix(NA, length(masterPeak), length(expr_condition_peak_list))
+
+# maybe here i can make a countmatrix that will store the pvalues from column 8 of the peak files
+#countmatrix_pvalues = matrix(NA, length(masterPeak), length(expr_condition_peak_list))
 
 
 # just loop throught the bam list and get the counts for that bams fragments in the masterpeaks then use the strsplit to make the column name
@@ -130,6 +136,28 @@ for (x in num_of_files) {
 
 # now taking those names that were made from the tokens and making them the colnames for the matrix. but i wanted to make sure they were the correct names assigned to the correct columns.
 colnames(countmatrix) = expr_names_in_order
+
+# now using the idr package to filter the peaks based on irreproducible discovery rate
+library(idr)
+# first get the estimated irreproducible rate using the coupla mixture model #"https://www.rdocumentation.org/packages/idr/versions/1.3/topics/est.IDR"
+
+
+# maybe here i can make a countmatrix that will store the pvalues from column 8 of the peak files
+#countmatrix_pvalues = matrix(NA, length(masterPeak), length(expr_condition_peak_list))
+
+# now loop through peak files and if the 
+
+# using the default metrics for now
+mu = c(2,6)
+sigma = c(1,1.5)
+rho = 0.8
+p = 0.7
+
+test_2_reps_matrix = countmatrix[,2:3]
+
+idr.out = est.IDR(test_2_reps_matrix, mu=c(2,6), sigma=c(1,1.5), rho=0.8, p=0.7, eps=0.001, max.ite= 30 )
+
+
 
 #colnames()
 
@@ -207,6 +235,36 @@ res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
 countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
 
 head(countMatDiff)
+
+# I can actually use the countMatDiff 7:12 for idr since its normalized counts
+
+######################## try here #######################################
+
+# now using the idr package to filter the peaks based on irreproducible discovery rate
+library(idr)
+# first get the estimated irreproducible rate using the coupla mixture model #"https://www.rdocumentation.org/packages/idr/versions/1.3/topics/est.IDR"
+
+
+# maybe here i can make a countmatrix that will store the pvalues from column 8 of the peak files
+#countmatrix_pvalues = matrix(NA, length(masterPeak), length(expr_condition_peak_list))
+
+# now loop through peak files and if the 
+
+# using the default metrics for now
+mu = c(2,6)
+sigma = c(1,1.5)
+rho = 0.8
+p = 0.7
+
+test_2_reps_matrixDiff = countMatDiff[,7:8]
+
+idr.out = est.IDR(test_2_reps_matrixDiff, mu=2.6, sigma=1.3, rho=0.8, p=0.7, eps=0.001, max.ite= 30 )
+x.selected = select.IDR(test_2_reps_matrixDiff, idr.out$IDR, 0.05)
+
+
+
+
+##########################################################################
 
 #- countMatDiff summarizes the differential analysis results: 
 #  - First 4 columns: raw reads counts after filtering the peak regions with low counts
@@ -376,30 +434,1096 @@ dev.off()
 # when transforming with vst i see scrm r1 and hlow r3 are the outliers for their respective conditions
 ```
 
-## I want to automate choosing and extracting the replicate that has high contribution to the variance
+
+# making the first function that will be used #####################
 
 ```{r}
 
-# lets use rlog
-pca_scores_rlog_control = pcaData2[1:3,1:2]
-pca_scores_rlog_treatment = pcaData2[4:6,1:2]
+
+library("pheatmap")
+library(ggplot2)
+library(EnhancedVolcano)
+file_path = "./peak_files"
+histone_pattern = "*H3k27me3*"
+
+# running the function
+input_and_deseq(file_path, histone_pattern)
+
+
+# function for getting the files and running deseq2 the first time
+input_and_deseq = function (file_path, histone_pattern) {
+  
+  # this will allow me to list all of the files in the directories
+
+  expr_condition_peak_list = list.files(path=file_path, pattern=histone_pattern, recursive = TRUE, full.names = TRUE)
+  print(expr_condition_peak_list)
+  # now to create a for loop that will read all of the files and put them into a grange object
+  
+  # these will be the master peaks
+  
+  mPeak = GRanges()
+  
+  for (file in expr_condition_peak_list) {
+    
+    
+    #file_path = paste0("./peak_files", file)
+    peakRes = read.table(file, header = FALSE, fill = TRUE )
+    
+    # the peak files generated by macs2 will have the first row as description stuff, so I needed to remove it
+    # so IRanges can have the start and stop as numeric. Which I also modified from the tutorial I looked at
+    peakRes = peakRes[-1,]
+    
+    # modified this to makesure the start and stop are seen as numeric.
+    mPeak = GRanges( seqnames = peakRes$V1, IRanges(start = as.numeric(peakRes$V2), end = as.numeric(peakRes$V3)), strand = "*") %>% append(mPeak, .)
+  }
+  
+  masterPeak = reduce(mPeak)
+  
+  
+  # getting only the bam files from the directory that has bams and index(bai) files
+  bamDir_bamlist = list.files(path = "./bam_files/", pattern = "*H3k27me3.*bam$", full.names=TRUE)
+  
+  # to make this automated I should change it from k27me3_peak_list to expr_condition_peak_list
+  countmatrix = matrix(NA, length(masterPeak), length(expr_condition_peak_list))
+  
+  
+  # just loop throught the bam list and get the counts for that bams fragments in the masterpeaks then use the strsplit to make the column name
+  
+  num_of_files = c(1:length(bamDir_bamlist))
+  
+  expr_names_in_order = list()
+  
+  # for deseq2 i need the condition design. so hlow and scrm
+  # then i will find a way to tally how many of each are there so i can automate the rep count
+  condition_design = list()
+  
+  type_design = list()
+  
+  for (x in num_of_files) {
+    
+    # need to get the path to the bamfile so we are using this bam file
+    path_bamfile = bamDir_bamlist[x]
+    
+    #getting the tokens of that bam file so we can create the correct column name from the bam that the counts came from 
+    bam_tokens = strsplit(basename(bamDir_bamlist[x]), split = "_")[[1]]
+    
+    # labeling the important tokens so it is easier to keep track of
+    condition = bam_tokens[1]
+    histone = bam_tokens[2]
+    replicate = bam_tokens[3]
+    #bio_rep = bam_tokens[4]
+    
+    # shouldn't use this
+    #tech_bio_rep = paste(replicate, bio_rep, sep = "_")
+    
+    # for later parts I need the condition and to know how many times to repeat them
+    condition_design = append(condition_design, paste(condition,histone,sep="_"))
+    #print(paste("this is type design: ",condition_design))
+    
+    # also get the replicate too for type design
+    type_design = append(type_design, replicate)
+    #print(paste("this is type design: ", type_design))
+    
+    # using the library chromVAR to get the fragments in the master peak list
+    fragment_counts = getCounts(path_bamfile, masterPeak, paired=TRUE, by_rg =FALSE, format = "bam")
+    
+    # this puts the counts from the object (fragment_counts) in the current matrix column based on the for loop
+    countmatrix[,x] = counts(fragment_counts)[,1]
+    
+    # checking to see that the bam file is the same as its conditions histone tokens
+    print(paste(condition, histone, replicate, sep="_"))
+    
+    
+    #making a basic file name with these three tokens that will be the column labels
+    file_name = paste(condition, histone, replicate, sep="_")
+    
+    
+    # appending them to a list in the order the columns were made, to then just put the names as column names.
+   expr_names_in_order = append(expr_names_in_order, file_name)
+    
+  }
+  
+  # now taking those names that were made from the tokens and making them the colnames for the matrix. but i wanted to make sure they were the correct names assigned to the correct columns.
+  colnames(countmatrix) = expr_names_in_order
+  
+  
+  
+  # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+  seqnames(masterPeak)
+  
+  # i should put the unique ids from the master peak object in the matrix as row names.
+  unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+  
+  rownames(countmatrix) = unique_masterPeak_ids
+  
+  head(countmatrix)
+  tail(countmatrix)
+  
+  
+  
+  #first removing the low count fragments. only keeping the rows that are above 5 count in total
+  
+  keep_Rows = which(rowSums(countmatrix) > 5)
+  
+  filt_countmatrix = countmatrix[keep_Rows,]
+  
+   # now to get the condition_design
+  condition_counts = table(unlist(condition_design))
+  
+  # this gives back the names and the counts give back the counts for each of the names
+  condition_names = names(condition_counts)
+  condition_num = as.numeric(condition_counts)
+  
+  # now i can put both lists in to get back the experiment design
+  condition_factor = factor(rep(condition_names, times=condition_num))
+  
+  # repeating the above to have another column with type (replicates)
+  type_counts = table(unlist(type_design))
+  type_names = names(type_counts)
+  #type_num = as.numeric(type_counts)
+  
+  type_factor = factor(rep(type_names, times=length(condition_names)))
+  
+
+  # now to do the normal deseq2 workflow
+  
+  dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+                               colData = DataFrame(condition_factor, type_factor),
+                               design = ~ condition_factor)
+  
+  # using the function on our data
+  DDS = DESeq(dds)
+  
+  norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+  
+  # adding _norm onto the column names in the normalized matrix
+  colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+  
+  
+  # provides independent filtering using the mean of normalized counts
+  res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+  
+  
+  # this is looking at the differences between the 3 deseq analyzed options
+  countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+  
+  head(countMatDiff)
+  
+  
+  # getting the results name and addding to the coef we want to shrink
+  experiment_design_name = resultsNames(DDS)[2]
+  
+  # useful for visualization and ranking of genes or in this case peaks
+  resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+  
+  # looking at the resLFC lfc shrink to see how many have a pvalue < 0.05
+  
+  #res_05 = results(DDS, alpha = 0.05)
+  
+  # this is just the number of peaks that are less than 0.05 pvalue
+  resLFC_05 = sum(resLFC$pvalue<0.05, na.rm=TRUE)
+  
+  
+  # i want to order the padj so we have the most significant at the top of the data
+  
+  resLFC_padj_ordered = resLFC[order(resLFC$padj),]
+  
+  #write.table(as.data.frame(resLFC_padj_ordered), file = paste0(experiment_design_name,"_all_reps.tsv"), sep = "\t")
+  
+  # make a file with just up peaks and a file with down peaks
+  up_peaks = resLFC_padj_ordered[which(resLFC_padj_ordered$padj < 0.05 & resLFC_padj_ordered$log2FoldChange >=2 ),]
+  down_peaks = resLFC_padj_ordered[which(resLFC_padj_ordered$padj < 0.05 & resLFC_padj_ordered$log2FoldChange <= -2 ),]
+  
+  write.table(as.data.frame(up_peaks), file = paste0(experiment_design_name,"_all_reps_up_peaks.tsv"), sep = "\t")
+  write.table(as.data.frame(down_peaks), file = paste0(experiment_design_name,"_all_reps_down_peaks.tsv"), sep = "\t")
+  
+  
+  
+  # using rlog over vst for transformation
+
+  rld = rlog(DDS, blind=FALSE)
+  
+  #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+  head(assay(rld), 5)
+  
+  
+  # using the rlog transformed data because of its ability to visualize our data better than raw counts; we will make a heatmap to show this
+
+  library("pheatmap")
+  select <- order(rowMeans(counts(DDS,normalized=TRUE)),
+                  decreasing=TRUE)[1:20] # checking the top 3000 peaks with the most counts
+  
+  # making a df with only the column condition names
+  df <- as.data.frame(colData(DDS)[,"condition_factor"])
+  
+  # now using the rld (rlog) transformed values
+  
+  heatmap_row_avg = pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
+           cluster_cols=FALSE, main = "top20 rowMeans heatmap all reps" )
+  
+  print(heatmap_row_avg)
+  
+  pdf(file = paste(experiment_design_name,"top20_rowMeans_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(heatmap_row_avg)
+  dev.off()
+  
+  
+  
+  
+  library(ggplot2)
+  
+  pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+  pcaData
+  
+  percentVar <- round(100 * attr(pcaData, "percentVar"))
+  
+  
+  pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+    ggtitle("PCA plot using Rlog transform all reps") +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    coord_fixed()
+  print(pca_plot)
+  
+  png(filename = paste(experiment_design_name,"PCA_plot_rlog_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(pca_plot_rlog)
+  dev.off()
+  
+  
+  pdf(file = paste(experiment_design_name,"PCA_plot_rlog_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(pca_plot_rlog)
+  dev.off()
+  
+  
+  # testing with vst
+  vsd_t = vst(DDS, blind = FALSE)
+  head(assay(vsd_t), 5)
+  
+  pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+  pcaData2
+  
+  percentVar <- round(100 * attr(pcaData2, "percentVar"))
+  pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+    ggtitle("PCA plot using VST transform all reps") +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    coord_fixed()
+  
+  print(pca_plot_vst)
+  
+  pdf(file = paste(experiment_design_name,"PCA_plot_vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(pca_plot_vst)
+  dev.off()
+  
+  png(file = paste(experiment_design_name,"PCA_plot_vst_all_reps.png", sep = "_"), width = 1000, height = 1000)
+  print(pca_plot_vst)
+  dev.off()
+
+  
+  # finding the up and down regulated counts that pass the threshold
+
+  up_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange >= 2) ,]
+  total_up_reg = length(up_reg[,1])
+  #total_up_reg
+  down_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange <= -2) ,]
+  total_down_reg = length(down_reg[,1])
+  total_down_reg
+  
+  resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=2, "|LFC| > 2 & padj < 0.05", "padj < 0.05" ))
+  ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
+    labs(caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg))+
+    theme(plot.caption = element_text(size = 15, face = "bold"))+
+    scale_colour_manual(values=c("green", "red", "yellow"))+
+    scale_x_continuous(trans='log10')+
+    ylim(c(min(-max(resLFC$log2FoldChange),min(resLFC$log2FoldChange)), max(max(resLFC$log2FoldChange),-min(resLFC$log2FoldChange))))+
+    geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 2)
+  
+  print(ma_plot_labeled)
+  
+  
+  pdf(file = paste(experiment_design_name,"MA_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  
+  print(ma_plot_labeled)
+  dev.off()
+  
+  png(filename = paste(experiment_design_name,"MA_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  
+  print(ma_plot_labeled)
+  dev.off()
+  
+  
+  volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+                  lab = rownames(resLFC),
+                  title = "all replicates",
+                  x = 'log2FoldChange', FCcutoff = 2,
+                  y = 'padj', pCutoff = 0.05, labSize = 3, 
+                  
+                  )
+  
+  print(volcano_plot_removed_reps)
+  
+  png(filename = paste(experiment_design_name,"volcano_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+  pdf(file = paste(experiment_design_name,"volcano_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+  
+  return(pcaData2)
+}
+
+pcaData2 = input_and_deseq(file_path, histone_pattern)
+
+
+# running the function
+#input_and_deseq(file_path, histone_pattern)
+
+#debugonce(input_and_deseq)
+
+
+```
+
+
+
+
+
+## I want to automate choosing and extracting the replicate that has high contribution to the variance
+
+```{r}
+# lets use vst
+pca_scores_vst_control = pcaData2[1:3,1:2]
+pca_scores_vst_treatment = pcaData2[4:6,1:2]
 
 #pca_scores_rlog
 # getting the centroid between the pca for each replicate
-rlog_centroid_control = colMeans(pca_scores_rlog_control)
-rlog_centroid_treatment = colMeans(pca_scores_rlog_treatment)
+vst_centroid_control = colMeans(pca_scores_rlog_control)
+vst_centroid_treatment = colMeans(pca_scores_rlog_treatment)
 
 # Compute Euclidean distances
-distances_control <- apply(pca_scores_rlog_control, 1, function(coord) sqrt(sum((coord - rlog_centroid_control)^2)))
-distances_treatment <- apply(pca_scores_rlog_treatment, 1, function(coord) sqrt(sum((coord - rlog_centroid_treatment)^2)))
+distances_control <- apply(pca_scores_vst_control, 1, function(coord) sqrt(sum((coord - vst_centroid_control)^2)))
+distances_treatment <- apply(pca_scores_vst_treatment, 1, function(coord) sqrt(sum((coord - vst_centroid_treatment)^2)))
 
 # Identify the replicate with the highest distance
 high_var_replicate_control <- names(which.max(distances_control))
 high_var_replicate_treatment <- names(which.max(distances_treatment))
 print(paste("High variance replicate is:", high_var_replicate_control, high_var_replicate_treatment))
 
+
+# its best to not remove a column from the DDS object since those scores were already calculated based on all the data
+# so remove the column from the matrix with raw counts and run deseq2 again. once i figure this out, i will make a function for running deseq2
+
+
+
+
+
+
+# make a list of reps to remove
+reps_to_removeList = list(high_var_replicate_control, high_var_replicate_treatment)
+reps_to_removeList
+
+
+################################################################################
 ```
 
+
+```{r}
+# i need to just rebuild the master peak matrix
+
+expr_condition_peak_list_2 = list.files(path=file_path, pattern=histone_pattern, recursive = TRUE, full.names = TRUE)
+
+# remove any files that match the two files in the reps_to_removeList
+for (name in expr_condition_peak_list_2){
+  basename_file = basename(name)
+  tokens = strsplit(basename_file, "_")[[1]]
+  condition = tokens[1]
+  histone = tokens[2]
+  replicate = tokens[3]
+  
+  
+  check_name = paste(condition, histone, replicate, sep = "_")
+  if (check_name %in% reps_to_removeList){
+    expr_condition_peak_list_2 = expr_condition_peak_list_2[ expr_condition_peak_list_2 != name]
+    
+  }
+  
+  
+}
+
+
+# now to create a for loop that will read all of the files and put them into a grange object
+
+# these will be the master peaks
+
+mPeak = GRanges()
+
+for (file in expr_condition_peak_list_2) {
+  
+  
+  #file_path = paste0("./peak_files", file)
+  peakRes = read.table(file, header = FALSE, fill = TRUE )
+  
+  # the peak files generated by macs2 will have the first row as description stuff, so I needed to remove it
+  # so IRanges can have the start and stop as numeric. Which I also modified from the tutorial I looked at
+  peakRes = peakRes[-1,]
+  
+  # modified this to makesure the start and stop are seen as numeric.
+  mPeak = GRanges( seqnames = peakRes$V1, IRanges(start = as.numeric(peakRes$V2), end = as.numeric(peakRes$V3)), strand = "*") %>% append(mPeak, .)
+}
+
+masterPeak_2 = reduce(mPeak)
+
+
+# getting only the bam files from the directory that has bams and index(bai) files
+#bamDir_bamlist = list.files(path = "./bam_files/", pattern = "*H3k27me3.*bam$", full.names=TRUE)
+
+# to make this automated I should change it from k27me3_peak_list to expr_condition_peak_list
+countmatrix_2 = matrix(NA, length(masterPeak_2), length(expr_condition_peak_list_2))
+
+unique_masterPeak_ids_2 = paste0(as.character(seqnames(masterPeak_2)), ":" ,start(masterPeak_2), "-", end(masterPeak_2))
+
+rownames(countmatrix_2) = unique_masterPeak_ids_2
+```
+
+
+```{r}
+#################################################################################
+# now remove the reps from the raw counts matrix
+
+countmatrix_reps_removed = countmatrix_reps_removed[, !(colnames(countmatrix_reps_removed) %in% reps_to_removeList), drop = FALSE]
+
+# now remove the master peaks that are not in the count_matrix_2
+countmatrix_reps_removed = countmatrix_reps_removed[!(rownames(countmatrix_reps_removed) %in% rownames(countmatrix_2)),]
+
+head(countmatrix_reps_removed, 5)
+
+# just placing here to make it easy for now ##################
+run_deseq2_removed_reps(countmatrix_reps_removed)
+# now run deseq2 steps again to see how the quality looks in plots
+
+run_deseq2_removed_reps = function(raw_counts_matrix) {
+  
+  library("pheatmap")
+  library(ggplot2)
+  library(EnhancedVolcano)
+  # need to recreate the condition design and type design: condition will have the control or treatment with histone mark, while type will have the replicate number
+  
+  list_of_col_names = colnames(raw_counts_matrix)
+  
+  # get number
+  num_of_col_names = length(list_of_col_names)
+  
+  #print("this is the col names list and length: ",list_of_col_names, length(list_of_col_names))
+  
+  new_condition_design = list()
+  new_type_design = list()
+  
+  for (x in c(1:num_of_col_names)) {
+    
+    
+    
+    
+     tokens = strsplit(list_of_col_names[x], split = "_")[[1]]
+     
+     condition_label = tokens[1]
+     histone_label = tokens[2]
+     replicate_label = tokens[3]
+     
+     new_condition_design = append(new_condition_design, paste(condition_label, histone_label, sep="_"))
+     
+     new_type_design = append(new_type_design, replicate_label)
+                                   
+                                   
+    
+  }
+  
+  #first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+  keep_Rows = which(rowSums(raw_counts_matrix) > 5)
+  
+  filt_countmatrix = raw_counts_matrix[keep_Rows,]
+  
+  # now to get the condition_design
+  condition_counts = table(unlist(new_condition_design))
+  
+  # this gives back the names and the counts give back the counts for each of the names
+  condition_names = names(condition_counts)
+  condition_num = as.numeric(condition_counts)
+  
+  # now i can put both lists in to get back the experiment design
+  condition_factor = factor(rep(condition_names, times=condition_num))
+  
+  # repeating the above to have another column with type (replicates)
+  type_counts = table(unlist(new_type_design))
+  type_names = names(type_counts)
+  #type_num = as.numeric(type_counts)
+  
+  type_factor = factor(rep(type_names, times=type_counts))
+  
+  
+  
+  # now to do the normal deseq2 workflow
+  
+  dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+                               colData = DataFrame(condition_factor, type_factor),
+                               design = ~ condition_factor)
+  
+  # using the function on our data
+  DDS = DESeq(dds)
+  
+  norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+  
+  # adding _norm onto the column names in the normalized matrix
+  colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+  
+  
+  # provides independent filtering using the mean of normalized counts
+  res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+  
+  
+  # this is looking at the differences between the 3 deseq analyzed options
+  countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+  
+  head(countMatDiff)
+  
+  #- countMatDiff summarizes the differential analysis results: 
+  #  - First 4 columns: raw reads counts after filtering the peak regions with low counts
+  #  - Second 4 columns: normalized read counts eliminating library size difference.
+  #  - Remaining columns: differential detection results.
+
+  
+  # getting the results name and addding to the coef we want to shrink
+  experiment_design_name = paste(resultsNames(DDS)[2], "removed_high_var_reps", sep = "_")
+  
+  # useful for visualization and ranking of genes or in this case peaks
+  resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+  
+  # looking at the resLFC lfc shrink to see how many have a pvalue < 0.05
+  
+  #res_05 = results(DDS, alpha = 0.05)
+  
+  # this is just the number of peaks that are less than 0.05 pvalue
+  resLFC_05 = sum(resLFC$pvalue<0.05, na.rm=TRUE)
+  print(paste("number of differential peaks less than 0.05 pvalue: ", resLFC_05))
+  
+  resLFC_2lfc = sum(resLFC$log2FoldChange >= 2, na.rm=TRUE)
+  print(paste("number of differential peaks up regulated: ", resLFC_2lfc))
+  
+  #resLFC_2lfc
+  
+  
+  
+  # i want to order the padj so we have the most significant at the top of the data
+  # and only get the peaks that are up reg
+
+  keep_upreg_peaks_05 = which(resLFC$log2FoldChange>=2 & resLFC$padj < 0.05)
+  resLFC_uppeaks_05 = resLFC[keep_upreg_peaks_05,]
+  resLFC_uppeaks_05_ordered = resLFC_uppeaks_05[order(resLFC_uppeaks_05$padj),]
+  
+  keep_downreg_peaks_05 = which(resLFC$log2FoldChange <= -2 & resLFC$padj < 0.05)
+  resLFC_down_peaks_05 = resLFC[keep_downreg_peaks_05,]
+  resLFC_down_peaks_05_ordered = resLFC_down_peaks_05[order(resLFC_down_peaks_05$padj),]
+  
+  # still keep this one to use in the volcanoplot
+  resLFC_padj_ordered_allPeaks = resLFC[order(resLFC$padj),]
+  
+  
+  write.table(as.data.frame(resLFC_uppeaks_05_ordered), file = paste0(experiment_design_name,"_upPeaks.tsv"), sep = "\t")
+  write.table(as.data.frame(resLFC_down_peaks_05_ordered), file = paste0(experiment_design_name,"_downPeaks.tsv"), sep = "\t")
+  
+  
+  # using rlog over vst for transformation
+
+  rld = rlog(DDS, blind=FALSE)
+  
+  # use vst since it what what determined which replicates to remove
+  
+  vsd = vst(DDS, blind=FALSE)
+  
+  #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+  head(assay(rld), 5)
+  
+  
+  #library(ggplot2)
+
+  pcaData = plotPCA(vsd, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+  pcaData
+  
+  percentVar <- round(100 * attr(pcaData, "percentVar"))
+  
+  
+  pca_plot_vst = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+    ggtitle("removed high var 2 reps PCA plot using vst transform") +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    coord_fixed()
+  print(pca_plot_vst)
+  
+  png(filename = paste(experiment_design_name,"PCA_plot_vst.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(pca_plot_vst)
+  dev.off()
+  
+  
+  pdf(file = paste(experiment_design_name,"PCA_plot_vst.pdf", sep = "_"), width = 10, height = 10)
+  print(pca_plot_vst)
+  dev.off()
+  
+  
+  #library("pheatmap")
+  select <- order(rowMeans(counts(DDS,normalized=TRUE)),
+                  decreasing=TRUE)[1:20] # checking the top 3000 peaks with the most counts
+  
+  # making a df with only the column condition names
+  df <- as.data.frame(colData(DDS)[,"condition_factor"])
+  
+  # now using the rld (rlog) transformed values
+  
+  heatmap_row_avg = pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
+           cluster_cols=FALSE, main = "removed high var 2 reps top20 rowMeans heatmap" )
+  
+  print(heatmap_row_avg)
+  
+  pdf(file = paste(experiment_design_name,"top20_rowMeans_plot.pdf", sep = "_"), width = 10, height = 10)
+  print(heatmap_row_avg)
+  dev.off()
+  
+  png(filename = paste(experiment_design_name,"top20_rowMeans_plot.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(heatmap_row_avg)
+  dev.off()
+  
+  # make enhanced volcano plot
+  
+  #library(EnhancedVolcano)
+  
+  volcano_plot_removed_reps = EnhancedVolcano(resLFC_padj_ordered_allPeaks,
+                  lab = rownames(resLFC_padj_ordered_allPeaks),
+                  title = "removed 2 high var reps from each condition",
+                  x = 'log2FoldChange', FCcutoff = 2,
+                  y = 'padj', pCutoff = 0.05, labSize = 3, 
+                  
+                  )
+  
+  print(volcano_plot_removed_reps)
+  
+  png(filename = paste(experiment_design_name,"volcano_plot.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+  pdf(file = paste(experiment_design_name,"volcano_plot.pdf", sep = "_"), width = 10, height = 10)
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+  
+  #ma_plot_removed_rep = plotMA(resLFC_padj_ordered_allPeaks, ylim=c(-5,5), main = "removed 2 high var reps from each condition") #+ abline( h=-2:2, col="orange")
+  
+   
+  #plotMA(resLFC_padj_ordered_allPeaks, ylim=c(-5,5), main = "removed 2 high var reps from each condition")
+  
+  #print(ma_plot_removed_rep)
+  
+  
+  
+  # a better ma plot
+  
+  # finding the up and down regulated counts that pass the threshold
+
+  up_reg = resLFC[which(resLFC_padj_ordered_allPeaks$padj < 0.05 & resLFC_padj_ordered_allPeaks$log2FoldChange >= 2) ,]
+  total_up_reg = length(up_reg[,1])
+  #total_up_reg
+  down_reg = resLFC[which(resLFC_padj_ordered_allPeaks$padj < 0.05 & resLFC_padj_ordered_allPeaks$log2FoldChange <= -2) ,]
+  total_down_reg = length(down_reg[,1])
+  #total_down_reg
+  
+  resLFC_padj_ordered_allPeaks$Label = ifelse(resLFC_padj_ordered_allPeaks$padj > 0.05, "not significant", ifelse(abs(resLFC_padj_ordered_allPeaks$log2FoldChange) >=2, "|LFC| > 2 & padj < 0.05", "padj < 0.05" ))
+  
+  
+  ma_plot_labeled = ggplot(resLFC_padj_ordered_allPeaks, aes(x = baseMean, y = log2FoldChange, color=Label))+
+    labs(title = "removed 2 high var reps from each condition", caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg))+
+    theme(plot.caption = element_text(size = 15, face = "bold"))+
+    scale_colour_manual(values=c("green", "red", "yellow"))+
+    scale_x_continuous(trans='log10')+
+    geom_point(data = resLFC_padj_ordered_allPeaks, aes(x = baseMean, y = log2FoldChange), size = 3)
+  
+  print(ma_plot_labeled)
+  
+  
+  pdf(file = paste(experiment_design_name,"MA_plot.pdf", sep = "_"), width = 10, height = 10)
+  #plotMA(resLFC_padj_ordered_allPeaks, ylim=c(-5,5), main = "removed 2 high var reps from each condition")
+  print(ma_plot_labeled)
+  dev.off()
+  
+  png(filename = paste(experiment_design_name,"MA_plot.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  #plotMA(resLFC_padj_ordered_allPeaks, ylim=c(-5,5), main = "removed 2 high var reps from each condition")
+  print(ma_plot_labeled)
+  dev.off()
+}
+
+
+# running the function to call deseq2 on only the reps that are not problematic 
+#run_deseq2_removed_reps(countmatrix_reps_removed)
+
+
+
+
+
+
+```
+
+
+# now I want to try deseq2 by collapsing the technical replicates
+
+```{r}
+
+
+
+file_path = "./peak_files"
+histone_pattern = "*H3k27me3*"
+
+# running the function
+input_and_collapse_deseq(file_path, histone_pattern)
+
+
+# function for getting the files and running deseq2 the first time
+input_and_collapse_deseq = function (file_path, histone_pattern) {
+  
+  # this will allow me to list all of the files in the directories
+
+  expr_condition_peak_list = list.files(path=file_path, pattern=histone_pattern, recursive = TRUE, full.names = TRUE)
+  
+  # now to create a for loop that will read all of the files and put them into a grange object
+  
+  # these will be the master peaks
+  
+  mPeak = GRanges()
+  
+  for (file in expr_condition_peak_list) {
+    
+    
+    #file_path = paste0("./peak_files", file)
+    peakRes = read.table(file, header = FALSE, fill = TRUE )
+    
+    # the peak files generated by macs2 will have the first row as description stuff, so I needed to remove it
+    # so IRanges can have the start and stop as numeric. Which I also modified from the tutorial I looked at
+    peakRes = peakRes[-1,]
+    
+    # modified this to makesure the start and stop are seen as numeric.
+    mPeak = GRanges( seqnames = peakRes$V1, IRanges(start = as.numeric(peakRes$V2), end = as.numeric(peakRes$V3)), strand = "*") %>% append(mPeak, .)
+  }
+  
+  masterPeak = reduce(mPeak)
+  
+  
+  # getting only the bam files from the directory that has bams and index(bai) files
+  bamDir_bamlist = list.files(path = "./bam_files/", pattern = "*H3k27me3.*bam$", full.names=TRUE)
+  
+  # to make this automated I should change it from k27me3_peak_list to expr_condition_peak_list
+  countmatrix = matrix(NA, length(masterPeak), length(expr_condition_peak_list))
+  
+  
+  # just loop throught the bam list and get the counts for that bams fragments in the masterpeaks then use the strsplit to make the column name
+  
+  num_of_files = c(1:length(bamDir_bamlist))
+  
+  expr_names_in_order = list()
+  
+  # for deseq2 i need the condition design. so hlow and scrm
+  # then i will find a way to tally how many of each are there so i can automate the rep count
+  condition_design = list()
+  
+  type_design = list()
+  
+  for (x in num_of_files) {
+    
+    # need to get the path to the bamfile so we are using this bam file
+    path_bamfile = bamDir_bamlist[x]
+    
+    #getting the tokens of that bam file so we can create the correct column name from the bam that the counts came from 
+    bam_tokens = strsplit(basename(bamDir_bamlist[x]), split = "_")[[1]]
+    
+    # labeling the important tokens so it is easier to keep track of
+    condition = bam_tokens[1]
+    histone = bam_tokens[2]
+    replicate = bam_tokens[3]
+    
+    # for later parts I need the condition and to know how many times to repeat them
+    condition_design = append(condition_design, paste(condition,histone,sep="_"))
+    
+    # also get the replicate too for type design
+    type_design = append(type_design, replicate)
+    
+    # using the library chromVAR to get the fragments in the master peak list
+    fragment_counts = getCounts(path_bamfile, masterPeak, paired=TRUE, by_rg =FALSE, format = "bam")
+    
+    # this puts the counts from the object (fragment_counts) in the current matrix column based on the for loop
+    countmatrix[,x] = counts(fragment_counts)[,1]
+    
+    # checking to see that the bam file is the same as its conditions histone tokens
+    print(paste(condition, histone, replicate, sep="_"))
+    
+    
+    #making a basic file name with these three tokens that will be the column labels
+    file_name = paste(condition, histone, replicate, sep="_")
+    
+    
+    # appending them to a list in the order the columns were made, to then just put the names as column names.
+   expr_names_in_order = append(expr_names_in_order, file_name)
+    
+  }
+  
+  # now taking those names that were made from the tokens and making them the colnames for the matrix. but i wanted to make sure they were the correct names assigned to the correct columns.
+  colnames(countmatrix) = expr_names_in_order
+  
+  
+  
+  # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+  seqnames(masterPeak)
+  
+  # i should put the unique ids from the master peak object in the matrix as row names.
+  unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+  
+  rownames(countmatrix) = unique_masterPeak_ids
+  
+  head(countmatrix)
+  tail(countmatrix)
+  
+  
+  
+  #first removing the low count fragments. only keeping the rows that are above 5 count in total
+  
+  keep_Rows = which(rowSums(countmatrix) > 5)
+  
+  filt_countmatrix = countmatrix[keep_Rows,]
+  
+  # now to get the condition_design
+  condition_counts = table(unlist(condition_design))
+  
+  # this gives back the names and the counts give back the counts for each of the names
+  condition_names = names(condition_counts)
+  condition_num = as.numeric(condition_counts)
+  
+  # now i can put both lists in to get back the experiment design
+  condition_factor = factor(rep(condition_names, times=condition_num))
+  
+  # repeating the above to have another column with type (replicates)
+  type_counts = table(unlist(type_design))
+  type_names = names(type_counts)
+  #type_num = as.numeric(type_counts)
+  
+  type_factor = factor(rep(type_names, times=length(condition_names)))
+  
+  
+  
+  # now to do the normal deseq2 workflow
+  
+  dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+                               colData = DataFrame(condition_factor, type_factor),
+                               design = ~ 1)
+  
+  # will collapse technical replicates here
+  # what happens when i remove this , dds$type_factor
+  dds_coll = collapseReplicates(dds, dds$condition_factor)
+  
+  
+  # using the function on our data
+  DDS = DESeq(dds_coll)
+  
+  print(DDS)
+  
+  norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+  
+  # adding _norm onto the column names in the normalized matrix
+  colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+  
+  
+  # provides independent filtering using the mean of normalized counts
+  res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+  
+  
+  # this is looking at the differences between the 3 deseq analyzed options
+  countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+  
+  head(countMatDiff)
+  
+  # have to build my own design
+  #res <- results(DDS, name="condition_Scrm_H3k27me3_vs_H1low_H3k27me3")
+  #print(res)
+  
+  # getting the results name and addding to the coef we want to shrink
+  experiment_design_name = resultsNames(DDS)[2]
+  print(experiment_design_name)
+  
+  # useful for visualization and ranking of genes or in this case peaks
+  # have to remove this with collapsed replicates coef= resultsNames(DDS)[2], for lfcShrink. tried this also coef = "condition_Scrm_H3k27me3_vs_H1low_H3k27me3"
+  # have to use normal instead of apeglm here when design is 1 and coef is intercept
+  resLFC = lfcShrink(DDS, coef= "Intercept", type = "normal")
+  
+  # looking at the resLFC lfc shrink to see how many have a pvalue < 0.05
+  
+  #res_05 = results(DDS, alpha = 0.05)
+  
+  # this is just the number of peaks that are less than 0.05 pvalue
+  resLFC_05 = sum(resLFC$pvalue<0.05, na.rm=TRUE)
+  
+  
+  # i want to order the padj so we have the most significant at the top of the data
+  
+  resLFC_padj_ordered = resLFC[order(resLFC$padj),]
+  
+  #write.table(as.data.frame(resLFC_padj_ordered), file = paste0(experiment_design_name,"_all_reps.tsv"), sep = "\t")
+  
+  # make a file with just up peaks and a file with down peaks
+  up_peaks = resLFC_padj_ordered[which(resLFC_padj_ordered$padj < 0.05 & resLFC_padj_ordered$log2FoldChange >=2 ),]
+  down_peaks = resLFC_padj_ordered[which(resLFC_padj_ordered$padj < 0.05 & resLFC_padj_ordered$log2FoldChange <= -2 ),]
+  
+  write.table(as.data.frame(up_peaks), file = paste0(experiment_design_name,"_all_reps_up_peaks.tsv"), sep = "\t")
+  write.table(as.data.frame(down_peaks), file = paste0(experiment_design_name,"_all_reps_down_peaks.tsv"), sep = "\t")
+  
+  
+  
+  # using rlog over vst for transformation
+
+  rld = rlog(DDS, blind=FALSE)
+  
+  #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+  head(assay(rld), 5)
+  
+  
+  # using the rlog transformed data because of its ability to visualize our data better than raw counts; we will make a heatmap to show this
+
+  library("pheatmap")
+  select <- order(rowMeans(counts(DDS,normalized=TRUE)),
+                  decreasing=TRUE)[1:20] # checking the top 3000 peaks with the most counts
+  
+  # making a df with only the column condition names
+  df <- as.data.frame(colData(DDS)[,"condition_factor"])
+  
+  # now using the rld (rlog) transformed values
+  
+  heatmap_row_avg = pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
+           cluster_cols=FALSE, main = "top20 rowMeans heatmap collapsed reps" )
+  
+  print(heatmap_row_avg)
+  
+  pdf(file = paste(experiment_design_name,"top20_rowMeans_plot_collapsed_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(heatmap_row_avg)
+  dev.off()
+  
+  
+  
+  
+  library(ggplot2)
+  
+  pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+  pcaData
+  
+  percentVar <- round(100 * attr(pcaData, "percentVar"))
+  
+  
+  pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+    ggtitle("PCA plot using Rlog transform collapsed reps") +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    coord_fixed()
+  print(pca_plot)
+  
+  png(filename = paste(experiment_design_name,"PCA_plot_rlog_collapsed_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(pca_plot_rlog)
+  dev.off()
+  
+  
+  pdf(file = paste(experiment_design_name,"PCA_plot_rlog_collapsed_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(pca_plot_rlog)
+  dev.off()
+  
+  
+  # testing with vst
+  vsd_t = vst(DDS, blind = FALSE)
+  head(assay(vsd_t), 5)
+  
+  pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+  pcaData2
+  
+  percentVar <- round(100 * attr(pcaData2, "percentVar"))
+  pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+    ggtitle("PCA plot using VST transform collapsed reps") +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    coord_fixed()
+  
+  print(pca_plot_vst)
+  
+  pdf(file = paste(experiment_design_name,"PCA_plot_vst_collapsed_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(pca_plot_vst)
+  dev.off()
+  
+  png(file = paste(experiment_design_name,"PCA_plot_vst_collapsed_reps.png", sep = "_"), width = 1000, height = 1000)
+  print(pca_plot_vst)
+  dev.off()
+
+  
+  # finding the up and down regulated counts that pass the threshold
+
+  up_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange >= 2) ,]
+  total_up_reg = length(up_reg[,1])
+  #total_up_reg
+  down_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange <= -2) ,]
+  total_down_reg = length(down_reg[,1])
+  total_down_reg
+  
+  resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=2, "|LFC| > 2 & padj < 0.05", "padj < 0.05" ))
+  ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
+    labs(caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg))+
+    theme(plot.caption = element_text(size = 15, face = "bold"))+
+    scale_colour_manual(values=c("green", "red", "yellow"))+
+    scale_x_continuous(trans='log10')+
+    ylim(c(min(-max(resLFC$log2FoldChange),min(resLFC$log2FoldChange)), max(max(resLFC$log2FoldChange),-min(resLFC$log2FoldChange))))+
+    geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 2)
+  
+  print(ma_plot_labeled)
+  
+  
+  pdf(file = paste(experiment_design_name,"MA_plot_collapsed_reps.pdf", sep = "_"), width = 10, height = 10)
+  
+  print(ma_plot_labeled)
+  dev.off()
+  
+  png(filename = paste(experiment_design_name,"MA_plot_collapsed_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  
+  print(ma_plot_labeled)
+  dev.off()
+  
+  
+  volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+                  lab = rownames(resLFC),
+                  title = " collapsed replicates",
+                  x = 'log2FoldChange', FCcutoff = 2,
+                  y = 'padj', pCutoff = 0.05, labSize = 3, 
+                  
+                  )
+  
+  print(volcano_plot_removed_reps)
+  
+  png(filename = paste(experiment_design_name,"volcano_plot_collapsed_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+  pdf(file = paste(experiment_design_name,"volcano_plot_collapsed_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+}
+
+
+
+
+
+```
 
 
 
@@ -409,9 +1533,31 @@ print(paste("High variance replicate is:", high_var_replicate_control, high_var_
 ```{r}
 
 # I want to plot this and title it the name of the condition
+resLFC$Color = ifelse(resLFC$padj > 0.05, "red", ifelse(abs(resLFC$log2FoldChange) >2, "green", "yellow" ))
 
-plotMA(resLFC, ylim=c(-5,5), main = paste0(resultsNames(DDS)[2], " ", "apeglm"))
-abline( h=-2:2, col="orange")
+plotMA(resLFC, ylim=c(-5,5), main = paste0(resultsNames(DDS)[2], " ", "apeglm"), colSig = resLFC$Color)
+
+
+# finding the up and down regulated counts that pass the threshold
+
+up_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange >= 2) ,]
+total_up_reg = length(up_reg[,1])
+#total_up_reg
+down_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange <= -2) ,]
+total_down_reg = length(down_reg[,1])
+total_down_reg
+
+resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=2, "|LFC| > 2 & padj < 0.05", "padj < 0.05" ))
+ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
+  labs(caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg))+
+  theme(plot.caption = element_text(size = 15, face = "bold"))+
+  scale_colour_manual(values=c("green", "red", "yellow"))+
+  scale_x_continuous(trans='log10')+
+  ylim(c(min(-max(resLFC$log2FoldChange),min(resLFC$log2FoldChange)), max(max(resLFC$log2FoldChange),-min(resLFC$log2FoldChange))))+
+  geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 2)
+  
+
+#abline( h=-2:2)
 #idx <- identify(resLFC$baseMean, resLFC$log2FoldChange)
 #rownames(resLFC)[idx]
 

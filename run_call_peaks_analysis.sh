@@ -19,5 +19,5 @@ conda activate nextflow_three
 # return_idr = 1  // the default is all peaks will be returned even if the report plots the ones that pass a certain number. 1 as default here will give back all peaks like idr has set
 
 nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
---plot_idr 0.05 \
---return_idr 0.05
+--plot_idr 0.1 \
+--return_idr 0.1

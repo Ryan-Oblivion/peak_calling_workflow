@@ -10,7 +10,8 @@ include {
     merge_peaks_bedtools_process;
     macs2_call_peaks_process_both;
     plot_histones_at_peaks_process;
-    find_idr_in_replicates_process
+    find_idr_in_replicates_process;
+    multiqc_process
     // macs2_call_peaks_process_wt
 
 }from '../modules/peak_analysis_modules.nf'
@@ -25,6 +26,7 @@ workflow mk_bw_call_peaks_workflow {
     control_bams_index_tuple_ch
     wt_bams_index_tuple_ch
     ref_genome_ch
+    dups_log_ch
 
     emit:
     control_meta_bw_ch
@@ -205,6 +207,26 @@ workflow mk_bw_call_peaks_workflow {
     // now i want to get the idr peaks per each replicate combination
 
     find_idr_in_replicates_process(broadpeak_gtuple_meta_ch)
+
+
+    // running multiqc on the duplicate log files
+
+    // group by histone 
+    dups_log_ch
+        .flatten()
+        .map { file ->
+        
+        file_basename = file.baseName
+        tokens = file_basename.tokenize("_")
+        condition = tokens[0]
+        histone = tokens[1]
+        
+        //grouping_key  = "${condition}_${histone}"
+        tuple( condition, histone, file)
+        }
+        .groupTuple(by:1)
+        .set{dups_log_meta_ch}
+    multiqc_process(dups_log_meta_ch)
 
 
 }

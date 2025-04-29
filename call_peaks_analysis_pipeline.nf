@@ -30,6 +30,13 @@ wtvslowup_genebody_ch = Channel.value(params.wtvs_lowup)
 params.wtvs_lowdown_nochange = file('/lustre/fs4/risc_lab/scratch/iduba/linker-histone/RNA-seq/rep2/hg38-ERCC-UMI-alignment/DESeq2_results/WTvslowdown-basemeanmatchnochange-genebody.bed')
 wtvslowdown_nochange_ch = Channel.value(params.wtvs_lowdown_nochange)
 
+
+// I want a multiqc plot of the duplicate levels for the k27 data
+
+params.dups_log = file('./dup_info/*_dups.log')
+dups_log_ch = Channel.value(params.dups_log)
+
+
 // include {
 //     make_alignment_bw_process_control
 
@@ -59,7 +66,7 @@ workflow {
     // now i will put the control bams and wt bams into the peak calling workflow
     // I will also put the reference genome in as the third entry
 
-    mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch )
+    mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch, dups_log_ch )
 
     // take the emitted channels from the call peaks workflow
     control_bw_meta_ch = mk_bw_call_peaks_workflow.out.control_meta_bw_ch
