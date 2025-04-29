@@ -1,0 +1,411 @@
+---
+title: "using IDR peaks"
+output: html_notebook
+---
+
+
+
+```{r}
+
+hlow_idr_peaks = list.files(path="./idr_results/H3k27me3/H1low/", pattern = "IDR.*broadPeak$", full.names = TRUE )
+print(hlow_idr_peaks)
+
+# now find which broadPeak file has the most lines ( the most amount of peaks called)
+
+hlow_peak_counts = data.frame(file = hlow_idr_peaks,
+                            peak_counts = sapply(hlow_idr_peaks, function(x) {length(readLines(x))} )
+                            
+                            )
+
+hlow_peak_counts
+
+best_hlow_idr = hlow_peak_counts[which.max(hlow_peak_counts$peak_counts),]$file
+
+# now this gives the file with the most peaks as according to encode pipeline
+best_hlow_idr
+
+
+# now doing the same for scrm
+
+scrm_idr_peaks = list.files(path="./idr_results/H3k27me3/Scrm/", pattern = "IDR.*broadPeak$", full.names = TRUE )
+print(scrm_idr_peaks)
+
+# now find which broadPeak file has the most lines ( the most amount of peaks called)
+
+scrm_peak_counts = data.frame(file = scrm_idr_peaks,
+                            peak_counts = sapply(scrm_idr_peaks, function(x) {length(readLines(x))} )
+                            
+                            )
+
+scrm_peak_counts
+
+best_scrm_idr = scrm_peak_counts[which.max(scrm_peak_counts$peak_counts),]$file
+```
+
+
+```{r}
+# now that i have the hlow and scrm that have the most peaks called from the idr pairs
+# I will create the master peak file
+
+peaklist = list(best_hlow_idr, best_scrm_idr )
+best_hlow_idr
+best_scrm_idr
+
+library(GenomicRanges)
+library(chromVAR)
+library(DESeq2)
+library(tidyr)
+library(EnhancedVolcano)
+
+# making the master peak genomic ranges object
+mPeak = GRanges()
+
+for (peakfile in peaklist) {
+  
+  peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+  
+  gr_object = GRanges(seqnames = peaktable$V1, IRanges(start = peaktable$V2, end = peaktable$V3), strand = "*" )
+  
+  mPeak = append(mPeak, gr_object)
+}
+
+# making sure there are no redundant peaks
+masterPeak = reduce(mPeak)
+
+
+
+
+```
+
+## Now do I use all of the bam files to get counts with the chromVAR get counts package or do I only use the 4 libraries that went into making the idr pair peak files?
+
+# this is me getting the correct bam files 
+```{r}
+
+# now lets use chromVAR to load in the counts
+
+# load the bam files separately per condition so i can choose the correct one
+
+hlow_bam_files = list.files(path="./bam_files/", pattern="H1low.*H3k27me3.*bam$", full.names = TRUE )
+hlow_bam_files
+
+# now get the tokens from the best hlow file and see if it is in the name of the bam. if it is, we keep the bam
+
+hlow_idr_tokens = strsplit(best_hlow_idr,split = "_")[[1]]
+first_rep_hlow = hlow_idr_tokens[5]
+second_rep_hlow = hlow_idr_tokens[7]
+
+
+# make an empty list to store the master bams
+list_of_mBams = list()
+
+for (x in hlow_bam_files) {
+  
+  target_bam = strsplit(x, split = "_")[[1]]
+  
+  if (first_rep_hlow %in% target_bam) {
+    
+    print(paste("first rep is here", x))
+    
+    list_of_mBams = append(list_of_mBams, x)
+  }
+  if (second_rep_hlow %in% target_bam) {
+    
+    print(paste("second rep is here", x))
+    
+    list_of_mBams = append(list_of_mBams, x)
+    
+  }
+  
+}
+
+list_of_mBams
+
+# now doing the same for scrm
+
+
+scrm_bam_files = list.files(path="./bam_files/", pattern="Scrm.*H3k27me3.*bam$", full.names = TRUE )
+scrm_bam_files
+
+# getting tokens
+scrm_idr_tokens = strsplit(best_scrm_idr,split = "_")[[1]]
+first_rep_scrm = scrm_idr_tokens[5]
+second_rep_scrm = scrm_idr_tokens[7]
+
+
+for (x in scrm_bam_files) {
+  
+  target_bam = strsplit(x, split = "_")[[1]]
+  
+  if (first_rep_scrm %in% target_bam) {
+    
+    print(paste("first rep is here", x))
+    
+    list_of_mBams = append(list_of_mBams, x)
+  }
+  if (second_rep_scrm %in% target_bam) {
+    
+    print(paste("second rep is here", x))
+    
+    list_of_mBams = append(list_of_mBams, x)
+    
+  }
+  
+}
+
+
+
+```
+
+
+
+## Now to use chromVAR to fill the matrix
+
+
+```{r}
+
+# making the matrix 
+
+countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+
+
+# I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+seqnames(masterPeak)
+
+# i should put the unique ids from the master peak object in the matrix as row names.
+unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+
+rownames(countsMatrix) = unique_masterPeak_ids
+
+#getting the list of bam base names to add to the matrix column names
+list_bam_basenames = list()
+
+
+# for deseq2 i need the condition design. so hlow and scrm
+# then i will find a way to tally how many of each are there so i can automate the rep count
+condition_design = list()
+
+type_design = list()
+
+for (x in c(1:length(list_of_mBams))) {
+  
+  path_bam = list_of_mBams[[x]]
+  print(path_bam)
+  bam_basename = basename(path_bam)
+  bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+  
+  # labeling the important tokens so it is easier to keep track of
+  condition = bam_tokens[1]
+  histone = bam_tokens[2]
+  replicate = bam_tokens[3]
+  
+  
+  # for later parts I need the condition and to know how many times to repeat them
+  condition_design = append(condition_design, paste(condition,histone,sep="_"))
+  
+  
+   # also get the replicate too for type design
+  type_design = append(type_design, replicate)
+  
+  
+  
+  # using chromVAR getCounts function
+  fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+  
+  
+  # putting the fragment counts in the column labeled by the bam name
+  countsMatrix[,x] = counts(fragment_counts)[,1]
+  
+  list_bam_basenames = append(list_bam_basenames, bam_basename)
+  
+}
+
+colnames(countsMatrix) = list_bam_basenames  
+```
+
+```{r}
+
+#first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+keep_Rows = which(rowSums(countsMatrix) > 5)
+
+filt_countmatrix = countsMatrix[keep_Rows,]
+
+# now to get the condition_design
+condition_counts = table(unlist(condition_design))
+
+# this gives back the names and the counts give back the counts for each of the names
+condition_names = names(condition_counts)
+condition_num = as.numeric(condition_counts)
+
+# now i can put both lists in to get back the experiment design
+condition_factor = factor(rep(condition_names, times=condition_num))
+
+# repeating the above to have another column with type (replicates)
+type_counts = table(unlist(type_design))
+type_names = names(type_counts)
+#type_num = as.numeric(type_counts)
+
+type_factor = factor(rep(type_names, times=type_counts))
+
+
+```
+
+
+# now for deseq2 workflow
+```{r}
+
+
+# now to do the normal deseq2 workflow
+
+dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+                             colData = DataFrame(condition_factor, type_factor),
+                             design = ~ condition_factor)
+
+# using the function on our data
+DDS = DESeq(dds)
+
+norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+
+# adding _norm onto the column names in the normalized matrix
+colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+
+
+# provides independent filtering using the mean of normalized counts
+res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+
+# this is looking at the differences between the 3 deseq analyzed options
+countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+
+head(countMatDiff)
+
+
+
+
+ # getting the results name and addding to the coef we want to shrink
+  experiment_design_name = resultsNames(DDS)[2]
+  
+  # useful for visualization and ranking of genes or in this case peaks
+  resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+  
+  
+  # finding the up and down regulated counts that pass the threshold
+
+  up_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange >= 2) ,]
+  total_up_reg = length(up_reg[,1])
+  #total_up_reg
+  down_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange <= -2) ,]
+  total_down_reg = length(down_reg[,1])
+  total_down_reg
+  
+  resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=2, "|LFC| > 2 & padj < 0.05", "padj < 0.05" ))
+  ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
+    labs(caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg))+
+    theme(plot.caption = element_text(size = 15, face = "bold"))+
+    scale_colour_manual(values=c("green", "red", "yellow"))+
+    scale_x_continuous(trans='log10')+
+    ylim(c(min(-max(resLFC$log2FoldChange),min(resLFC$log2FoldChange)), max(max(resLFC$log2FoldChange),-min(resLFC$log2FoldChange))))+
+    geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 2)
+  
+  print(ma_plot_labeled)
+  
+  
+  pdf(file = paste(experiment_design_name,"IDR_MA_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  
+  print(ma_plot_labeled)
+  dev.off()
+  
+  png(filename = paste(experiment_design_name,"IDR_MA_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  
+  print(ma_plot_labeled)
+  dev.off()
+  
+  
+  volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+                  lab = rownames(resLFC),
+                  title = "all replicates",
+                  x = 'log2FoldChange', FCcutoff = 2,
+                  y = 'padj', pCutoff = 0.05, labSize = 3, 
+                  
+                  )
+  
+  print(volcano_plot_removed_reps)
+  
+  png(filename = paste(experiment_design_name,"IDR_volcano_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+  pdf(file = paste(experiment_design_name,"IDR_volcano_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  print(volcano_plot_removed_reps)
+  dev.off()
+  
+
+
+
+# using rlog over vst for transformation
+
+rld = rlog(DDS, blind=FALSE)
+
+#it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+head(assay(rld), 5)
+
+
+library(ggplot2)
+
+pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+pcaData
+
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+  ggtitle("PCA plot using Rlog transform") +
+  geom_point(size=3) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  coord_fixed()
+#pca_plot
+
+png(filename = paste(experiment_design_name,"PCA_plot_IDR_rlog.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+pca_plot_rlog
+dev.off()
+
+
+pdf(file = paste(experiment_design_name,"PCA_plot_IDR_rlog.pdf", sep = "_"), width = 10, height = 10)
+pca_plot_rlog
+dev.off()
+
+
+# testing with vst
+vsd_t = vst(DDS, blind = FALSE)
+head(assay(vsd_t), 5)
+
+pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+pcaData2
+
+percentVar <- round(100 * attr(pcaData2, "percentVar"))
+pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+  ggtitle("PCA plot using VST transform all reps") +
+  geom_point(size=3) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  coord_fixed()
+
+
+
+pdf(file = paste(experiment_design_name,"IDR_PCA_plot_vst_2_reps.pdf", sep = "_"), width = 10, height = 10)
+print(pca_plot_vst)
+dev.off()
+
+png(file = paste(experiment_design_name,"IDR_PCA_plot_vst_2_reps.png", sep = "_"), width = 1000, height = 1000)
+print(pca_plot_vst)
+dev.off()
+
+pca_plot_rlog
+
+pca_plot_vst
+
+
+```
+
