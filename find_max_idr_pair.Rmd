@@ -41,15 +41,17 @@ scrm_peak_counts
 
 best_scrm_idr = scrm_peak_counts[which.max(scrm_peak_counts$peak_counts),]$file
 ```
-
+# start from here with the concat 0.4 idr peaks since you dont have to find the peak file with the most peaks anymore
 
 ```{r}
 # now that i have the hlow and scrm that have the most peaks called from the idr pairs
 # I will create the master peak file
 
-peaklist = list(best_hlow_idr, best_scrm_idr )
-best_hlow_idr
-best_scrm_idr
+#peaklist = list(best_hlow_idr, best_scrm_idr )
+peaklist = list('./idr_results/H3k27me3/H1low/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak', './idr_results/H3k27me3/Scrm/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak')
+
+#best_hlow_idr
+#best_scrm_idr
 
 library(GenomicRanges)
 library(chromVAR)
@@ -158,6 +160,21 @@ for (x in scrm_bam_files) {
 ```
 
 
+# doing this for the concat files just use all bams
+
+```{r}
+
+hlow_bam_files = list.files(path="./bam_files/", pattern="H1low.*H3k27me3.*bam$", full.names = TRUE )
+hlow_bam_files
+
+scrm_bam_files = list.files(path="./bam_files/", pattern="Scrm.*H3k27me3.*bam$", full.names = TRUE )
+scrm_bam_files
+
+list_of_mBams = c(hlow_bam_files, scrm_bam_files)
+
+list_of_mBams
+```
+
 
 ## Now to use chromVAR to fill the matrix
 
@@ -206,6 +223,7 @@ for (x in c(1:length(list_of_mBams))) {
   
    # also get the replicate too for type design
   type_design = append(type_design, replicate)
+  #type_design = append(type_design, paste(histone,replicate, sep="_"))
   
   
   
@@ -244,10 +262,10 @@ condition_factor = factor(rep(condition_names, times=condition_num))
 # repeating the above to have another column with type (replicates)
 type_counts = table(unlist(type_design))
 type_names = names(type_counts)
-#type_num = as.numeric(type_counts)
+type_num = as.numeric(type_counts)
 
-type_factor = factor(rep(type_names, times=type_counts))
-
+#type_factor = factor(rep(type_names, times=type_counts))
+type_factor = factor(rep(type_names, times=type_num[1]))
 
 ```
 
