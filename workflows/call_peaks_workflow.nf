@@ -11,7 +11,11 @@ include {
     macs2_call_peaks_process_both;
     plot_histones_at_peaks_process;
     find_idr_in_replicates_process;
-    multiqc_process
+    multiqc_process;
+    mk_bedgraph_process;
+    seacr_peakcalls_process;
+    sicer2_peakcall_process;
+    mk_bed_for_sicer2_process
     // macs2_call_peaks_process_wt
 
 }from '../modules/peak_analysis_modules.nf'
@@ -26,12 +30,10 @@ workflow mk_bw_call_peaks_workflow {
     control_bams_index_tuple_ch
     wt_bams_index_tuple_ch
     ref_genome_ch
+    ref_genome_size_ch
     dups_log_ch
 
-    emit:
-    control_meta_bw_ch
-    wt_meta_bw_ch
-    broadpeaks_ch
+    
 
 
     main:
@@ -141,6 +143,7 @@ workflow mk_bw_call_peaks_workflow {
     // all_control_bams = control_bam_meta_ch.h3k27me3.concat(control_bam_meta_ch.h3k9me3)
     // all_control_bams.view()
     
+    //control_bam_meta_ch.view()
 
     make_alignment_bw_process_control(control_bam_meta_ch)
 
@@ -162,14 +165,14 @@ workflow mk_bw_call_peaks_workflow {
         .transpose()
         //.view()
         .set{concat_wt_control_bam_meta_ch}
-
+    //concat_wt_control_bam_meta_ch.view()
     macs2_call_peaks_process_both(concat_wt_control_bam_meta_ch, ref_genome_ch) // might need ref_genome
     //macs2_call_peaks_process_wt()
 
     // now getting the channel for the broadpeaks and will have to emit it from the workflow and put into a new workflow to plot the bigwig signal onto the called broad peaks
 
     broadpeaks_ch = macs2_call_peaks_process_both.out.broadpeaks
-
+    broadpeaks_ch_backup = macs2_call_peaks_process_both.out.broadpeaks
     //broadpeaks_ch.view() // now got the peaks so time to emit this channel.
 
     // okay, another thing to do is to use bedtools to merge peaks by 1kb, 2kb, and 5kb to see how they look
@@ -179,7 +182,7 @@ workflow mk_bw_call_peaks_workflow {
 
 
 
-    broadpeaks_ch
+    broadpeaks_ch_backup
         .map{ peakpath -> 
         
         basename = peakpath.baseName
@@ -205,29 +208,108 @@ workflow mk_bw_call_peaks_workflow {
 
 
     // now i want to get the idr peaks per each replicate combination
-
+    //broadpeak_gtuple_meta_ch.view()
     find_idr_in_replicates_process(broadpeak_gtuple_meta_ch)
 
+    if (params.make_html_report = true) {
+        // running multiqc on the duplicate log files
 
-    // running multiqc on the duplicate log files
+        // group by histone 
+        dups_log_ch
+            .flatten()
+            .map { file ->
+            
+            file_basename = file.baseName
+            tokens = file_basename.tokenize("_")
+            condition = tokens[0]
+            histone = tokens[1]
+            
+            //grouping_key  = "${condition}_${histone}"
+            tuple( condition, histone, file)
+            }
+            .groupTuple(by:1)
+            .set{dups_log_meta_ch}
+        multiqc_process(dups_log_meta_ch)
+    }
 
-    // group by histone 
-    dups_log_ch
-        .flatten()
-        .map { file ->
+
+    // I should try seacr now //////////////
+    //control_bam_meta_ch.view()
+    //wt_bam_meta_ch.view()
+    
+    // possibly concate the two above so i can run process for getting bedgraph files in parallel
+    control_bams_index_tuple_ch
+        .concat(wt_bams_index_tuple_ch)
+        //.view()
+        .set{combined_bam_index_tuple_ch}
+
+    //combined_bam_index_tuple_ch.view()
+    // it takes the reference genome also
+    mk_bedgraph_process(combined_bam_index_tuple_ch, ref_genome_size_ch)
+
+    bedgraphs_for_seacr_ch = mk_bedgraph_process.out.bedgraph_for_seacr
+    
+    // then the seacr process 
+    seacr_peakcalls_process(bedgraphs_for_seacr_ch)
+
+    // now make a idr process for seacr peaks
+    // well seacr does not give back peaks that when merged with idr will total more that 20
+    // and idr needs to have a post merge of 20 peaks.
+    
+    /* seacr_peaks = seacr_peakcalls_process.out.seacr_peaks
+
+    seacr_peaks
+        .map{ peakpath -> 
         
-        file_basename = file.baseName
-        tokens = file_basename.tokenize("_")
+        basename = peakpath.baseName
+        file_name = peakpath.name
+
+        
+
+        tokens = basename.tokenize("_")
+
         condition = tokens[0]
         histone = tokens[1]
-        
-        //grouping_key  = "${condition}_${histone}"
-        tuple( condition, histone, file)
-        }
-        .groupTuple(by:1)
-        .set{dups_log_meta_ch}
-    multiqc_process(dups_log_meta_ch)
+        replicate = tokens[2]
+        bio_rep = tokens[3]
 
+        grouping_key = "${condition}_${histone}"
+
+        tuple(grouping_key, condition, histone, replicate, bio_rep, file_name, basename, peakpath)
+        
+        }
+        .groupTuple(by:0, sort:true)
+        //.view()
+        .set{seacrpeaks_gtuple_meta_ch}
+
+
+
+    seacr_idr_process(seacrpeaks_gtuple_meta_ch)
+    */
+
+
+    // now making a process to get sicer2 peaks
+    // I can use the bam files because I added bedtools in the sicer2 conda environment I made
+
+    //combined_bam_index_tuple_ch.view()
+    //sicer2_peakcall_process(combined_bam_index_tuple_ch)
+
+    // ill just make a process to create bed files from the bams and then input it into sicer2 env that is by itself
+    // mk_bed_for_sicer2_process(combined_bam_index_tuple_ch)
+
+    // bed_for_sicer2_ch = mk_bed_for_sicer2_process.out.bed_for_sicer2
+
+    //bed_for_sicer2_ch
+        //.filter ( ~/.*H1low.*/)
+        //.view()
+        //.set{hlow_bed_for_sicer2_ch}
+    
+    //sicer2_peakcall_process(hlow_bed_for_sicer2_ch)
+
+    emit:
+    control_meta_bw_ch
+    wt_meta_bw_ch
+    broadpeaks_ch
 
 }
 
@@ -404,7 +486,7 @@ workflow plot_histone_calledpeak_workflow {
         .groupTuple(by:0)
         //.view()
         .set{meta_bw_peak_ch}
-
+    //meta_bw_peak_ch.view()
     plot_histones_at_peaks_process(meta_bw_peak_ch)
     
     

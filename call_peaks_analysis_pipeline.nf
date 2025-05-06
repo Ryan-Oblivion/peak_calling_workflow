@@ -2,13 +2,15 @@ nextflow.enable.dsl=2
 
 // this is the path where i got hera's bam files from: /lustre/fs4/risc_lab/scratch/hcanaj/K562_cutandtag_H1low_alignedbam_012925_hg38/all_aligned_bams_bw_hg38
 
-
+// the bams and bai files should have 3 replicates if you want it to work with idr
 params.control_bams = 'bam_files/H1low_*{bam,bam.bai}'
 params.other_control_bams = 'bam_files/dH1_*{bam,bam.bai}'
-
+//params.published_bam = "bam_files/ENCFF915XIL_*{bam,bam.bai}"
+//params.published_bam = "bam_files/ENCFF905CZD_*{bam,bam.bai}"
 
 norm_control_bams_index_tuple_ch = Channel.fromFilePairs(params.control_bams)
 other_control_bams_index_tuple_ch = Channel.fromFilePairs(params.other_control_bams)
+//published_bam_index_tuple_ch = Channel.fromFilePairs(params.published_bam)
 
 control_bams_index_tuple_ch = norm_control_bams_index_tuple_ch.concat(other_control_bams_index_tuple_ch )
 
@@ -22,6 +24,10 @@ wt_bams_index_tuple_ch = Channel.fromFilePairs(params.wt_bams)
 params.ref_genome = file('/lustre/fs4/risc_lab/store/risc_data/downloaded/hg38/genome/Sequence/WholeGenomeFasta/genome.fa')
 ref_genome_ch = Channel.value(params.ref_genome)
 
+params.ref_genome_size = file('/lustre/fs4/risc_lab/store/risc_data/downloaded/hg38/genome/Sequence/WholeGenomeFasta/genome.fa.fai')
+ref_genome_size_ch = Channel.value(params.ref_genome_size)
+
+
 // I need a list of gene regions. got this from irene but also included it in my motif analysis nextflow script
 params.wtvs_lowup = file('/lustre/fs4/risc_lab/scratch/iduba/linker-histone/RNA-seq/rep2/hg38-ERCC-UMI-alignment/DESeq2_results/WTvslowup-genebody.bed')
 wtvslowup_genebody_ch = Channel.value(params.wtvs_lowup)
@@ -34,7 +40,7 @@ wtvslowdown_nochange_ch = Channel.value(params.wtvs_lowdown_nochange)
 // I want a multiqc plot of the duplicate levels for the k27 data
 
 params.dups_log = file('./dup_info/*_dups.log')
-dups_log_ch = Channel.value(params.dups_log)
+dups_log_ch = Channel.fromPath(params.dups_log)
 
 
 // include {
@@ -66,7 +72,7 @@ workflow {
     // now i will put the control bams and wt bams into the peak calling workflow
     // I will also put the reference genome in as the third entry
 
-    mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch, dups_log_ch )
+    mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch, ref_genome_size_ch, dups_log_ch )
 
     // take the emitted channels from the call peaks workflow
     control_bw_meta_ch = mk_bw_call_peaks_workflow.out.control_meta_bw_ch
@@ -86,11 +92,11 @@ workflow {
 
     ////////// for testing do not run the plotting yet it takes too long //////////////////////////
 
-    //plot_histone_data_workflow(control_bw_meta_ch, wt_bw_meta_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch)
+    plot_histone_data_workflow(control_bw_meta_ch, wt_bw_meta_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch)
 
     // I will just make another workflow for plotting each histone-rep bigwig with its corresponding histone-rep broadPeak
 
-    //plot_histone_calledpeak_workflow(control_bw_meta_ch, wt_bw_meta_ch, all_broadpeaks_ch)
+    plot_histone_calledpeak_workflow(control_bw_meta_ch, wt_bw_meta_ch, all_broadpeaks_ch)
 
 
 
