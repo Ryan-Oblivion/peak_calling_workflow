@@ -15,7 +15,9 @@ include {
     mk_bedgraph_process;
     seacr_peakcalls_process;
     sicer2_peakcall_process;
-    mk_bed_for_sicer2_process
+    mk_bed_for_sicer2_process;
+    get_pval_bedgraph;
+    kenttools_get_bigwig
     // macs2_call_peaks_process_wt
 
 }from '../modules/peak_analysis_modules.nf'
@@ -169,6 +171,19 @@ workflow mk_bw_call_peaks_workflow {
     macs2_call_peaks_process_both(concat_wt_control_bam_meta_ch, ref_genome_ch) // might need ref_genome
     //macs2_call_peaks_process_wt()
 
+    // i want to get the ppois files from the macs2 process
+    ppois_files_ch = macs2_call_peaks_process_both.out.ppois_macs2_file
+
+    get_pval_bedgraph(ppois_files_ch, ref_genome_size_ch)
+
+    pval_bedgraph_ch = get_pval_bedgraph.out.pvalue_bedgraph_file
+
+    chrom_size_ch = get_pval_bedgraph.out.chrom_size_file
+
+    kenttools_get_bigwig(pval_bedgraph_ch, ref_genome_size_ch)
+    //chrom_size_ch
+
+
     // now getting the channel for the broadpeaks and will have to emit it from the workflow and put into a new workflow to plot the bigwig signal onto the called broad peaks
 
     broadpeaks_ch = macs2_call_peaks_process_both.out.broadpeaks
@@ -250,7 +265,7 @@ workflow mk_bw_call_peaks_workflow {
     bedgraphs_for_seacr_ch = mk_bedgraph_process.out.bedgraph_for_seacr
     
     // then the seacr process 
-    seacr_peakcalls_process(bedgraphs_for_seacr_ch)
+    //seacr_peakcalls_process(bedgraphs_for_seacr_ch)
 
     // now make a idr process for seacr peaks
     // well seacr does not give back peaks that when merged with idr will total more that 20

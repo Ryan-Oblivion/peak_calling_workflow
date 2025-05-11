@@ -50,6 +50,8 @@ best_scrm_idr = scrm_peak_counts[which.max(scrm_peak_counts$peak_counts),]$file
 #peaklist = list(best_hlow_idr, best_scrm_idr )
 peaklist = list('./idr_results/H3k27me3/H1low/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak', './idr_results/H3k27me3/Scrm/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak')
 
+#peaklist = list('./idr_results/H3k27me3/H1low/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak', './idr_results/H3k27me3/published/concat_IDR_published_H3k27me3_r1_vs_r2_vs_null_0.4_pairs.broadPeak')
+
 #best_hlow_idr
 #best_scrm_idr
 
@@ -269,6 +271,16 @@ type_factor = factor(rep(type_names, times=type_num[1]))
 
 ```
 
+# I want to get the idr threshold and use that as input for the file names and other things
+
+```{r}
+peak_file = basename(peaklist[[1]])
+
+idr_used = strsplit(peak_file, split = "_")[[1]][10]
+idr_used
+```
+
+
 
 # now for deseq2 workflow
 ```{r}
@@ -319,7 +331,7 @@ head(countMatDiff)
   
   resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=2, "|LFC| > 2 & padj < 0.05", "padj < 0.05" ))
   ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
-    labs(caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg))+
+    labs(caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
     theme(plot.caption = element_text(size = 15, face = "bold"))+
     scale_colour_manual(values=c("green", "red", "yellow"))+
     scale_x_continuous(trans='log10')+
@@ -329,12 +341,12 @@ head(countMatDiff)
   print(ma_plot_labeled)
   
   
-  pdf(file = paste(experiment_design_name,"IDR_MA_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_all_reps.png", sep = "_"), width = 10, height = 10)
   
   print(ma_plot_labeled)
   dev.off()
   
-  png(filename = paste(experiment_design_name,"IDR_MA_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
   
   print(ma_plot_labeled)
   dev.off()
@@ -342,7 +354,7 @@ head(countMatDiff)
   
   volcano_plot_removed_reps = EnhancedVolcano(resLFC,
                   lab = rownames(resLFC),
-                  title = "all replicates",
+                  title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
                   x = 'log2FoldChange', FCcutoff = 2,
                   y = 'padj', pCutoff = 0.05, labSize = 3, 
                   
@@ -350,11 +362,11 @@ head(countMatDiff)
   
   print(volcano_plot_removed_reps)
   
-  png(filename = paste(experiment_design_name,"IDR_volcano_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_all_reps.pdf", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
   print(volcano_plot_removed_reps)
   dev.off()
   
-  pdf(file = paste(experiment_design_name,"IDR_volcano_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
   print(volcano_plot_removed_reps)
   dev.off()
   
@@ -378,20 +390,22 @@ percentVar <- round(100 * attr(pcaData, "percentVar"))
 
 
 pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-  ggtitle("PCA plot using Rlog transform") +
+  ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
   geom_point(size=3) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
   ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
   coord_fixed()
 #pca_plot
+name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "rlog.png", sep = "_")
 
-png(filename = paste(experiment_design_name,"PCA_plot_IDR_rlog.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
-pca_plot_rlog
+png(filename = name_for_rlog_png_file, width = 1000, height = 1000, antialias = "subpixel")
+print(pca_plot_rlog)
 dev.off()
 
+name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "rlog.pdf", sep = "_")
 
-pdf(file = paste(experiment_design_name,"PCA_plot_IDR_rlog.pdf", sep = "_"), width = 10, height = 10)
-pca_plot_rlog
+pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+print(pca_plot_rlog)
 dev.off()
 
 
@@ -404,25 +418,26 @@ pcaData2
 
 percentVar <- round(100 * attr(pcaData2, "percentVar"))
 pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-  ggtitle("PCA plot using VST transform all reps") +
+  ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
   geom_point(size=3) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
   ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
   coord_fixed()
 
 
+#name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
 
-pdf(file = paste(experiment_design_name,"IDR_PCA_plot_vst_2_reps.pdf", sep = "_"), width = 10, height = 10)
+pdf(file = paste(experiment_design_name,"PCA_plot_IDR",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
 print(pca_plot_vst)
 dev.off()
 
-png(file = paste(experiment_design_name,"IDR_PCA_plot_vst_2_reps.png", sep = "_"), width = 1000, height = 1000)
+png(file = paste(experiment_design_name,"PCA_plot_IDR", idr_used,"vst_all_reps.png", sep = "_"), width = 1000, height = 1000)
 print(pca_plot_vst)
 dev.off()
 
-pca_plot_rlog
+#pca_plot_rlog
 
-pca_plot_vst
+#pca_plot_vst
 
 
 ```

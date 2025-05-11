@@ -369,12 +369,15 @@ process macs2_call_peaks_process_both {
 
     output:
     path("*broad*"), emit: broadpeaks
+    path("*"), emit: macs2_files
+    path("*ppois*"), emit: ppois_macs2_file
 
 
 
     script:
 
     //num_files = bam_file_name.size()
+    
     old_peak_files = "${bam_file_name}_old_macs2_stats"
     
 
@@ -418,6 +421,28 @@ process macs2_call_peaks_process_both {
     --cutoff-analysis \
     --nolambda
 
+    # first compute the sval score then use it in macs2 bdgcmp
+    chipReads=\$(cat "${bam_file_name}_peaks.broadPeak"| wc -l | awk '{printf "%f", \$1/1000000}')
+    
+    # since we do not have a control we do not have to get the control reads and compare it with the chipReads(C&T reads) to find which is the lower reads and use that as sval
+    # so we will just use the chipReads as sval
+    sval=\$(echo "\$chipReads")
+
+    echo "sval when creating pvalue bigwig from macs2 is \$sval"
+
+
+    # now we need to create the signal pvalue bigwig file. (according to the encode chip-seq pipeline google doc: https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0)
+
+    macs2 bdgcmp \
+    -t *_treat_pileup.bdg \
+    -c *_control_lambda.bdg \
+    -o ${bam_file_name}_ppois.bdg \
+    -m ppois \
+    -S \$sval
+
+
+
+
     # this is me trying to get the old peak files that produce the correct signal in peaks
     #macs2 callpeak \
     --treatment \${bam_file_name} \
@@ -443,6 +468,85 @@ process macs2_call_peaks_process_both {
     
 
     
+}
+
+process get_pval_bedgraph {
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+    label 'normal_big_resources'
+    publishDir "./peak_files/pval_signal_files", mode: 'copy', pattern: '*'
+
+
+    input:
+
+    path(ppois_file)
+
+    path(genome_chr_size)
+
+
+    output:
+
+    path("${bedgraph_file_out}"), emit: pvalue_bedgraph_file
+    path("genome.bed"), emit: chrom_size_file
+
+
+    script:
+
+    bedgraph_file_out = "${ppois_file.baseName}.pval.signal.bedgraph"
+
+    """
+    #!/usr/bin/env bash
+
+    # making the proper genome.bed file from the chromosome size file generated. the genome.fa.fai
+    awk 'BEGIN{OFS="\t"}{ print \$1, 0, \$2 }' "${genome_chr_size}" > genome.bed
+
+    bedtools slop \
+    -i ${ppois_file} \
+    -g ${genome_chr_size} \
+    -b 0 \
+    | bedtools intersect \
+        -a stdin \
+        -b genome.bed \
+    | sort -k1,1 -k2,2n \
+    > ${bedgraph_file_out}
+
+
+
+
+
+    """
+}
+
+process kenttools_get_bigwig {
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/uscs_utils_rj'
+    label 'normal_big_resources'
+    publishDir "./peak_files/pval_signal_files", mode: 'copy', pattern: '*'
+
+
+    input:
+    path(bedgraph_files)
+    path(chrom_size_file)
+
+    output:
+    path("${out_pval_signal_bigwig}"), emit: pval_signal_bigwig_files
+
+    script:
+
+    out_pval_signal_bigwig = "${bedgraph_files.baseName}.bigwig"
+
+    """
+    #!/usr/bin/env bash
+
+    bedGraphToBigWig \
+    ${bedgraph_files} \
+    ${chrom_size_file} \
+    ${out_pval_signal_bigwig}
+
+
+
+
+
+    """
+
 }
 
 process merge_peaks_bedtools_process {
