@@ -17,8 +17,16 @@ include {
     sicer2_peakcall_process;
     mk_bed_for_sicer2_process;
     get_pval_bedgraph;
-    kenttools_get_bigwig
+    kenttools_get_bigwig;
+    find_diff_peaks_R_process;
+    plot_at_up_down_peaks_process;
+    signal_over_gene_tss_process;
+    bedtools_stranded_create_process;
+    merge_concat_peaks_process;
+    diff_peaks_intersect_diff_genes_process;
+    atac_signal_over_peaks_process
     // macs2_call_peaks_process_wt
+    
 
 }from '../modules/peak_analysis_modules.nf'
 
@@ -156,6 +164,9 @@ workflow mk_bw_call_peaks_workflow {
 
     wt_meta_bw_ch = make_alignment_bw_process_wt.out.bigwig_meta_ch
 
+    control_meta_cpm_bw_ch = make_alignment_bw_process_control.out.cpm_bigwig_meta_ch
+    wt_meta_cpm_bw_ch = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
+
     // I want to view how the meta bigwig output channel looks.
     //control_meta_bw_ch.view()
 
@@ -167,7 +178,7 @@ workflow mk_bw_call_peaks_workflow {
         .transpose()
         //.view()
         .set{concat_wt_control_bam_meta_ch}
-    //concat_wt_control_bam_meta_ch.view()
+    concat_wt_control_bam_meta_ch.view()
     macs2_call_peaks_process_both(concat_wt_control_bam_meta_ch, ref_genome_ch) // might need ref_genome
     //macs2_call_peaks_process_wt()
 
@@ -225,6 +236,128 @@ workflow mk_bw_call_peaks_workflow {
     // now i want to get the idr peaks per each replicate combination
     //broadpeak_gtuple_meta_ch.view()
     find_idr_in_replicates_process(broadpeak_gtuple_meta_ch)
+
+    // these were the peaks without 10kb merged
+    concat_idr_peaks = find_idr_in_replicates_process.out.final_concat_peaks
+
+    
+    // now with the concat peaks, I need to put them in R and get the list of up peaks and down peaks
+
+    concat_idr_peaks
+        .map {file -> 
+        
+        basename = file.baseName
+
+        file_name = file.name
+
+        // concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3
+        tokens = basename.tokenize("_")
+
+        condition = tokens[2]
+        histone = tokens[3]
+
+        tuple(histone, condition, file_name, file)
+
+        
+        
+        }
+        .groupTuple(by:0, sort: true)
+        //.view()
+        // H1low is first and scrambled is next but if the file is named something else you should not hard code which is which
+        // example: [H3k27me3, [conditions], [concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak], [/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/32/d1583cfe217bf08b629e50f5d2c843/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, /lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/72/7a61681f524cbe7de6d547ad41a86d/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak]]
+        .set{group_concat_idr_peaks_ch}
+
+    // now I should merge these concat peaks but keep them separate and output them in the same meta channel as above
+
+    merge_concat_peaks_process(group_concat_idr_peaks_ch)
+
+    first_10kb_peakfile = merge_concat_peaks_process.out.first_10kb_merged_peak
+    second_10kb_peakfile = merge_concat_peaks_process.out.second_10kb_merged_peak
+    //first_10kb_peakfile.view()
+
+    both_10kb_peakfiles = first_10kb_peakfile.concat(second_10kb_peakfile)
+
+    both_10kb_peakfiles
+        .map { file -> 
+        
+        file_basename = file.baseName
+        file_name = file.name
+
+        tokens = file_basename.tokenize("_")
+
+        condition_label = tokens[2]
+        exper_type = tokens[3]
+
+        tuple(condition_label, exper_type, file_name, file)
+
+        }
+        .groupTuple(by:1, sort:true)
+        .set{group_10kb_concat_idr_peaks_ch}
+
+
+    //group_10kb_concat_idr_peaks_ch = merge_concat_peaks_process.out.merged_10kb_concat_peaks
+    //group_10kb_concat_idr_peaks_ch.view()
+
+
+    // now I also need the bam files
+    // load all bams in but use the histone mark to get the correct bams
+    // the bam meta ch looks like this tuple(condition_label, histone_label, replicate_label, meta_name, bam_file_name, bam_path, bai_path)
+    
+     control_bams_index_tuple_ch
+        .concat(wt_bams_index_tuple_ch)
+        .map { key, tuple ->
+    
+        
+            bam = tuple[0]
+            bai = tuple[1]
+            basename = bam.baseName
+            file_name = bam.name
+
+            tokens = basename.tokenize("_")
+
+            condition = tokens[0]
+            histone = tokens[1]
+
+            bam
+            //tuple(histone, condition, file_name, bam)
+        
+        }
+        .collect()
+        // just get all bams
+        // . map { bam ->
+        
+        // basename = bam.baseName
+        // file_name = bam.name
+
+        // tokens = basename.tokenize("_")
+
+        // condition = tokens[0]
+        // histone = tokens[1]
+
+        // tuple(histone, condition, file_name, bam)
+        
+        // }
+        // .groupTuple(by:0, sort:true)
+        //.view()
+        //.set{meta_bam_histone_group_tuple_ch}
+        .set{all_bams_paths}
+    
+    //all_bams_paths.view()
+    //meta_bam_histone_group_tuple_ch.view()
+    
+    //group_concat_idr_peaks_ch.view()
+    
+    // filtering channels 
+    // h3k27me3_idr_peaks_ch = group_concat_idr_peaks_ch.filter { it[0] == 'H3k27me3' }
+    // h3k27me3_bams_ch = meta_bam_histone_group_tuple_ch.filter { it[0] == 'H3k27me3' }
+
+    // h3k27me3_idr_peaks_ch.view()
+    // h3k27me3_bams_ch.view()
+
+    // using the 10kb merged idr peaks
+    find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
+
+
 
     if (params.make_html_report = true) {
         // running multiqc on the duplicate log files
@@ -325,6 +458,10 @@ workflow mk_bw_call_peaks_workflow {
     control_meta_bw_ch
     wt_meta_bw_ch
     broadpeaks_ch
+    control_meta_cpm_bw_ch
+    wt_meta_cpm_bw_ch
+    group_10kb_concat_idr_peaks_ch
+    //concat_idr_peaks
 
 }
 
@@ -705,4 +842,185 @@ workflow plot_histone_calledpeak_workflow {
     //plot_histones_at_peaks_process(concat_bw_k27_k9_ch, concat_peak_k27_k9_ch)
 
 
+}
+
+// this will be very similar to the plotting histone signal at genes workflow
+workflow plot_signal_up_down_peaks_workflow {
+
+
+
+
+    take:
+
+    control_meta_cpm_bw
+    wt_meta_cpm_bw
+    up_peaks_ch
+    down_peaks_ch
+
+
+
+    main:
+
+    // need to combine the two bigwig channels
+
+    control_meta_cpm_bw
+        .map {condition_label, histone_label, replicate_label, bigwig_path ->
+
+        bigwig_name = bigwig_path.name  // this is vectorized. it got the file name for all three in the list removing the paths
+        //bigwig_name2 = bigwig_path[[1]].name 
+        //bigwig_name3 = bigwig_path[[2]].name 
+
+        file_basename = bigwig_path.baseName
+
+        // tokens = file_basename.tokenize("_")
+
+        // condition = tokens[0]
+        // histone = tokens[1]
+        // replicate = tokens[2]
+        // hopefully i can end with this keeping k9 and k27 separated still
+
+        //tuple(condition_label, histone_label, replicate_label, bigwig_name, bigwig_path)
+        //tuple(bigwig_name,bigwig_path)
+        bigwig_path
+
+        }
+        //.sort{ a, b -> a[2] <=> b[2]}
+        //.transpose()
+        //.groupTuple(by:1, sort:true)
+        //.view()
+        .set{control_bw_cpm_meta2_ch}
+
+    wt_meta_cpm_bw
+        .map {condition_label, histone_label, replicate_label, bigwig_path ->
+
+        bigwig_name = bigwig_path.name  // this is vectorized. it got the file name for all three in the list removing the paths
+        //bigwig_name2 = bigwig_path[[1]].name 
+        //bigwig_name3 = bigwig_path[[2]].name 
+
+        file_basename = bigwig_path.baseName
+
+        // tokens = file_basename.tokenize("_")
+
+        // condition = tokens[0]
+        // histone = tokens[1]
+        // replicate = tokens[2]
+        // hopefully i can end with this keeping k9 and k27 separated still
+
+        //tuple(condition_label, histone_label, replicate_label, bigwig_name, bigwig_path)
+        //tuple(bigwig_name,bigwig_path)
+        bigwig_path
+
+        }
+        //.sort{ a, b -> a[2] <=> b[2]}
+        //.transpose()
+        //.groupTuple(by:1, sort:true)
+        //.view()
+        .set{wt_bw_cpm_meta2_ch}
+        
+    wt_bw_cpm_meta2_ch
+        .concat(control_bw_cpm_meta2_ch)
+        .flatten()
+        .map{ file ->
+
+        file_basename = file.baseName
+        file_name = file.name
+        tokens = file_basename.tokenize("_")
+
+        condition = tokens[0]
+        histone = tokens[1]
+        replicate = tokens[2]
+
+        tuple(condition, histone, replicate, file_name, file)
+
+
+        }
+        .groupTuple(by: [1,2])  // here i can try groupting tuple by 2 fields or columns. By the histone and then by the replicate !!!
+        //.view()
+        .set {experiment_group_meta_cpm_ch}
+
+
+    // now to plot the signal at the peaks
+    
+    plot_at_up_down_peaks_process(experiment_group_meta_cpm_ch, up_peaks_ch, down_peaks_ch)
+
+    // here i can try groupting tuple by 2 fields or columns. By the histone and then by the replicate !!!
+
+
+
+
+    emit:
+
+    experiment_group_meta_cpm_ch
+
+}
+
+workflow plot_diff_peaks_over_diff_genes_workflow {
+
+
+
+    take:
+    up_peaks_ch
+    down_peaks_ch
+    unchanging_peaks_ch
+    master_peaks_ch
+    up_genes_ch
+    down_genes_ch
+    gtf_ch
+    ref_genome_size_ch
+    knownGene_ch
+    proseq_up_gene_ch
+    proseq_down_gene_ch
+    proseq_unchanging_gene_ch
+    combined_bigwig_meta_2grouped_ch
+
+
+    main:
+
+    // first lets get the the strandedness of the up and down genes then use bedtools slop to get 5kb based on strand
+
+    bedtools_stranded_create_process(up_genes_ch, down_genes_ch, gtf_ch, ref_genome_size_ch) 
+
+    // changed from 5kb to 20kb
+    up_genes_with_20kb = bedtools_stranded_create_process.out.up_genes_20kb_stranded
+    down_genes_with_20kb = bedtools_stranded_create_process.out.down_genes_20kb_stranded
+
+
+    // I might just concat the up and down peak files to get a large diff peak file then plot over up and down genes
+    // the combined_bigwig_meta_2grouped_ch is grouped by histone and replicate and has this format tuple(condition, histone, replicate, file_name, file)
+    // this will have independent channels where in each histone, you have a single replicate with its treatment bigwig and its control bigwig. this compares the control and treatment in the same replicate and same histone
+    signal_over_gene_tss_process(up_peaks_ch, down_peaks_ch, up_genes_with_20kb, down_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
+
+
+    // now make a process to find which peaks intersect the up and down genes
+    diff_peaks_intersect_diff_genes_process(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, master_peaks_ch, up_genes_with_20kb, down_genes_with_20kb, knownGene_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch)
+
+
+
+}
+
+
+workflow plot_atac_signal_over_diff_peaks_workflow {
+
+
+    take:
+
+    control_atac_bigwig
+
+    treatment_atac_bigwig
+
+    up_peaks
+
+    down_peaks
+
+    unchanging_peaks
+
+    main:
+
+    // now make a process that will plot this information
+
+    atac_signal_over_peaks_process(control_atac_bigwig, treatment_atac_bigwig, up_peaks, down_peaks, unchanging_peaks)
+
+
+
+    //emit:
 }

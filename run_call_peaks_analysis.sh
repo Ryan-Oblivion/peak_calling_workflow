@@ -38,6 +38,9 @@ conda activate nextflow_three
 # you can provide any log files that hopefully contain duplicate information or any other quality metrics you would like to have multiqc aggrigate for you. this includes any fastqc output files contatin information about your fastq files.
 # --make_html_report (default = false) : make this true if you want to have the workflow make an html report of your duplicate info or any quality check files you might have that works with multiqc (ex: files from fastqc)
 # --dups_log : give a path to the correct dups.log file for all of the bam files you created. Make a glob pattern for them or copy them to a directory and provide the path to that dir with all the dups.log files in there
+
+# IMPORTANT for making sure deseq2 puts your condition of interest (treatment condition) first in the experiment design formula
+# --treatment_name : for your conditions please enter the contition treatment name with the same capitalization as what is seen as your input file name. This will let deseq2 have the treatment condition as the target factor
 ##########################################
 
 nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
@@ -46,7 +49,8 @@ nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume 
 --make_html_report true \
 --dups_log './dup_info/*_dups.log' \
 --plot_idr 0.4 \
---return_idr 0.4
+--return_idr 0.4 \
+--treatment_name 'H1low'
 
 # nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
 # --plot_idr 0.4 \

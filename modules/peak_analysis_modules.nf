@@ -27,6 +27,9 @@ process make_alignment_bw_process_control {
 
     tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_raw*.bigwig"), emit: bigwig_meta_ch
 
+    // the cpm normalized bigwigs 
+    tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_cpm*.bigwig"), emit: cpm_bigwig_meta_ch
+
     
 
 
@@ -85,6 +88,18 @@ process make_alignment_bw_process_control {
         --outFileFormat "bigwig" \
         --scaleFactor 1 
 
+
+        # now also making the cpm bigwig
+
+        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_normalized.bigwig"
+        
+        bamCoverage \
+        --bam \$bam \
+        --outFileName \$cpm_bigwig_out_name \
+        --outFileFormat "bigwig" \
+        --scaleFactor 1 \
+        --normalizeUsing CPM
+
     done
 
     echo "for loop finished"
@@ -123,7 +138,8 @@ process make_alignment_bw_process_wt {
 
     tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_raw*.bigwig"), emit: bigwig_meta_ch
 
-    
+    // the cpm normalized bigwigs 
+    tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_cpm*.bigwig"), emit: cpm_bigwig_meta_ch
 
 
     script:
@@ -175,6 +191,18 @@ process make_alignment_bw_process_wt {
         --outFileName \$bigwig_out_name \
         --outFileFormat "bigwig" \
         --scaleFactor 1 
+
+
+        # now also making the cpm bigwig
+
+        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_normalized.bigwig"
+        
+        bamCoverage \
+        --bam \$bam \
+        --outFileName \$cpm_bigwig_out_name \
+        --outFileFormat "bigwig" \
+        --scaleFactor 1 \
+        --normalizeUsing CPM
 
     done
 
@@ -348,7 +376,7 @@ process plot_histone_at_genes_process {
 
 process macs2_call_peaks_process_both {
 
-    debug true
+    //debug true
 
     label 'normal_big_resources'
 
@@ -620,6 +648,81 @@ process merge_peaks_bedtools_process {
 
 }
 
+process merge_concat_peaks_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+
+    publishDir "idr_results/merged_10kb_peaks", mode: 'copy', pattern: "*.bed"
+
+    label 'normal_big_resources'
+
+
+    input:
+
+    tuple val(histone), val(condition), val(concat_peaks_names), path(concat_peaks_paths)
+
+
+
+    output:
+
+    //tuple val(histone), val(condition), val(list_of_10kb_merged_names), val(list_of_10kb_merged_paths) , emit: merged_10kb_concat_peaks
+
+    path("${output_10kb_merged_first_mPeak}"), emit: first_10kb_merged_peak
+
+    path("${output_10kb_merged_second_mPeak}"), emit: second_10kb_merged_peak
+
+
+
+    script:
+
+
+
+    first_mPeak = concat_peaks_names[0]
+    second_mPeak = concat_peaks_names[1]
+
+    
+    
+    
+    output_10kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
+    output_10kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
+
+
+    //list_of_10kb_merged_names =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
+    //list_of_10kb_merged_paths =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
+
+    """
+    #!/usr/bin/env bash
+
+    ###### bedtools merge parameters to use ##########
+    # the -c parameter: allows you to choose a column and determine what will happen when combined with -o parameter
+    # the -o parameter: you can get the counts of how many regions were merged to create that one region. "count" will report the the sum of merged intervals
+
+    ##################################################
+
+    # have to sort the broadPeak files first
+    sort -k1,1 -k2,2n ${first_mPeak} > sorted_first_peak.broadPeak
+
+    sort -k1,1 -k2,2n ${second_mPeak} > sorted_second_peak.broadPeak
+
+    
+
+    # merging the first concat peaks by 10kb
+    bedtools merge \
+    -i sorted_first_peak.broadPeak \
+    -d 10000 \
+    > ${output_10kb_merged_first_mPeak}
+
+
+    # merging the second concat peaks by 10kb
+    bedtools merge \
+    -i sorted_second_peak.broadPeak \
+    -d 10000 \
+    > ${output_10kb_merged_second_mPeak}
+
+
+    """
+}
+
 
 process find_idr_in_replicates_process {
 
@@ -644,7 +747,7 @@ process find_idr_in_replicates_process {
 
     path("*.png"), emit:idr_pngs
 
-
+    path("${concat_peaks_name}"), emit: final_concat_peaks
 
     script:
 
@@ -842,6 +945,533 @@ process find_idr_in_replicates_process {
 
 }
 
+
+
+process find_diff_peaks_R_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/r_language'
+
+    publishDir "./nextflow_R_script_outputs/${idr_histone}/", mode: 'copy', pattern: '*'
+
+    label 'normal_big_resources'
+
+    debug true
+
+    input:
+
+    tuple val(idr_condition), val(idr_histone), val(idr_peak_name), path(idr_peak_path)
+
+    // these are all experiment bams.
+    // i need to use the histone label, and condition label to get the correct bams in this process
+    path(bam_path_list)
+    
+
+
+    
+    output:
+
+    path("*.{png,pdf,bed}"), emit: all_r_plots
+
+    path("${master_peak_export_out}"), emit: master_peak_emit
+
+
+
+    script:
+
+    first_idr_peak = idr_peak_name[0]
+    second_idr_peak = idr_peak_name[1]
+
+    bam_name_list = bam_path_list.collect { "\"${it.getName()}\"" }.join(',')
+
+    //peaks_list = [first_idr_peak, second_idr_peak]
+
+    // need the output file name for masterpeak export
+
+    master_peak_export_out = "10kb_merged_masterPeak_${idr_condition[0]}_${idr_condition[1]}_${idr_histone}.bed"
+
+
+    """
+    #!/usr/bin/env Rscript
+
+    bam_list = c(${bam_name_list})
+
+    print(bam_list)
+
+    #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
+    #peaklist = \${peaks_list}
+
+    #print(peaklist)
+
+    #best_hlow_idr
+    #best_scrm_idr
+
+    library(DESeq2)
+    library(GenomicRanges)
+    library(chromVAR)
+    library(tidyr)
+    library(EnhancedVolcano)
+
+    print(dir())
+    # making the master peak genomic ranges object
+    
+    mPeak = GRanges()
+
+    for (peakfile in c("./${first_idr_peak}", "./${second_idr_peak}")) {
+    
+        #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+    
+        #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+    
+        gr_object = rtracklayer::import(peakfile, format = "BED")
+
+        mPeak = append(mPeak, gr_object)
+    }
+
+    # making sure there are no redundant peaks
+    masterPeak = reduce(mPeak)
+    print(masterPeak)
+
+    # now I want to keep the standard chromosomes
+    seqnames_to_keep =masterPeak@seqnames@values[1:23]
+
+    masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+
+    # hoping to export my GRanges object master peaks to a bed file
+    rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
+
+    
+
+    list_of_mBams = c()
+    
+    for (bam in bam_list) {
+  
+        tokens = strsplit(bam, split = "_")[[1]]
+        #print(tokens)
+        
+        histone = tokens[2]
+        #print(histone)
+
+        #list_of_mBams = list()
+
+        if ("${idr_histone}" == histone) {
+            #print(bam)
+            list_of_mBams = c(list_of_mBams, bam)
+
+        }
+    }
+
+    print(list_of_mBams)
+   
+    
+    # now doing the next section to make the count matrix and the condition and experiment design
+
+    # making the matrix 
+
+    countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+
+
+    # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+    seqnames(masterPeak)
+
+    # i should put the unique ids from the master peak object in the matrix as row names.
+    unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+
+    rownames(countsMatrix) = unique_masterPeak_ids
+
+    #getting the list of bam base names to add to the matrix column names
+    list_bam_basenames = list()
+
+
+    # for deseq2 i need the condition design. so hlow and scrm
+    # then i will find a way to tally how many of each are there so i can automate the rep count
+    condition_design = list()
+
+    type_design = list()
+
+    for (x in c(1:length(list_of_mBams))) {
+    
+    path_bam = list_of_mBams[[x]]
+    print(path_bam)
+    bam_basename = basename(path_bam)
+    bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+    
+    # labeling the important tokens so it is easier to keep track of
+    condition = bam_tokens[1]
+    histone = bam_tokens[2]
+    replicate = bam_tokens[3]
+    
+    
+    # for later parts I need the condition and to know how many times to repeat them
+    condition_design = append(condition_design, paste(condition,histone,sep="_"))
+    
+    
+    # also get the replicate too for type design
+    type_design = append(type_design, replicate)
+    #type_design = append(type_design, paste(histone,replicate, sep="_"))
+    
+    
+    
+    # using chromVAR getCounts function
+    fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+    
+    
+    # putting the fragment counts in the column labeled by the bam name
+    countsMatrix[,x] = counts(fragment_counts)[,1]
+    
+    list_bam_basenames = append(list_bam_basenames, bam_basename)
+    
+    }
+
+    colnames(countsMatrix) = list_bam_basenames
+
+    ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
+
+    #first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+    keep_Rows = which(rowSums(countsMatrix) > 5)
+
+    filt_countmatrix = countsMatrix[keep_Rows,]
+
+    # now to get the condition_design
+    condition_counts = table(unlist(condition_design))
+
+    # this gives back the names and the counts give back the counts for each of the names
+    condition_names = names(condition_counts)
+    condition_num = as.numeric(condition_counts)
+
+
+
+
+    # now i can put both lists in to get back the experiment design
+    condition_factor = factor(rep(condition_names, times=condition_num))
+
+
+    # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
+
+    # for treatment I need to make nextflow take the users input so they can relevel this section
+    #treatment = "H1low_H3k27me3"
+    treatment = "${params.treatment_name}_${idr_histone}"
+
+    if (levels(condition_factor)[1] == treatment ) {
+    condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+    }else {
+    condition_factor
+    }
+    print(condition_factor)
+
+    # repeating the above to have another column with type (replicates)
+    type_counts = table(unlist(type_design))
+    type_names = names(type_counts)
+    type_num = as.numeric(type_counts)
+
+    #type_factor = factor(rep(type_names, times=type_counts))
+    type_factor = factor(rep(type_names, times=type_num[1]))
+
+    # I want to get the idr threshold and use that as input for the file names and other things
+
+    #peak_file = basename(peaklist[[1]])
+    peak_file = basename("./${first_idr_peak}")
+
+    idr_used = strsplit(peak_file, split = "_")[[1]][10]
+    idr_used
+
+    # now for deseq2 workflow
+
+
+    # now to do the normal deseq2 workflow
+
+    dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+                                colData = DataFrame(condition_factor, type_factor),
+                                design = ~ condition_factor)
+
+
+    # using the function on our data
+    DDS = DESeq(dds)
+
+    norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+
+    # adding _norm onto the column names in the normalized matrix
+    colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+
+
+    # provides independent filtering using the mean of normalized counts
+    res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+
+    # this is looking at the differences between the 3 deseq analyzed options
+    countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+
+    head(countMatDiff)
+
+
+
+
+    # getting the results name and addding to the coef we want to shrink
+    experiment_design_name = resultsNames(DDS)[2]
+
+    # useful for visualization and ranking of genes or in this case peaks
+    resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+
+
+    # finding the up and down regulated counts that pass the threshold
+
+    up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
+    total_up_reg = length(up_reg[,1])
+    #total_up_reg
+    down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
+    total_down_reg = length(down_reg[,1])
+    total_down_reg
+
+    unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+    total_unchanging_reg = length(unchanging_reg[,1])
+    total_unchanging_reg
+
+    resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
+    ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
+    labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
+    theme(plot.caption = element_text(size = 30, face = "bold"))+
+    scale_colour_manual(values=c("red", "darkgrey", "pink"))+
+    scale_x_continuous(trans='log10')+
+    ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
+    geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 3)
+
+    print(ma_plot_labeled)
+
+
+    pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 10, height = 10)
+
+    print(ma_plot_labeled)
+    dev.off()
+
+    png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+
+    print(ma_plot_labeled)
+    dev.off()
+
+
+    volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+                    lab = rownames(resLFC),
+                    title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
+                    x = 'log2FoldChange', FCcutoff = 1,
+                    y = 'padj', pCutoff = 0.05, labSize = 3, 
+                    
+                    )
+
+    print(volcano_plot_removed_reps)
+
+    png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+    print(volcano_plot_removed_reps)
+    dev.off()
+
+    pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 10, height = 10)
+    print(volcano_plot_removed_reps)
+    dev.off()
+    
+
+
+
+    # using rlog over vst for transformation
+
+    rld = rlog(DDS, blind=FALSE)
+
+    #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+    head(assay(rld), 5)
+
+
+    library(ggplot2)
+
+    pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+    pcaData
+
+    percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+    pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+    ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    coord_fixed()
+    #pca_plot
+    name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
+
+    png(filename = name_for_rlog_png_file, width = 1000, height = 1000, antialias = "subpixel")
+    print(pca_plot_rlog)
+    dev.off()
+
+    name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
+
+    pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+    print(pca_plot_rlog)
+    dev.off()
+
+
+    # testing with vst
+    vsd_t = vst(DDS, blind = FALSE)
+    head(assay(vsd_t), 5)
+
+    pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+    pcaData2
+
+    percentVar <- round(100 * attr(pcaData2, "percentVar"))
+    pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+    ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    coord_fixed()
+
+
+    #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
+
+    pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+    print(pca_plot_vst)
+    dev.off()
+
+    png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 1000, height = 1000)
+    print(pca_plot_vst)
+    dev.off()
+
+    pca_plot_rlog
+
+    pca_plot_vst
+
+
+    rtracklayer::export.bed(row.names(up_reg), con = "up_regulated_${idr_histone}_peaks.bed")
+
+    rtracklayer::export.bed(row.names(down_reg), con = "down_regulated_${idr_histone}_peaks.bed")
+
+    # now exporting the unchanging peaks
+
+    rtracklayer::export.bed(row.names(unchanging_reg), con = "unchanging_regulated_${idr_histone}_peaks.bed")
+
+    # now hoping to get the peak lengths histone
+
+    up_peaks = read.table(file = './up_regulated_${idr_histone}_peaks.bed', header = FALSE, sep = "\t")
+
+    up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
+    print(max(up_peak_lengths))
+
+    png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+    hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+    axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+    dev.off()
+
+    # just to view it here, not needed in nextflow here.
+    #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+    #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+
+    down_peaks = read.table(file = './down_regulated_${idr_histone}_peaks.bed', header = FALSE, sep = "\t")
+
+    down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
+    print(max(down_peak_lengths))
+
+    png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+    hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+    axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+    dev.off()
+
+
+    unchanging_peaks = read.table(file = './unchanging_regulated_${idr_histone}_peaks.bed', header = FALSE, sep = "\t")
+
+    unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
+    print(max(unchanging_peak_lengths))
+
+    png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+    hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+    axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+    dev.off()
+
+    ########## now violin plots for peak lengths ################
+
+    up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
+    down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
+    unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
+
+
+    df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
+
+    #df_all_peak_lengths
+
+    df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
+    
+    all_peak_lengths_violin = df_all_peak_lengths_gg+
+        geom_violin()+
+        scale_y_continuous(labels = scales::label_number())
+    ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.png", plot = all_peak_lengths_violin)
+
+
+    """
+}
+
+
+/*
+
+# making the matrix 
+
+    countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+
+
+    # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+    seqnames(masterPeak)
+
+    # i should put the unique ids from the master peak object in the matrix as row names.
+    unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+
+    rownames(countsMatrix) = unique_masterPeak_ids
+
+    #getting the list of bam base names to add to the matrix column names
+    list_bam_basenames = list()
+
+
+    # for deseq2 i need the condition design. so hlow and scrm
+    # then i will find a way to tally how many of each are there so i can automate the rep count
+    condition_design = list()
+
+    type_design = list()
+
+    length_of_bams = length(list_of_mBams)
+
+    for (x in c(1:length_of_bams) ) {
+    
+        path_bam = list_of_mBams[x]
+        print(path_bam)
+        #bam_basename = basename(path_bam)
+        bam_tokens = strsplit(path_bam, split = "_")[[1]]
+        
+        # labeling the important tokens so it is easier to keep track of
+        condition = bam_tokens[1]
+        histone = bam_tokens[2]
+        replicate = bam_tokens[3]
+        
+        
+        # for later parts I need the condition and to know how many times to repeat them
+        condition_design = append(condition_design, paste(condition,histone,sep="_"))
+        
+        
+        # also get the replicate too for type design
+        type_design = append(type_design, replicate)
+        #type_design = append(type_design, paste(histone,replicate, sep="_"))
+        
+        
+        
+        # using chromVAR getCounts function
+        fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+        
+        
+        # putting the fragment counts in the column labeled by the bam name
+        countsMatrix[,x] = counts(fragment_counts)[,1]
+        
+        list_bam_basenames = append(list_bam_basenames, bam_basename)
+        
+    }
+
+    colnames(countsMatrix) = list_bam_basenames 
+    print(countsMatrix)
+
+
+
+*/
 
 process mk_bedgraph_process {
 
@@ -1421,6 +2051,670 @@ process plot_histones_at_peaks_process {
     --samplesLabel ${true_bw_name}
 
 
+
+
+
+
+    """
+}
+
+
+
+
+
+// this process will be very similar to the plot histone at genes process, but just at the peaks
+// this will not be good becasue it uses both histone marks over the peaks that come from k27
+// I have to do the version above instead
+process plot_at_up_down_peaks_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
+
+    label 'normal_big_resources'
+    
+    //label 'super_big_resources'
+
+    publishDir "./heatmaps/histone_signal_over_up_down_peaks", mode: 'copy', pattern: '*'
+
+
+    input:
+
+    debug true
+
+    tuple val(condition_label), val(histone_label), val(replicate_label), val(bw_names), path(bigwig_filepath)
+
+    //tuple val(wt_condition_label), val(wt_histone_label), val(wt_replicate_label), val(wt_bw_names), path(wt_bigwig_file)
+
+    path(up_peaks)
+
+    path(down_peaks)
+
+
+
+    output:
+
+    // path("${png_heatmap_uppeaks}"), emit: uppeaks_histone_heatmap
+
+    // path("${png_heatmap_down_peaks}"), emit: down_peaks_histone_heatmap
+
+    path("${png_heatmap_both}"), emit: both_histone_heatmap
+    //path("${png_wt_heatmap}"), emit: gene_histone_heatmap_wt
+
+    path("*.png"), emit: all_png_files
+
+
+
+    script:
+
+    name_list = []
+
+    num_files = bw_names.size()
+    
+    for (int i = 0; i < num_files; i++) {
+        true_basename = "${bw_names[i]}".replaceFirst(/\..*/, '')
+        name_list << true_basename
+
+    }
+
+    //newName = bw_names.replaceFirst(/\..*/, '')
+    //list_control_bw_names = "${control_bw_names.toList()}"
+
+    // out_matrix_scores_uppeaks = "matrix_peaks_${histone_label}_up_peaks.mat.gz"
+    // //out_matrix_scores_wt = "matrix_gene_${histone_label}_lowup_genebody.mat.gz"
+
+    // out_matrix_scores_down_peaks = "matrix_peaks_${histone_label}_down_peaks.mat.gz"
+
+    out_matrix_scores_both = "matrix_peaks_${histone_label}_up_and_down_peaks.mat.gz"
+
+    // png_heatmap_uppeaks = "${histone_label}_${replicate_label}_histone_features_at_up_peaks.png"
+    // png_profile_up_peaks = "${histone_label}_${replicate_label}_histone_features_at_up_peaks_profile.png"
+    // png_heatmap_down_peaks = "${histone_label}_${replicate_label}_histone_features_at_down_peaks.png"
+    // png_profile_down_peaks = "${histone_label}_${replicate_label}_histone_features_at_down_peaks_profile.png"
+    png_heatmap_both = "${histone_label}_${replicate_label}_histone_features_at_up_and_down_peaks.png"
+    png_profile_both_peaks = "${histone_label}_${replicate_label}_histone_features_at_both_peaks_profile.png" 
+
+    //png_wt_heatmap = "${wt_histone_label}_histone_features_at_lowup_genebody.png"
+
+    // making output name for genes file that will have no zeros
+
+    up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
+    down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
+
+    """
+    #!/usr/bin/env bash
+
+    ########### deeptools params ##########
+
+
+
+    #######################################
+
+    #echo ' this is the list of names: "\${name_list}"'
+
+    # fix the genebody file
+    awk  '\$2!=\$3 {print \$0}' "${up_peaks}" > "${up_peaks_nozero}"
+
+    #computeMatrix reference-point -S \${bw_names.join(' ')} \
+    -R "\${up_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 50000 \
+    --afterRegionStartLength 50000 \
+    --skipZeros \
+    --quiet \
+    --binSize 200 \
+    --numberOfProcessors "max" \
+    -o "\${out_matrix_scores_uppeaks}"
+
+    
+    #plotHeatmap -m "\${out_matrix_scores_uppeaks}" \
+    -out "\${png_heatmap_uppeaks}" \
+    --colorMap RdBu_r \
+    --samplesLabel \${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 8 \
+    --sortUsing sum
+
+    #plotProfile -m "\${out_matrix_scores_uppeaks}" \
+    -out "\${png_profile_up_peaks}" \
+    --plotHeight 10 \
+    --plotWidth 10 \
+    --perGroup \
+    --samplesLabel \${name_list.join(' ')} \
+    --plotTitle "signal over up peaks"
+
+
+    # now to do this with the other genebody file 'down unchanging'
+
+    awk  '\$2!=\$3 {print \$0}' "${down_peaks}" > "${down_peaks_nozero}"
+
+    #computeMatrix reference-point -S \${bw_names.join(' ')} \
+    -R "\${down_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 20000 \
+    --afterRegionStartLength 20000 \
+    --skipZeros \
+    --quiet \
+    --binSize 200 \
+    --numberOfProcessors "max" \
+    -o "\${out_matrix_scores_down_peaks}"
+
+    
+    #plotHeatmap -m "\${out_matrix_scores_down_peaks}" \
+    -out "\${png_heatmap_down_peaks}" \
+    --colorMap RdBu_r \
+    --samplesLabel \${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 8 \
+    --sortUsing sum
+
+    # now I want to use plot profile to make a plot per bed file(the genes) instead of per bigwig file (the signal), this will put all the signal bigwig in the same plot
+
+    #plotProfile -m "\${out_matrix_scores_down_peaks}" \
+    -out "\${png_profile_down_peaks}" \
+    --plotHeight 10 \
+    --plotWidth 10 \
+    --perGroup \
+    --samplesLabel \${name_list.join(' ')} \
+    --plotTitle "signal over down peaks"
+
+
+    echo ' the up genes and down unchanging genes plot has completed. Now starting on the plot for both up and down genes together'
+
+
+    # now plotting both together
+
+    # I THINK THE BEST THING IS TO ONLY HAVE BOTH UP AND DOWN TOGETHER
+
+    computeMatrix reference-point -S ${bw_names.join(' ')} \
+    -R "${up_peaks_nozero}" "${down_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 50000 \
+    --afterRegionStartLength 50000 \
+    --skipZeros \
+    --quiet \
+    --binSize 200 \
+    --numberOfProcessors "max" \
+    -o "${out_matrix_scores_both}"
+
+    plotHeatmap -m "${out_matrix_scores_both}" \
+    -out "${png_heatmap_both}" \
+    --colorMap RdBu_r \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 8 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 25 \
+    --heatmapHeight 45 \
+    --plotTitle "Bigwig Signal Over Up and Down Peaks"
+
+    plotProfile -m "${out_matrix_scores_both}" \
+    -out "${png_profile_both_peaks}" \
+    --plotHeight 10 \
+    --plotWidth 10 \
+    --perGroup \
+    --samplesLabel ${name_list.join(' ')} \
+    --plotTitle "signal over both peaks"
+
+
+
+
+
+    """
+
+
+}
+
+// just putting this process close here to plot atac signal over cut&run peaks
+
+process atac_signal_over_peaks_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
+
+    label 'normal_big_resources'
+    
+    //label 'super_big_resources'
+
+    publishDir "./heatmaps/atac_signal_over_peaks", mode: 'copy', pattern: '*'
+
+
+    input:
+    path(control_atac_bigwig)
+    path(treatment_atac_bigwig) 
+    path(up_peaks)
+    path(down_peaks)
+    path(unchanging_peaks)
+
+
+
+
+    output:
+
+    path("*.png"), emit: atac_png_plots
+
+
+    script:
+
+    out_matrix_scores_3 = "matrix_atac_bw_signal_over_cut&tag_peaks.mat.gz"
+
+    png_heatmap_3 = "atac_bigwig_signal_features_at_all_cut&tag_peaks.png"
+    png_profile_3 = "atac_bigwig_signal_features_at_all_cut&tag_peaks_profile.png" 
+
+
+    up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
+    down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
+    unchanging_peaks_nozero = "${unchanging_peaks.baseName}_noZerolength.bed"
+
+
+    """
+    #!/usr/bin/env bash
+
+    awk  '\$2!=\$3 {print \$0}' "${up_peaks}" > "${up_peaks_nozero}"
+    awk  '\$2!=\$3 {print \$0}' "${down_peaks}" > "${down_peaks_nozero}"
+    awk  '\$2!=\$3 {print \$0}' "${unchanging_peaks}" > "${unchanging_peaks_nozero}"
+
+
+    computeMatrix reference-point -S ${control_atac_bigwig} ${treatment_atac_bigwig} \
+    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${unchanging_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 50000 \
+    --afterRegionStartLength 50000 \
+    --skipZeros \
+    --quiet \
+    --binSize 200 \
+    --numberOfProcessors "max" \
+    -o "${out_matrix_scores_3}"
+
+    plotHeatmap -m "${out_matrix_scores_3}" \
+    -out "${png_heatmap_3}" \
+    --colorMap RdBu_r \
+    --samplesLabel ${control_atac_bigwig} ${treatment_atac_bigwig} \
+    --labelRotation 30 \
+    --heatmapWidth 8 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 25 \
+    --heatmapHeight 45 \
+    --plotTitle "ATAC Bigwig Signal Over Up and Down and Unchanging Peaks"
+
+    plotProfile -m "${out_matrix_scores_3}" \
+    -out "${png_profile_3}" \
+    --plotHeight 10 \
+    --plotWidth 10 \
+    --perGroup \
+    --samplesLabel ${control_atac_bigwig} ${treatment_atac_bigwig} \
+    --plotTitle "ATAC signal over up down unchanging peaks"
+
+
+    """
+}
+
+process bedtools_stranded_create_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+    label 'normal_big_resources'
+    publishDir "./diff_genes/", mode: 'copy', pattern: '*'
+
+
+    input:
+    path(up_genes)
+
+    path(down_genes)
+
+    path(gtf_file)
+
+    path(genome_size)
+
+
+
+    output:
+
+    path("${up_genes_20kb_slop}"), emit: up_genes_20kb_stranded
+    path("${down_genes_20kb_slop}"), emit: down_genes_20kb_stranded
+
+
+
+
+    script:
+
+    stranded_up_genes = "${up_genes.baseName}_stranded.bed"
+    stranded_down_genes = "${down_genes.baseName}_stranded.bed"
+
+    // changing from 5kb to 20kb
+    up_genes_20kb_slop = "${up_genes.baseName}_stranded_20kbSlop.bed"
+    down_genes_20kb_slop = "${down_genes.baseName}_stranded_20kbSlop.bed"
+
+    """
+    #!/usr/bin/env bash
+
+    # getting the strandedness onto the up genes
+
+    awk 'FNR==NR{a[\$4];next} \$3=="gene" {match(\$0,/gene_id \\"([^\\"]+)\\"/,m); gsub(/\\..*/,\"\",m[1]); if(m[1] in a) print \$1 "\\t" \$4 "\\t" \$5 "\\t" m[1] "\\t." "\\t" \$7}' ${up_genes} ${gtf_file} > ${stranded_up_genes}
+
+
+    # getting the strandedness onto the down genes
+    awk 'FNR==NR{a[\$4];next} \$3=="gene" {match(\$0,/gene_id \\"([^\\"]+)\\"/,m); gsub(/\\..*/,\"\",m[1]); if(m[1] in a) print \$1 "\\t" \$4 "\\t" \$5 "\\t" m[1] "\\t." "\\t" \$7}'  ${down_genes} ${gtf_file} > ${stranded_down_genes}
+
+
+    # getting +5kb onto the genes based on strandedness
+    # using the -s for strandedness and -l to add the 5000pb on the start coordinate but on the nevative strand it will add it to the end coordinate
+    # have to use -b with -s or both -l and -r with -s 
+
+    
+    # changing from 5kb to 20kb
+
+    bedtools slop \
+    -i ${stranded_up_genes} \
+    -g ${genome_size} \
+    -s \
+    -b 20000 \
+    > ${up_genes_20kb_slop}
+
+
+    # now doing the same for down genes 
+
+    bedtools slop \
+    -i ${stranded_down_genes} \
+    -g ${genome_size} \
+    -s \
+    -b 20000 \
+    > ${down_genes_20kb_slop}
+
+    """
+}
+
+
+process signal_over_gene_tss_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
+
+    label 'normal_big_resources'
+
+    publishDir "heatmaps/signal_over_tss", mode: 'copy', pattern: '*'
+
+
+
+    input:
+    path(up_peaks)
+    path(down_peaks)
+
+    path(up_genes_20kb)
+
+    path(down_genes_20kb)
+
+    path(up_genes_norm)
+    path(down_genes_norm)
+
+    tuple val(condition_label), val(histone_label), val(replicate_label), val(bw_names), path(bigwig_filepath)
+
+
+
+    output:
+
+    path("*.png"), emit: signal_over_gene_tss_heatmaps
+
+
+
+    script:
+
+    name_list = []
+
+    num_files = bw_names.size()
+    
+    for (int i = 0; i < num_files; i++) {
+        true_basename = "${bw_names[i]}".replaceFirst(/\..*/, '')
+        name_list << true_basename
+
+    }
+
+    concat_diff_peaks = "diff_peaks.bed"
+
+    up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
+    down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
+
+    up_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_up_gene_tss.mat.gz"
+    down_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_down_gene_tss.mat.gz"
+
+    both_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_both_gene_tss.mat.gz"
+    both_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_signal_at_both_gene_tss_20kb.png"
+
+
+    """
+    #!/usr/bin/env bash
+
+    #cat \${up_peaks} \${down_peaks} > \${concat_diff_peaks}
+
+    # fix the genebody file
+    awk  '\$2!=\$3 {print \$0}' "${up_peaks}" > "${up_peaks_nozero}"
+
+    # now to do this with the other genebody file 'down unchanging'
+
+    awk  '\$2!=\$3 {print \$0}' "${down_peaks}" > "${down_peaks_nozero}"
+
+    cat ${up_peaks_nozero} ${down_peaks_nozero} > ${concat_diff_peaks}
+
+    # now plotting 
+    # because I put the TSS out 20kb, I will make the region around that new tss 20kb so I dont get anything in the gene body
+
+    computeMatrix reference-point \
+    -S ${bw_names.join(" ")} \
+    -R ${up_genes_norm} ${down_genes_norm} \
+    --referencePoint "TSS" \
+    --beforeRegionStartLength 20000 \
+    --afterRegionStartLength 20000 \
+    --binSize 200 \
+    --numberOfProcessors "max" \
+    --outFileName ${both_genes_tss_out_matrix_scores}
+    
+
+    plotHeatmap \
+    --matrixFile ${both_genes_tss_out_matrix_scores} \
+    --outFileName ${both_genes_tss_out_heatmap} \
+    --colorMap RdBu_r \
+    --samplesLabel ${bw_names.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 25 \
+    --heatmapHeight 45 \
+    --sortUsing sum \
+    --perGroup \
+    --plotTitle "Bigwig Signal Over Gene TSS"
+
+
+
+
+
+
+
+
+    """
+}
+
+process diff_peaks_intersect_diff_genes_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+    label 'normal_big_resources'
+    publishDir "./intersect_peaks_in_genes", mode: 'copy', pattern: '*'
+
+
+
+    input:
+
+    path(up_peaks)
+    path(down_peaks)
+    path(unchanging_peaks)
+    path(master_peaks)
+    path(up_20kb_genes)
+    path(down_20kb_genes)
+    path(knownGene_bed)
+    path(proseq_up_gene_ch)
+    path(proseq_down_gene_ch)
+    path(proseq_unchanging_gene_ch)
+
+
+
+    output:
+
+    tuple path("${out_up_genes_diff_peaks}"), path("${out_down_genes_diff_peaks}"), emit: diff_peaks_in_diff_genes_ch
+
+    tuple path("${out_closest_gene_to_up_peaks}"), path("${out_closest_gene_to_down_peaks}"), emit: closest_genes_to_peaks_ch
+
+    path("*.bed"), emit: bed_files_ch
+
+    script:
+
+    sorted_knownGene_file = "${knownGene_bed.baseName}.sorted.bed"
+
+    sorted_up_genes = "${up_20kb_genes.baseName}.sorted.bed"
+
+    sorted_down_genes = "${down_20kb_genes.baseName}.sorted.bed"
+
+    out_up_genes_diff_peaks = "diff_peaks_in_up_genes_20kb.bed"
+
+    out_down_genes_diff_peaks = "diff_peaks_in_down_genes_20kb.bed"
+
+    out_up_genes_master_peaks = "master_peaks_in_up_genes_20kb.bed"
+
+    out_down_genes_master_peaks = "master_peaks_in_down_genes_20kb.bed"
+
+    out_closest_gene_to_up_peaks = "closest_gene_in_up_peaks.bed"
+
+    out_closest_gene_to_down_peaks = "closest_gene_in_down_peaks.bed"
+
+    closest_up_proseq_gene_to_up_peaks = "closest_up_proseq_gene_up_peaks.bed"
+    closest_up_proseq_gene_to_down_peaks = "closest_up_proseq_gene_down_peaks.bed"
+    closest_up_proseq_gene_to_unchanging_peaks = "closest_up_proseq_gene_unchanging_peaks.bed"
+    //closest_proseq_gene_to_unchanging_peaks = "closest_proseq_gene_unchanging_peaks.bed"
+
+    // now i also want to use the normal up genes and find which of those are close to up or down peaks
+    closest_norm_up_genes_to_up_peaks = "closest_norm_up_genes_to_up_peaks.bed"
+    closest_norm_up_genes_to_down_peaks  = "closest_norm_up_genes_to_down_peaks.bed"
+    closest_norm_up_genes_to_unchanging_peaks  = "closest_norm_up_genes_to_unchanging_peaks.bed"
+
+    """
+    #!/usr/bin/env bash
+
+    # sort the knownGene
+
+    sort -k1,1 -k2,2n ${knownGene_bed} > ${sorted_knownGene_file}
+
+    # sorting the files 
+
+    sort -k1,1 -k2,2n ${up_20kb_genes} > ${sorted_up_genes}
+
+    sort -k1,1 -k2,2n ${down_20kb_genes} > ${sorted_down_genes}
+
+    # looking at diff peaks in up genes first
+
+    bedtools intersect \
+    -a ${sorted_up_genes} \
+    -b ${up_peaks} ${down_peaks} \
+    -wa \
+    -wb \
+    -sorted \
+    -filenames \
+    > ${out_up_genes_diff_peaks}
+
+    # now to get the diff peaks in down genes 
+    bedtools intersect \
+    -a ${sorted_down_genes} \
+    -b ${up_peaks} ${down_peaks} \
+    -wa \
+    -wb \
+    -sorted \
+    -filenames \
+    > ${out_down_genes_diff_peaks}
+
+    # now two separate files for looking at which master peaks are in up genes or down genes
+
+    bedtools intersect \
+    -a ${sorted_up_genes} \
+    -b ${master_peaks}\
+    -wa \
+    -wb \
+    -sorted \
+    -filenames \
+    > ${out_up_genes_master_peaks}
+
+    bedtools intersect \
+    -a ${sorted_down_genes} \
+    -b ${master_peaks}\
+    -wa \
+    -wb \
+    -sorted \
+    -filenames \
+    > ${out_down_genes_master_peaks}
+
+    # should just do the bedtools closest here
+
+    # looking for genes that are closest to up peaks, then the genes that are closest to down peaks
+
+    ############ params for bedtools closest ################
+
+    # -D parameter: report the distance away from a that the closest b is found also, and tells if upstream or downstream (negative being upstream when using ref parameter).
+
+    ########################################################
+
+    # first up peaks
+    bedtools closest \
+    -a ${up_peaks} \
+    -b ${sorted_knownGene_file} \
+    -D ref \
+    > ${out_closest_gene_to_up_peaks}
+
+
+
+    # now down peaks
+    bedtools closest \
+    -a ${down_peaks} \
+    -b ${sorted_knownGene_file} \
+    -D ref \
+    > ${out_closest_gene_to_down_peaks}
+
+
+    # using proseq genes
+
+    # up proseq genes to up peaks
+    bedtools closest \
+    -a ${up_peaks} \
+    -b ${proseq_up_gene_ch} \
+    -D ref \
+    > ${closest_up_proseq_gene_to_up_peaks}
+
+    # up proseq genes to down peaks
+    bedtools closest \
+    -a ${down_peaks} \
+    -b ${proseq_up_gene_ch} \
+    -D ref \
+    > ${closest_up_proseq_gene_to_down_peaks}
+
+    # up proseq genes to unchanging peaks
+    bedtools closest \
+    -a ${unchanging_peaks} \
+    -b ${proseq_up_gene_ch} \
+    -D ref \
+    > ${closest_up_proseq_gene_to_unchanging_peaks}
+
+
+
+    # now dowing the normal up genes that are close to up and down peaks
+
+    bedtools closest \
+    -a ${up_peaks} \
+    -b ${sorted_up_genes} \
+    -D ref \
+    > ${closest_norm_up_genes_to_up_peaks}
+
+
+    bedtools closest \
+    -a ${down_peaks} \
+    -b ${sorted_up_genes} \
+    -D ref \
+    > ${closest_norm_up_genes_to_down_peaks}
+
+    bedtools closest \
+    -a ${unchanging_peaks} \
+    -b ${sorted_up_genes} \
+    -D ref \
+    > ${closest_norm_up_genes_to_unchanging_peaks}
 
 
 
