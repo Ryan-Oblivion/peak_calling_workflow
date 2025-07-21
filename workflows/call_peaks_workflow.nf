@@ -2,7 +2,6 @@
 
 
 
-
 include {
     make_alignment_bw_process_control;
     make_alignment_bw_process_wt;
@@ -24,7 +23,11 @@ include {
     bedtools_stranded_create_process;
     merge_concat_peaks_process;
     diff_peaks_intersect_diff_genes_process;
-    atac_signal_over_peaks_process
+    atac_signal_over_peaks_process;
+    get_CpG_islands_in_peaks_process;
+    plot_over_diff_cpg_regions_process;
+    atac_enrich_counts_process;
+    r_atac_enrich_plot_process
     // macs2_call_peaks_process_wt
     
 
@@ -178,7 +181,7 @@ workflow mk_bw_call_peaks_workflow {
         .transpose()
         //.view()
         .set{concat_wt_control_bam_meta_ch}
-    concat_wt_control_bam_meta_ch.view()
+    //concat_wt_control_bam_meta_ch.view()
     macs2_call_peaks_process_both(concat_wt_control_bam_meta_ch, ref_genome_ch) // might need ref_genome
     //macs2_call_peaks_process_wt()
 
@@ -357,6 +360,20 @@ workflow mk_bw_call_peaks_workflow {
     // using the 10kb merged idr peaks
     find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
 
+    diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+    //diff_peaks_tuple.view()
+
+    // try keeping the peaks in separate channels
+    // then when I put this into a process or workflow, just check to see if the histones match
+    master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+    up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+    down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+    unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+
+    //up_peaks_list_ch
+        //.collect()
+        //.view()
+
 
 
     if (params.make_html_report = true) {
@@ -461,6 +478,11 @@ workflow mk_bw_call_peaks_workflow {
     control_meta_cpm_bw_ch
     wt_meta_cpm_bw_ch
     group_10kb_concat_idr_peaks_ch
+    master_peaks_list_ch
+    up_peaks_list_ch
+    down_peaks_list_ch
+    unchanging_peaks_list_ch
+    //diff_peaks_tuple
     //concat_idr_peaks
 
 }
@@ -856,6 +878,10 @@ workflow plot_signal_up_down_peaks_workflow {
     wt_meta_cpm_bw
     up_peaks_ch
     down_peaks_ch
+    bisulfate_bigwig_ch
+    master_peaks_ch
+    unchanging_peaks_list_true
+    cpg_island_unmasked_ch
 
 
 
@@ -938,19 +964,88 @@ workflow plot_signal_up_down_peaks_workflow {
         //.view()
         .set {experiment_group_meta_cpm_ch}
 
+    // new group cpm ch for joining
+    wt_bw_cpm_meta2_ch
+        .concat(control_bw_cpm_meta2_ch)
+        .flatten()
+        .map{ file ->
+
+        file_basename = file.baseName
+        file_name = file.name
+        tokens = file_basename.tokenize("_")
+
+        condition = tokens[0]
+        histone = tokens[1]
+        replicate = tokens[2]
+
+        tuple(condition, histone, replicate, file_name, file)
+
+
+        }
+        .groupTuple(by: [1,2])  // here i can try groupting tuple by 2 fields or columns. By the histone and then by the replicate !!!
+        //.view()
+        .set {experiment_group_meta_to_join_ch}
+
+    // try to make a meta map of up down masterpeaks
+    up_peaks_ch
+        .concat(down_peaks_ch)
+        .concat(unchanging_peaks_list_true)
+        .concat(master_peaks_ch)
+        .flatten()
+        .map {peaks -> 
+        
+        peak_basename = peaks.baseName
+
+        tokens = peak_basename.tokenize("_")
+
+        diff_peak = tokens[0] // this will be up, down or master
+        exper_type = tokens[1] // this will be k27me3 or k9me3 or anytype of experiment
+
+        tuple(diff_peak, exper_type, peaks)
+
+
+        }
+        .groupTuple(by:1)
+        //.view()
+        .set{peaks_group_meta_ch}
+
+    experiment_group_meta_to_join_ch
+        //.map { histone, condition, replicate, file_name, file ->
+        //tuple(histone, tuple(histone, condition, replicate, file_name, file))
+
+        //}
+        .combine(peaks_group_meta_ch, by:1)
+
+        //.map{histone, meta_tuple, peaks ->
+
+        //def (expr_type, conditions, replicate, file_name, files) = meta_tuple
+
+        //tuple(expr_type, conditions, replicate, file_name, files, peaks)
+
+        //}
+
+        .view()
+        .set{exper_rep_bigwig_peak_group}
+    // now using .join to group the two channels
 
     // now to plot the signal at the peaks
     
-    plot_at_up_down_peaks_process(experiment_group_meta_cpm_ch, up_peaks_ch, down_peaks_ch)
+    // this below is the version that used the geo data with the h1low to make masterpeaks
+    //plot_at_up_down_peaks_process(experiment_group_meta_cpm_ch, up_peaks_ch, down_peaks_ch, bisulfate_bigwig_ch, master_peaks_ch, cpg_island_unmasked_ch)
 
+    ////////// uncomment when using only master peaks generated from data only in this pipeline //////////
+    plot_at_up_down_peaks_process(exper_rep_bigwig_peak_group, bisulfate_bigwig_ch, cpg_island_unmasked_ch)
     // here i can try groupting tuple by 2 fields or columns. By the histone and then by the replicate !!!
-
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
     emit:
 
     experiment_group_meta_cpm_ch
+
+    // this is the new combined bigwig meta ch that is grouped by histone and replicate but also has the peaks files there also
+    exper_rep_bigwig_peak_group
 
 }
 
@@ -965,34 +1060,40 @@ workflow plot_diff_peaks_over_diff_genes_workflow {
     master_peaks_ch
     up_genes_ch
     down_genes_ch
+    nochanging_genes_ch
     gtf_ch
     ref_genome_size_ch
     knownGene_ch
     proseq_up_gene_ch
     proseq_down_gene_ch
     proseq_unchanging_gene_ch
-    combined_bigwig_meta_2grouped_ch
+    combined_bigwig_meta_2grouped_ch // this will have the peak type and the peaks paths if using the version that only uses data generated in the pipeline
+    
 
 
     main:
 
     // first lets get the the strandedness of the up and down genes then use bedtools slop to get 5kb based on strand
 
-    bedtools_stranded_create_process(up_genes_ch, down_genes_ch, gtf_ch, ref_genome_size_ch) 
+    bedtools_stranded_create_process(up_genes_ch, down_genes_ch, nochanging_genes_ch, gtf_ch, ref_genome_size_ch) 
 
     // changed from 5kb to 20kb
     up_genes_with_20kb = bedtools_stranded_create_process.out.up_genes_20kb_stranded
     down_genes_with_20kb = bedtools_stranded_create_process.out.down_genes_20kb_stranded
+    nochange_genes_with_20kb = bedtools_stranded_create_process.out.nochange_genes_20kb_stranded
 
 
     // I might just concat the up and down peak files to get a large diff peak file then plot over up and down genes
     // the combined_bigwig_meta_2grouped_ch is grouped by histone and replicate and has this format tuple(condition, histone, replicate, file_name, file)
     // this will have independent channels where in each histone, you have a single replicate with its treatment bigwig and its control bigwig. this compares the control and treatment in the same replicate and same histone
-    signal_over_gene_tss_process(up_peaks_ch, down_peaks_ch, up_genes_with_20kb, down_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
-
+    
+    //signal_over_gene_tss_process(up_peaks_ch, down_peaks_ch, up_genes_with_20kb, down_genes_with_20kb, nochange_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch) //version for outside data
+    signal_over_gene_tss_process( up_genes_with_20kb, down_genes_with_20kb, nochange_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
 
     // now make a process to find which peaks intersect the up and down genes
-    diff_peaks_intersect_diff_genes_process(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, master_peaks_ch, up_genes_with_20kb, down_genes_with_20kb, knownGene_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch)
+    
+    //not using for now
+    //diff_peaks_intersect_diff_genes_process(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, master_peaks_ch, up_genes_with_20kb, down_genes_with_20kb, nochange_genes_with_20kb, knownGene_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch)
 
 
 
@@ -1014,12 +1115,147 @@ workflow plot_atac_signal_over_diff_peaks_workflow {
 
     unchanging_peaks
 
+    // new additions
+    down_atac_peaks_ch
+    up_atac_peaks_ch
+    combined_bigwig_meta_2grouped_ch
+    cpg_island_unmasked_ch
+
     main:
 
     // now make a process that will plot this information
 
-    atac_signal_over_peaks_process(control_atac_bigwig, treatment_atac_bigwig, up_peaks, down_peaks, unchanging_peaks)
+    // with the histone meta bigwig channels, just merge the three replicates into one for each condition in the process using cat
 
+    // version using peaks from outside pipeline
+    // atac_signal_over_peaks_process(control_atac_bigwig, treatment_atac_bigwig, up_peaks, down_peaks, unchanging_peaks,  down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_meta_2grouped_ch, cpg_island_unmasked_ch)
+
+    // version using peaks from the pipeline
+    atac_signal_over_peaks_process(control_atac_bigwig, treatment_atac_bigwig, down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_meta_2grouped_ch, cpg_island_unmasked_ch)
+
+
+
+    //emit:
+}
+
+workflow find_then_plot_cpgIslands_in_peaks_workflow {
+
+
+    take:
+
+    up_peaks_ch
+    down_peaks_ch
+    unchanging_peaks_ch
+    cpg_island_unmasked_ch
+    combined_bigwig_meta_2grouped_ch
+
+
+
+
+    main:
+
+    // now first lets find which CpG islands overlap with the different peaks
+
+
+    get_CpG_islands_in_peaks_process(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, cpg_island_unmasked_ch)
+
+    cpg_up_ch = get_CpG_islands_in_peaks_process.out.cpg_up_regions
+    cpg_down_ch = get_CpG_islands_in_peaks_process.out.cpg_down_regions
+    cpg_unchanging_ch = get_CpG_islands_in_peaks_process.out.cpg_unchanging_regions
+
+    // now to plot the signal over these up, down, unchanging cpg regions
+    plot_over_diff_cpg_regions_process(cpg_up_ch, cpg_down_ch, cpg_unchanging_ch, combined_bigwig_meta_2grouped_ch)
+
+
+}
+
+
+workflow get_roadmap_histone_enrichment_workflow {
+
+
+    take:
+    roadmap_broad_histones
+    roadmap_narrow_histones
+    control_atac_bigwig_ch
+    treatment_atac_bigwig_ch
+
+
+
+    main:
+
+    roadmap_broad_histones
+        .map {file ->
+        
+        basename = file.baseName
+        name = file.name
+
+        tuple(name, basename, file)
+
+
+        }
+        //.view()
+        .set{roadmap_broad_histone_meta_ch}
+
+    roadmap_narrow_histones
+        .map {file ->
+        
+        basename = file.baseName
+        name = file.name
+
+        tuple(name, basename, file)
+
+
+        }
+        //.view()
+        .set{roadmap_narrowhistone_meta_ch}
+    // now i should combine the two atac bigwig files then flatten them so they are run in parallel
+
+    control_atac_bigwig_ch
+        .concat(treatment_atac_bigwig_ch)
+        //.flatten()
+        // .map{ file ->
+        
+        // basename = file.baseName
+
+        // tokens = basename.tokenize("_")
+
+        // condition_label = tokens[0]
+        // experiment_label = tokens[1]
+        // replicate_label = tokens[2]
+        // tuple(condition_label, experiment_label, replicate_label)
+        // }
+        .view()
+        .set{atac_bigwig_cat}
+    
+    // now make a deeptools process that uses multibigwigsummary to get the counts
+
+    atac_enrich_counts_process(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch, atac_bigwig_cat)
+
+    enrich_counts_tab_ch = atac_enrich_counts_process.out.raw_enrichment_counts.collect()
+
+    enrich_counts_tab_ch
+        .flatten()
+        .map{ file ->
+        // i need to get the tokens and find which used broad and narrow then group them by that, so i have scrm with h1low broad, and scrm with h1low narrow
+        basename = file.baseName
+
+        filename = file.name
+
+        tokens = basename.tokenize("_")
+
+        condition = tokens[0]
+        peak_type = tokens[1]
+
+        tuple(peak_type, basename, filename, file)
+
+        }
+        .groupTuple(by:0)
+        .view(tuple -> "This is the meta channel for enrichment counts tab file grouped by peak type: $tuple")
+        .set{enrich_counts_tab_meta_ch}
+        
+    // now I want to make a process that will take the output tab files from above and make the enrichemnt in R
+
+    r_atac_enrich_plot_process(enrich_counts_tab_meta_ch)
 
 
     //emit:
