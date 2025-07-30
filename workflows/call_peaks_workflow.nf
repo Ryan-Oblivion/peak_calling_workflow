@@ -27,7 +27,8 @@ include {
     get_CpG_islands_in_peaks_process;
     plot_over_diff_cpg_regions_process;
     atac_enrich_counts_process;
-    r_atac_enrich_plot_process
+    r_atac_enrich_plot_process;
+    get_atacPeaks_in_roadmapPeaks_process
     // macs2_call_peaks_process_wt
     
 
@@ -1047,6 +1048,9 @@ workflow plot_signal_up_down_peaks_workflow {
     // this is the new combined bigwig meta ch that is grouped by histone and replicate but also has the peaks files there also
     exper_rep_bigwig_peak_group
 
+    // i need this channel
+    experiment_group_meta_to_join_ch
+
 }
 
 workflow plot_diff_peaks_over_diff_genes_workflow {
@@ -1075,7 +1079,10 @@ workflow plot_diff_peaks_over_diff_genes_workflow {
 
     // first lets get the the strandedness of the up and down genes then use bedtools slop to get 5kb based on strand
 
-    bedtools_stranded_create_process(up_genes_ch, down_genes_ch, nochanging_genes_ch, gtf_ch, ref_genome_size_ch) 
+    //bedtools_stranded_create_process(up_genes_ch, down_genes_ch, nochanging_genes_ch, gtf_ch, ref_genome_size_ch) 
+
+    // using the proseq genes instead
+    bedtools_stranded_create_process(proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, gtf_ch, ref_genome_size_ch) 
 
     // changed from 5kb to 20kb
     up_genes_with_20kb = bedtools_stranded_create_process.out.up_genes_20kb_stranded
@@ -1088,7 +1095,10 @@ workflow plot_diff_peaks_over_diff_genes_workflow {
     // this will have independent channels where in each histone, you have a single replicate with its treatment bigwig and its control bigwig. this compares the control and treatment in the same replicate and same histone
     
     //signal_over_gene_tss_process(up_peaks_ch, down_peaks_ch, up_genes_with_20kb, down_genes_with_20kb, nochange_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch) //version for outside data
-    signal_over_gene_tss_process( up_genes_with_20kb, down_genes_with_20kb, nochange_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
+    //signal_over_gene_tss_process( up_genes_with_20kb, down_genes_with_20kb, nochange_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
+
+    // i wasnt using the 20kb files from above.
+    signal_over_gene_tss_process( proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
 
     // now make a process to find which peaks intersect the up and down genes
     
@@ -1146,8 +1156,13 @@ workflow find_then_plot_cpgIslands_in_peaks_workflow {
     up_peaks_ch
     down_peaks_ch
     unchanging_peaks_ch
+    master_peak_list_true
     cpg_island_unmasked_ch
     combined_bigwig_meta_2grouped_ch
+    combined_bigwig_peak_2grouped_ch
+
+    // testing this
+    bigwig_meta_ch_to_join
 
 
 
@@ -1156,15 +1171,76 @@ workflow find_then_plot_cpgIslands_in_peaks_workflow {
 
     // now first lets find which CpG islands overlap with the different peaks
 
+    // have to add the grouped peak bigwig channel so i can get the peaks for up down and unchanging
+    //get_CpG_islands_in_peaks_process(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch)
 
-    get_CpG_islands_in_peaks_process(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, cpg_island_unmasked_ch)
+    //cpg_island_unmasked_ch.view(file -> "this is the cpg_island unmasked file: $file")
+    
+    // i just need all the true peaks in one channel. do not need the combined peak meta ch here
+
+    up_peaks_ch
+        .concat(down_peaks_ch, unchanging_peaks_ch, master_peak_list_true)
+        .flatten()
+        .map{ peaks -> 
+        
+        basename = peaks.baseName
+
+        tokens = basename.tokenize("_")
+
+        peak_type = tokens[0]
+        exper_type = tokens[1]
+
+        tuple(peak_type, exper_type, peaks)
+
+        }
+        .groupTuple(by:1)
+        .set{all_true_peaks_ch}
+    
+
+    get_CpG_islands_in_peaks_process( cpg_island_unmasked_ch, all_true_peaks_ch)
 
     cpg_up_ch = get_CpG_islands_in_peaks_process.out.cpg_up_regions
     cpg_down_ch = get_CpG_islands_in_peaks_process.out.cpg_down_regions
     cpg_unchanging_ch = get_CpG_islands_in_peaks_process.out.cpg_unchanging_regions
+    cpg_master_ch = get_CpG_islands_in_peaks_process.out.cpg_masterpeak_regions
 
     // now to plot the signal over these up, down, unchanging cpg regions
-    plot_over_diff_cpg_regions_process(cpg_up_ch, cpg_down_ch, cpg_unchanging_ch, combined_bigwig_meta_2grouped_ch)
+    // i will have to make a new version where i merge the cpg_types with the combined bigiwig meta ch like i did with the normal peak types
+    //plot_over_diff_cpg_regions_process(cpg_up_ch, cpg_down_ch, cpg_unchanging_ch, combined_bigwig_meta_2grouped_ch)
+
+    //cpg_up_ch.view(file -> "this should be a single up cpg file for each exper: $file")
+
+    cpg_up_ch
+        .concat(cpg_down_ch, cpg_unchanging_ch, cpg_master_ch)
+        //.view()
+        .map {cpg_type ->
+
+        basename = cpg_type.baseName
+
+        tokens = basename.tokenize("_")
+
+        type = tokens[0]
+        experiment = tokens[1]
+        
+
+        tuple(cpg_type, experiment)
+
+
+
+        }
+        .groupTuple(by:[1])
+        //.view(tuple -> "this is the channel so far for cpg type: $tuple")
+        .set{changing_cpg_grouped_meta_ch}
+        //.combine(combined_bigwig_meta_2grouped_ch, by:0)
+        //.view(meta_ch -> "this contains 3 replicates of experiments grouped with the cpgs that are changing: $meta_ch")
+
+    bigwig_meta_ch_to_join
+        .combine(changing_cpg_grouped_meta_ch, by:[1])
+        //.groupTuple(by:2)
+        //.view(new_tuple -> "this should be the bigwig channel grouped with the changing cpg peaks $new_tuple")
+        .set{bigwig_cpg_changing_peaks_mets_ch}
+
+    plot_over_diff_cpg_regions_process( bigwig_cpg_changing_peaks_mets_ch)
 
 
 }
@@ -1176,12 +1252,34 @@ workflow get_roadmap_histone_enrichment_workflow {
     take:
     roadmap_broad_histones
     roadmap_narrow_histones
+    idr_merged_peaks
     control_atac_bigwig_ch
     treatment_atac_bigwig_ch
 
 
 
     main:
+
+    // checking how the idr_merged_peaks look
+    idr_merged_peaks
+        //.view{peaks -> "these should be the idr merged peaks for each condition: $peaks"}
+        .map {condition, exper_type, file_name, path ->
+        
+        path
+        }
+        .flatten()
+        .toList()
+        //.view{path -> "how does flatten then toList look? $path"}
+        .map{merged_peak_path ->
+
+        basename = merged_peak_path.baseName
+        name = merged_peak_path.name
+
+        tuple(name, basename, merged_peak_path)
+
+        }
+        .view{peak_tuple -> "this is the new peak tuple for the in pipeline peaks: $peak_tuple"}
+        .set{pipeline_merged_idr_peak_meta_ch}
 
     roadmap_broad_histones
         .map {file ->
@@ -1229,7 +1327,7 @@ workflow get_roadmap_histone_enrichment_workflow {
     
     // now make a deeptools process that uses multibigwigsummary to get the counts
 
-    atac_enrich_counts_process(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch, atac_bigwig_cat)
+    atac_enrich_counts_process(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch, pipeline_merged_idr_peak_meta_ch, atac_bigwig_cat)
 
     enrich_counts_tab_ch = atac_enrich_counts_process.out.raw_enrichment_counts.collect()
 
@@ -1256,6 +1354,70 @@ workflow get_roadmap_histone_enrichment_workflow {
     // now I want to make a process that will take the output tab files from above and make the enrichemnt in R
 
     r_atac_enrich_plot_process(enrich_counts_tab_meta_ch)
+
+
+    //emit:
+}
+
+
+workflow find_then_plot_atacseqPeaks_in_experiment_peaks_workflow {
+
+
+    take:
+
+    up_peaks_list_true
+    down_peaks_list_true
+    unchanging_peaks_list_true
+    master_peak_list_true
+    nochange_atac_peaks_ch
+    up_atac_peaks_ch
+    roadmap_broad_histones
+    roadmap_narrow_histones
+    idr_merged_peaks
+    control_atac_bam_ch
+    treatment_atac_bam_ch
+
+
+
+    main:
+
+    roadmap_broad_histones
+        .map {file ->
+        
+        basename = file.baseName
+        name = file.name
+
+
+        tuple(name, basename, file)
+
+
+        }
+        //.view()
+        .set{roadmap_broad_histone_meta_ch}
+
+    roadmap_narrow_histones
+        .map {file ->
+        
+        basename = file.baseName
+        name = file.name
+
+        tuple(name, basename, file)
+
+
+        }
+        //.view()
+        .set{roadmap_narrowhistone_meta_ch}
+
+    // first make a process that finds which atac peaks are in the (up down unchanging peaks maybe) and in the roadmap peaks 
+    // I will start with the roadmap and then hopefull go on to the idr_merged_peaks instead
+
+    get_atacPeaks_in_roadmapPeaks_process(nochange_atac_peaks_ch, up_atac_peaks_ch, roadmap_broad_histones.flatten(), roadmap_narrow_histones.flatten() )
+
+    // so i am actually doing percent overlap, which means, I now take the number of  up atac peaks in a histone (ex H3k27me3), and divide that by the total number of up atac peaks in general
+    // do that for all up and unchanging atac peaks in histones
+    // then divide the percentages up/unchanging and take the log2 of that number to see which is increasing or decreasing
+
+    // i will make an r process below to do that after I figure it out in rstudio
 
 
     //emit:

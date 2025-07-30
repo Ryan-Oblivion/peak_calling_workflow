@@ -1257,7 +1257,7 @@ process find_diff_peaks_R_process {
     resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
     ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
     labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
-    theme(plot.caption = element_text(size = 30, face = "bold"))+
+    theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 25), axis.title.y = element_text(size = 25), legend.text = element_text(size = 25))+
     scale_colour_manual(values=c("red", "darkgrey", "pink"))+
     scale_x_continuous(trans='log10')+
     ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
@@ -1266,12 +1266,12 @@ process find_diff_peaks_R_process {
     print(ma_plot_labeled)
 
 
-    pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 10, height = 10)
+    pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
 
     print(ma_plot_labeled)
     dev.off()
 
-    png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+    png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
 
     print(ma_plot_labeled)
     dev.off()
@@ -1281,17 +1281,17 @@ process find_diff_peaks_R_process {
                     lab = rownames(resLFC),
                     title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
                     x = 'log2FoldChange', FCcutoff = 1,
-                    y = 'padj', pCutoff = 0.05, labSize = 3, 
+                    y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
                     
                     )
 
     print(volcano_plot_removed_reps)
 
-    png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+    png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
     print(volcano_plot_removed_reps)
     dev.off()
 
-    pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 10, height = 10)
+    pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
     print(volcano_plot_removed_reps)
     dev.off()
     
@@ -1316,6 +1316,7 @@ process find_diff_peaks_R_process {
 
     pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
     ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+    theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
     geom_point(size=3) +
     xlab(paste0("PC1: ",percentVar[1],"% variance")) +
     ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
@@ -1323,7 +1324,7 @@ process find_diff_peaks_R_process {
     #pca_plot
     name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
 
-    png(filename = name_for_rlog_png_file, width = 1000, height = 1000, antialias = "subpixel")
+    png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
     print(pca_plot_rlog)
     dev.off()
 
@@ -1353,6 +1354,7 @@ process find_diff_peaks_R_process {
     percentVar <- round(100 * attr(pcaData2, "percentVar"))
     pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
     ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+    theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
     geom_point(size=3) +
     xlab(paste0("PC1: ",percentVar[1],"% variance")) +
     ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
@@ -1365,7 +1367,7 @@ process find_diff_peaks_R_process {
     print(pca_plot_vst)
     dev.off()
 
-    png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 1000, height = 1000)
+    png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
     print(pca_plot_vst)
     dev.off()
 
@@ -2726,11 +2728,11 @@ process signal_over_gene_tss_process {
     //path(up_peaks)
     //path(down_peaks)
 
-    path(up_genes_20kb)
+    path(up_proseq_genes) //path(up_genes_20kb)
 
-    path(down_genes_20kb)
+    path(down_proseq_genes)//path(down_genes_20kb)
 
-    path(nochange_genes_20kb)
+    path(unchanging_proseq_genes) //path(nochange_genes_20kb)
 
     path(up_genes_norm)
     path(down_genes_norm)
@@ -2790,7 +2792,7 @@ process signal_over_gene_tss_process {
 
     computeMatrix reference-point \
     -S ${bw_names.join(" ")} \
-    -R ${up_genes_norm} ${down_genes_norm} \
+    -R ${up_proseq_genes} ${down_proseq_genes} ${unchanging_proseq_genes} \
     --referencePoint "TSS" \
     --beforeRegionStartLength 20000 \
     --afterRegionStartLength 20000 \
@@ -3143,13 +3145,21 @@ process get_CpG_islands_in_peaks_process {
 
     input:
 
-    path(up_peaks_ch)
+    // uncomment when using the outside peaks
+    // path(up_peaks_ch)
     
-    path(down_peaks_ch)
+    // path(down_peaks_ch)
     
-    path(unchanging_peaks_ch)
+    // path(unchanging_peaks_ch)
     
     path(cpg_island_unmasked_ch)
+
+
+    // comment when using outside peaks
+    // all true peaks
+
+    tuple val(peak_type), val(exper_type), path(all_true_peaks_ch)
+    //tuple val(histone_label), val(condition_label), val(replicate_label), val(bw_names), path(bigwig_filepath), val(peak_type), path(peak_filepath)
 
 
 
@@ -3158,16 +3168,27 @@ process get_CpG_islands_in_peaks_process {
     path("${cpgIslands_in_up_peaks}"), emit: cpg_up_regions
     path("${cpgIslands_in_down_peaks}"), emit: cpg_down_regions
     path("${cpgIslands_in_unchanging_peaks}"), emit: cpg_unchanging_regions
+    path("${cpgIslands_in_merged_master_peaks}"), emit: cpg_masterpeak_regions
 
 
 
 
     script:
 
+
+
+    up_peaks_ch = "${all_true_peaks_ch[0]}"
+    down_peaks_ch = "${all_true_peaks_ch[1]}"
+    unchanging_peaks_ch = "${all_true_peaks_ch[2]}"
+    masterpeaks_merged_peaks_ch = "${all_true_peaks_ch[3]}"
+
     // when i get a peaks channel that has multiple exper types(histones) then put the expr type in the name
-    cpgIslands_in_up_peaks = "up_cpg_islands.bed"
-    cpgIslands_in_down_peaks = "down_cpg_islands.bed"
-    cpgIslands_in_unchanging_peaks = "unchanging_cpg_islands.bed"
+    cpgIslands_in_up_peaks = "up_${exper_type}_cpg_islands.bed"
+    cpgIslands_in_down_peaks = "down_${exper_type}_cpg_islands.bed"
+    cpgIslands_in_unchanging_peaks = "unchanging_${exper_type}_cpg_islands.bed"
+    
+    // new addition
+    cpgIslands_in_merged_master_peaks = "masterpeaks_${exper_type}_cpg_islands.bed"
 
     
 
@@ -3197,6 +3218,14 @@ process get_CpG_islands_in_peaks_process {
     -wa \
     > ${cpgIslands_in_unchanging_peaks}
 
+    # new addition
+    # fourth unchanging peaks
+    bedtools intersect \
+    -a ${cpg_island_unmasked_ch} \
+    -b ${masterpeaks_merged_peaks_ch} \
+    -wa \
+    > ${cpgIslands_in_merged_master_peaks}
+
 
 
 
@@ -3211,18 +3240,26 @@ process plot_over_diff_cpg_regions_process {
 
     publishDir "heatmaps/signal_over_diff_CpG_regions", mode: 'copy', pattern: '*'
 
+    errorStrategy 'ignore'
+
 
 
     input:
 
-    path(cpg_up_ch)
+    // path(cpg_up_ch)
     
-    path(cpg_down_ch)
+    // path(cpg_down_ch)
     
-    path(cpg_unchanging_ch)
+    // path(cpg_unchanging_ch)
+
+    // // new addition
+    // path(cpg_master_ch)
     
+    // have to change this to get the correct cpgs with the right bigwigs
     //combined_bigwig_meta_2grouped_ch
-    tuple val(condition_label), val(histone_label), val(replicate_label), val(bw_names), path(bigwig_filepath)
+    //tuple val(condition_label), val(histone_label), val(replicate_label), val(bw_names), path(bigwig_filepath)
+
+    tuple val(histone_label), val(condition_label), val(replicate_label), val(bw_names), path(bigwig_filepath), path(cpg_peak_filepath)
 
 
 
@@ -3248,12 +3285,17 @@ process plot_over_diff_cpg_regions_process {
 
     }
 
+    cpg_up_ch = "${cpg_peak_filepath[0]}"
+    cpg_down_ch = "${cpg_peak_filepath[1]}"
+    cpg_unchanging_ch = "${cpg_peak_filepath[2]}"
+    cpg_master_ch = "${cpg_peak_filepath[3]}"
+
     """
     #!/usr/bin/env bash
 
 
     computeMatrix reference-point -S ${bw_names.join(' ')} \
-    -R "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}"  \
+    -R "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}" "${cpg_master_ch}"  \
     --referencePoint center \
     --beforeRegionStartLength 10000 \
     --afterRegionStartLength 10000 \
@@ -3268,7 +3310,7 @@ process plot_over_diff_cpg_regions_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
-    --regionsLabel "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}"  \
+    --regionsLabel "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}" "${cpg_master_ch}" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --dpi 300 \
@@ -3283,7 +3325,7 @@ process plot_over_diff_cpg_regions_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
-    --regionsLabel "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}"  \
+    --regionsLabel "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}" "${cpg_master_ch}" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --dpi 300 \
@@ -3306,6 +3348,7 @@ process atac_enrich_counts_process {
 
     publishDir "./enrichment_of_experiment/", mode: 'copy', pattern: '*'
 
+    debug true
 
     input:
 
@@ -3314,6 +3357,9 @@ process atac_enrich_counts_process {
 
     // these are the narrow histones
     tuple val(roadmap_narrowhistones_filename), val(roadmap_narrowhistones_names), path(roadmap_narrowhistones_path)
+
+    // these are our own peak files to find which peaks are enriched in regions that go up in accessibility
+    tuple val(pipeline_peaks_filename), val(pipeline_peaks_names), path(pipeline_peaks_path)
 
     //path(atac_bigwig)
     path(bam_files)
@@ -3328,6 +3374,38 @@ process atac_enrich_counts_process {
 
     script:
 
+    // getting the true base name of the pipeline peak files
+    name_list = []
+    file_list = []
+
+    num_files = pipeline_peaks_names.size()
+    
+    for (int i = 0; i < num_files; i++) {
+
+        
+
+        //println("${pipeline_peaks_filename[i]}".readLines().size())
+        //true_basename = "${pipeline_peaks_names[i]}".replaceFirst(/r{1,2,3}.*/, '')
+        basename_split = "${pipeline_peaks_filename[i]}".split('_')
+
+
+        condition = basename_split[2]
+        exper_type = basename_split[3]
+
+        true_basename = "${basename_split[0]}_${basename_split[1]}_${basename_split[2]}_${basename_split[3]}_"
+
+        name_list << true_basename
+
+        file_list << pipeline_peaks_filename[i]
+
+        // try this
+        //matcher = "${pipeline_peaks_names[i]}" =~ / (\d+)\_(\d+)\./
+        
+    }
+
+    //pipeline_bed_files = name_list.collect{ file("${it}*new_sorted.bed") }.join(' ')
+    //pipeline_regions_name = name_list.join(' ')
+
     //out_npz_file = "${atac_bigwig.baseName}_counts.npz"
     //out_tab_file = "${atac_bigwig.baseName}_counts.tab"
 
@@ -3337,6 +3415,9 @@ process atac_enrich_counts_process {
 
     out_narrow_enrich_plot = "${bam_files[1].baseName}_narrow_enrichment_plot.png"
     out_narrow_enrich_counts = "${bam_files[1].baseName}_narrow_enrichment_counts.tab"
+
+    out_pipeline_enrich_plot = "${bam_files[1].baseName}_pipeline_enrichment_plot.png"
+    out_pipeline_enrich_counts = "${bam_files[1].baseName}_pipeline_enrichment_counts.tab"
 
     """
     #!/usr/bin/env bash
@@ -3363,6 +3444,20 @@ process atac_enrich_counts_process {
         awk 'BEGIN{OFS="\t"} \$3 > \$2 {print \$1, \$2, \$3 }' \${file} > \${file_basename}_new.narrowPeak
 
         sort -k1,1 -k2,2n \${file_basename}_new.narrowPeak >\${file_basename}_new_sorted.narrowPeak
+    done
+
+    # now for the pipeline peaks
+
+    pipeline_list=(${file_list.join(' ')})
+
+    for file in \${pipeline_list[@]}; do
+
+        if [ \$(wc -l < \${file}) -gt 0 ]; then
+            file_basename=\$(basename \${file} .bed)
+            awk 'BEGIN{OFS="\t"} \$3 > \$2 {print \$1, \$2, \$3 }' \${file} > \${file_basename}_new.bed
+
+            sort -k1,1 -k2,2n \${file_basename}_new.bed >\${file_basename}_new_sorted.bed
+        fi
     done
 
 
@@ -3394,6 +3489,19 @@ process atac_enrich_counts_process {
     --variableScales \
     --outRawCounts ${out_narrow_enrich_counts} \
     --plotFile ${out_narrow_enrich_plot}
+
+
+    # now plotting for the peaks from our own data
+
+    pipelinePeak_files=\$(ls *new_sorted.bed)
+
+    plotEnrichment \
+    --perSample \
+    --bamfiles ${bam_files[1]} \
+    --BED \${pipelinePeak_files[@]} \
+    --variableScales \
+    --outRawCounts ${out_pipeline_enrich_counts} \
+    --plotFile ${out_pipeline_enrich_plot}
 
 
 
@@ -3443,23 +3551,45 @@ process r_atac_enrich_plot_process {
     condition_one = read_tsv("./${condition_one}")
     condition_two = read_tsv("./${condition_two}")
 
-    atac_narrow_enrichment_counts_v1 = data.frame(featureType = condition_one\$featureType, enrichment = log2(condition_one\$percent/condition_two\$percent) )
+    atac_narrow_enrichment_counts_v1 = data.frame(featureType = condition_one\$featureType, log2FC = log2(condition_one\$percent/condition_two\$percent) )
 
-    atac_narrow_enrichment_counts_v2 = data.frame(featureType = condition_one\$featureType, enrichment = log2(condition_two\$percent/condition_one\$percent) )
+    atac_narrow_enrichment_counts_v2 = data.frame(featureType = condition_one\$featureType, log2FC = log2(condition_two\$percent/condition_one\$percent) )
 
     # using ifelse is a conditional that does this 
     # setting another column for both the versions of calculating
-    atac_narrow_enrichment_counts_v1\$color = ifelse( atac_narrow_enrichment_counts_v1\$enrichment > 0, 'enriched', 'not_enriched')
+    atac_narrow_enrichment_counts_v1\$color = ifelse( atac_narrow_enrichment_counts_v1\$log2FC > 0, 'up', 'down')
 
-    atac_narrow_enrichment_counts_v2\$color = ifelse( atac_narrow_enrichment_counts_v2\$enrichment > 0, 'enriched', 'not_enriched')
+    atac_narrow_enrichment_counts_v2\$color = ifelse( atac_narrow_enrichment_counts_v2\$log2FC > 0, 'up', 'down')
+
+
+    # only need to get the new names one time
+
+    print(atac_narrow_enrichment_counts_v1\$featureType)
+
+    string_test = strsplit(atac_narrow_enrichment_counts_v1\$featureType, "_")
+
+    new_names = sapply(string_test, function(x) {
+        paste(na.omit(x[c(1:4,12,13)]), collapse = "_")
+    })
+
+    new_names
+
+    #new_name = paste(na.omit(string_test[[1]][1:5-12-13]), collapse = "_")
+    #new_name
+
+    # now here is where I change the featureType names to the new names that should be shorter, and do it in both versions of the experiment design
+    atac_narrow_enrichment_counts_v1["featureType"] = new_names
+    atac_narrow_enrichment_counts_v2["featureType"] = new_names
+
+    print(atac_narrow_enrichment_counts_v1\$featureType)
                                          
 
-    ggplot(data = atac_narrow_enrichment_counts_v1, aes(x = featureType, y = enrichment, fill = color) )+
+    ggplot(data = atac_narrow_enrichment_counts_v1, aes(x = featureType, y = log2FC, fill = color) )+
         geom_bar(stat = "identity")+
-        scale_fill_manual(values=c( "green", "gray"))+
+        scale_fill_manual(values=c( "up" = "green", "down" = "gray"))+
         theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
-        labs(title = paste0('ATAC-seq ', "${peak_type} ", 'Enrichment log2FC ', condition_one\$file[1], '_vs_', condition_two\$file[1]), caption = "This is k562 ChIP-seq narrow peak data from roadmap. \nDeeptools was used to generate counts from ATAC-seq H1low and scrambled bam files,\n to get the number of reads that align in each of the roadmap narrow peaks. The percentage of \nreads in peaks vs total reads is the column I use to get the accessibility enrichment score.\n I take log2 of the percentage of H1low reads divided by the percentage of Scrm reads ratio,\n which gives the log fold enrichment of accessibility")+
+        labs(title = paste0('ATAC-seq ', "${peak_type} ", 'log2FC ', condition_one\$file[1], '_vs_', condition_two\$file[1]), caption = "This is k562 ChIP-seq narrow peak data from roadmap. \nDeeptools was used to generate counts from ATAC-seq H1low and scrambled bam files,\n to get the number of reads that align in each of the roadmap narrow peaks. The percentage of \nreads in peaks vs total reads is the column I use to get the accessibility enrichment score.\n I take log2 of the percentage of H1low reads divided by the percentage of Scrm reads ratio,\n which gives the log fold enrichment of accessibility")+
         scale_y_continuous(labels = scales::label_number())
 
     ggsave("${atac_enrich_png_v1}", plot=last_plot(), width = 12, height = 8, units = "in", dpi = 300)
@@ -3467,17 +3597,96 @@ process r_atac_enrich_plot_process {
 
     # now version 2
 
-    ggplot(data = atac_narrow_enrichment_counts_v2, aes(x = featureType, y = enrichment, fill = color) )+
+    ggplot(data = atac_narrow_enrichment_counts_v2, aes(x = featureType, y = log2FC, fill = color) )+
         geom_bar(stat = "identity")+
-        scale_fill_manual(values=c( "green", "gray"))+
+        scale_fill_manual(values=c( "up" = "green", "down" = "gray"))+
         theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
-        labs(title = paste0('ATAC-seq ', "${peak_type} ", 'Enrichment log2FC ', condition_two\$file[1], '_vs_',condition_one\$file[1]), caption = "This is k562 ChIP-seq narrow peak data from roadmap. \nDeeptools was used to generate counts from ATAC-seq H1low and scrambled bam files,\n to get the number of reads that align in each of the roadmap narrow peaks. The percentage of \nreads in peaks vs total reads is the column I use to get the accessibility enrichment score.\n I take log2 of the percentage of H1low reads divided by the percentage of Scrm reads ratio,\n which gives the log fold enrichment of accessibility")+
+        labs(title = paste0('ATAC-seq ', "${peak_type} ", 'log2FC ', condition_two\$file[1], '_vs_',condition_one\$file[1]), caption = "This is k562 ChIP-seq narrow peak data from roadmap. \nDeeptools was used to generate counts from ATAC-seq H1low and scrambled bam files,\n to get the number of reads that align in each of the roadmap narrow peaks. The percentage of \nreads in peaks vs total reads is the column I use to get the accessibility enrichment score.\n I take log2 of the percentage of H1low reads divided by the percentage of Scrm reads ratio,\n which gives the log fold enrichment of accessibility")+
         scale_y_continuous(labels = scales::label_number())
 
     ggsave("${atac_enrich_png_v2}", plot=last_plot(), width = 12, height = 8, units = "in", dpi = 300)
 
 
+
+
+
+    """
+}
+
+process get_atacPeaks_in_roadmapPeaks_process {
+
+    // this process should be using bedtools intersect
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+    label 'normal_big_resources'
+
+    publishDir "./intersect_atacPeaks_in_histone_peaks", mode: 'copy', pattern: '*'
+    
+    input:
+
+    path(nochange_atac_peaks)
+    path(up_atac_peaks)
+    path(broad_peak)
+    path(narrow_peak)
+    //tuple val(broad_name), val(broad_basename), path(roadmap_broad_histone_file)
+    //tuple val(narrow_name), val(narrow_basename), path(roadmap_narrowhistone_file)
+
+
+
+
+    output:
+
+    path("*.bed"), emit: all_atac_peak_intersections
+
+
+
+    script:
+
+    out_up_broad_intersect_file = "up_atacPeaks_${broad_peak}.bed"
+    out_up_narrow_intersect_file = "up_atacPeaks_${narrow_peak}.bed"
+
+    out_nochange_broad_intersect_file = "nochange_atacPeaks_${broad_peak}.bed"
+    out_nochange_narrow_intersect_file = "nochange_atacPeaks_${narrow_peak}.bed"
+
+    
+
+    """
+    #!/usr/bin/env bash
+
+    # first find the up atac peaks in the broad
+
+    bedtools intersect \
+    -a ${up_atac_peaks} \
+    -b ${broad_peak} \
+    -wa \
+    -f 0.20 \
+    > ${out_up_broad_intersect_file}
+
+    # second find up atac peaks in narrow
+
+    bedtools intersect \
+    -a ${up_atac_peaks} \
+    -b ${narrow_peak} \
+    -wa \
+    -f 0.20 \
+    > ${out_up_narrow_intersect_file}
+
+    # third find nochange atac peaks in broad
+
+    bedtools intersect \
+    -a ${nochange_atac_peaks} \
+    -b ${broad_peak} \
+    -wa \
+    -f 0.20 \
+    > ${out_nochange_broad_intersect_file}
+
+    # fourth find nochange atac peaks in narrow
+    bedtools intersect \
+    -a ${nochange_atac_peaks} \
+    -b ${narrow_peak} \
+    -wa \
+    -f 0.20 \
+    > ${out_nochange_narrow_intersect_file}
 
 
 

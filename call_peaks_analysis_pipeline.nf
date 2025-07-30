@@ -160,7 +160,8 @@ include {
     plot_diff_peaks_over_diff_genes_workflow;
     plot_atac_signal_over_diff_peaks_workflow;
     find_then_plot_cpgIslands_in_peaks_workflow;
-    get_roadmap_histone_enrichment_workflow
+    get_roadmap_histone_enrichment_workflow;
+    find_then_plot_atacseqPeaks_in_experiment_peaks_workflow
     //get_diff_peaks_workflow
 
 }from './workflows/call_peaks_workflow.nf'
@@ -208,6 +209,8 @@ workflow {
     down_peaks_list_true = mk_bw_call_peaks_workflow.out.down_peaks_list_ch
     unchanging_peaks_list_true = mk_bw_call_peaks_workflow.out.unchanging_peaks_list_ch
 
+    idr_merged_peaks = mk_bw_call_peaks_workflow.out.group_10kb_concat_idr_peaks_ch
+
     // adding a workflow here to get the differential peaks
 
     //get_diff_peaks_workflow(all_broadpeaks_ch)
@@ -252,6 +255,8 @@ workflow {
 
     // if i want to keep using this channel, it also has to be below the workflow (only for when using geo control data)
     combined_bigwig_meta_2grouped_ch = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_cpm_ch
+
+    bigwig_meta_ch_to_join = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_to_join_ch
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // now lets see how to get differential peaks to be plot over the up and down genes TSS plus 5kb
@@ -275,16 +280,28 @@ workflow {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     // now we want to first find the CpG islands that are overlapping up, down, unchanging experiment(histone) peaks
     // then we plot the h1low, scrm and bisulfate signal over the new "CpG_in_up_peaks, CpG_in_down_peaks, and CpG_in_unchanging_peaks"
 
-    find_then_plot_cpgIslands_in_peaks_workflow(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch )
+    //find_then_plot_cpgIslands_in_peaks_workflow(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch )
 
+    // this is the version of the above workflow that will only use the peaks generated within the pipeline
+
+    
+    find_then_plot_cpgIslands_in_peaks_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch, combined_bigwig_peak_2grouped_ch, bigwig_meta_ch_to_join )
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     // now I want to use roadmap histone data to get and enrichment barplot of which histones have more ATAC-accessability
 
     //get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, control_atac_bigwig_ch, treatment_atac_bigwig_ch)
     
-    get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, roadmap_narrow_histones, control_atac_bam_ch, treatment_atac_bam_ch)
+    get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch)
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // recreating the plot cpgIslands workflow but for finding which ATAC-seq peaks are in histone mark peaks
+
+    find_then_plot_atacseqPeaks_in_experiment_peaks_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, nochange_atac_peaks_ch, up_atac_peaks_ch, roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch)
+    
 }
