@@ -2217,9 +2217,24 @@ process plot_at_up_down_peaks_process {
 
     // making output name for genes file that will have no zeros
 
-    up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
-    down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
-    master_peaks_nozero ="${master_peaks.baseName}_noZerolength.bed"
+    master_split_basename = "${master_peaks.baseName}".split('_')
+    short_master_peak_name = "${master_split_basename[0]}_${master_split_basename[1]}"
+
+    up_split_basename = "${up_peaks.baseName}".split('_')
+    short_up_peak_name = "${up_split_basename[0]}_${up_split_basename[1]}_${up_split_basename[3]}"
+
+    down_split_basename = "${down_peaks.baseName}".split('_')
+    short_down_peak_name = "${down_split_basename[0]}_${down_split_basename[1]}_${down_split_basename[3]}"
+
+
+    //up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
+    up_peaks_nozero = "${short_up_peak_name}_noZerolength.bed"
+
+    //down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
+    down_peaks_nozero = "${short_down_peak_name}_noZerolength.bed"
+
+    //master_peaks_nozero ="${master_peaks.baseName}_noZerolength.bed"
+    master_peaks_nozero ="${short_master_peak_name}_noZerolength.bed"
     
 
     // i need to just get the matrix for plotting signal over cpg islands and then the output heatmap and profile plot names
@@ -2335,10 +2350,10 @@ process plot_at_up_down_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 8 \
     --heatmapHeight 20 \
-    --dpi 300 \
-    --plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
+    --dpi 300 
+    #--plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
 
     plotProfile -m "${out_matrix_scores_both}" \
     -out "${png_profile_both_peaks}" \
@@ -2360,10 +2375,10 @@ process plot_at_up_down_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 8 \
     --heatmapHeight 20 \
-    --dpi 300 \
-    --plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
+    --dpi 300 
+    #--plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
 
     plotProfile -m "${out_matrix_scores_both}" \
     -out "${svg_profile_both_peaks}" \
@@ -2442,9 +2457,31 @@ process atac_signal_over_peaks_process {
     png_profile_3 = "atac_bigwig_signal_features_at_all_${histone_label}_peaks_cpg_regions_profile.png" 
 
 
-    up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
-    down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
-    unchanging_peaks_nozero = "${unchanging_peaks.baseName}_noZerolength.bed"
+    // fixing the names over the plots and adding it for unchanging also
+
+    unchanging_split_basename = "${unchanging_peaks.baseName}".split('_')
+    short_unchanging_peak_name = "${unchanging_split_basename[0]}_${unchanging_split_basename[1]}_${unchanging_split_basename[3]}"
+
+    up_split_basename = "${up_peaks.baseName}".split('_')
+    short_up_peak_name = "${up_split_basename[0]}_${up_split_basename[1]}_${up_split_basename[3]}"
+
+    down_split_basename = "${down_peaks.baseName}".split('_')
+    short_down_peak_name = "${down_split_basename[0]}_${down_split_basename[1]}_${down_split_basename[3]}"
+
+
+    //up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
+    up_peaks_nozero = "${short_up_peak_name}_noZerolength.bed"
+
+    //down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
+    down_peaks_nozero = "${short_down_peak_name}_noZerolength.bed"
+
+    //master_peaks_nozero ="${master_peaks.baseName}_noZerolength.bed"
+    unchanging_peaks_nozero ="${short_unchanging_peak_name}_noZerolength.bed"
+
+
+    //up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
+    //down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
+    //unchanging_peaks_nozero = "${unchanging_peaks.baseName}_noZerolength.bed"
 
     out_matrix_scores_atac_peaks = "matrix_atac_bw_signal_over_atac_peaks.mat.gz"
     out_matrix_scores_expr_signal_atac_peaks = "matrix_expr_bw_signal_over_atac_peaks.mat.gz"
@@ -2496,10 +2533,10 @@ process atac_signal_over_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
-    --dpi 300 \
-    --plotTitle "ATAC Bigwig Signal Over Up and Down and Unchanging Peaks"
+    --dpi 300 
+    #--plotTitle "ATAC Bigwig Signal Over Up and Down and Unchanging Peaks"
 
     # making the svg heatmap first
 
@@ -2512,10 +2549,10 @@ process atac_signal_over_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
-    --dpi 300 \
-    --plotTitle "ATAC Bigwig Signal Over Up and Down and Unchanging Peaks"
+    --dpi 300 
+    #--plotTitle "ATAC Bigwig Signal Over Up and Down and Unchanging Peaks"
 
     plotProfile -m "${out_matrix_scores_3}" \
     -out "${png_profile_3}" \
@@ -2550,10 +2587,10 @@ process atac_signal_over_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
-    --dpi 300 \
-    --plotTitle "ATAC Bigwig Signal Over atac Peaks"
+    --dpi 300 
+    #--plotTitle "ATAC Bigwig Signal Over atac Peaks"
 
     plotHeatmap -m "${out_matrix_scores_atac_peaks}" \
     -out "${png_heatmap_atac_signal_over_atac_peaks}" \
@@ -2565,10 +2602,10 @@ process atac_signal_over_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
-    --dpi 300 \
-    --plotTitle "ATAC Bigwig Signal Over atac Peaks"
+    --dpi 300 
+    #--plotTitle "ATAC Bigwig Signal Over atac Peaks"
 
 
     # doing experiment signal over atac peaks now #####################
@@ -2594,10 +2631,10 @@ process atac_signal_over_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
-    --dpi 300 \
-    --plotTitle "${histone_label} Bigwig Signal Over atac Peaks"
+    --dpi 300 
+    #--plotTitle "${histone_label} Bigwig Signal Over atac Peaks"
 
     plotHeatmap -m "${out_matrix_scores_expr_signal_atac_peaks}" \
     -out "${png_heatmap_expr_signal_over_atac_peaks}" \
@@ -2609,10 +2646,10 @@ process atac_signal_over_peaks_process {
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
-    --dpi 300 \
-    --plotTitle "${histone_label} Bigwig Signal Over atac Peaks"
+    --dpi 300 
+    #--plotTitle "${histone_label} Bigwig Signal Over atac Peaks"
 
     
 
@@ -2744,7 +2781,7 @@ process signal_over_gene_tss_process {
 
     output:
 
-    path("*.{png,svg}"), emit: signal_over_gene_tss_heatmaps
+    path("*.{png,svg,pdf}"), emit: signal_over_gene_tss_heatmaps
 
 
 
@@ -2771,6 +2808,8 @@ process signal_over_gene_tss_process {
     both_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_both_gene_tss.mat.gz"
     both_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_signal_at_both_gene_tss_20kb.png"
     both_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_signal_at_both_gene_tss_20kb.svg"
+
+    heatmap_only_pdf = "${histone_label}_${replicate_label}_signal_at_both_gene_tss_20kb_heatmap_only.pdf"
 
 
     """
@@ -2809,12 +2848,11 @@ process signal_over_gene_tss_process {
     --zMax "auto" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
     --dpi 300 \
     --sortUsing sum \
-    --perGroup \
-    --plotTitle "Bigwig Signal Over Gene TSS"
+    --perGroup 
 
     # making the svg version
     plotHeatmap \
@@ -2825,12 +2863,27 @@ process signal_over_gene_tss_process {
     --zMax "auto" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
-    --heatmapWidth 12 \
+    --heatmapWidth 9 \
     --heatmapHeight 15 \
     --dpi 300 \
     --sortUsing sum \
-    --perGroup \
-    --plotTitle "Bigwig Signal Over Gene TSS"
+    --perGroup 
+
+    # plotting the heatmap only
+    plotHeatmap \
+    --matrixFile ${both_genes_tss_out_matrix_scores} \
+    --outFileName ${heatmap_only_pdf} \
+    --colorMap 'Reds' \
+    --whatToShow 'heatmap and colorbar' \
+    --zMin 0 \
+    --zMax "auto" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
 
 
 
@@ -3219,7 +3272,7 @@ process get_CpG_islands_in_peaks_process {
     > ${cpgIslands_in_unchanging_peaks}
 
     # new addition
-    # fourth unchanging peaks
+    # fourth master peaks
     bedtools intersect \
     -a ${cpg_island_unmasked_ch} \
     -b ${masterpeaks_merged_peaks_ch} \
@@ -3316,9 +3369,9 @@ process plot_over_diff_cpg_regions_process {
     --dpi 300 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
-    --heatmapHeight 15 \
-    --plotTitle "${histone_label} Bigwig Signal Over CpG Islands in UP,DOWN,UNCHANGING Peaks"
+    --heatmapWidth 9 \
+    --heatmapHeight 15 
+   # --plotTitle "${histone_label} Bigwig Signal Over CpG Islands in UP,DOWN,UNCHANGING Peaks"
 
     plotHeatmap -m "${out_matrix_scores_expr_signal_cpg_in_peaks}" \
     -out "${png_heatmap_expr_signal_over_cpg_in_peaks}" \
@@ -3331,9 +3384,9 @@ process plot_over_diff_cpg_regions_process {
     --dpi 300 \
     --sortUsing sum \
     --perGroup \
-    --heatmapWidth 12 \
-    --heatmapHeight 15 \
-    --plotTitle "${histone_label} Bigwig Signal Over CpG Islands in UP,DOWN,UNCHANGING Peaks"
+    --heatmapWidth 9 \
+    --heatmapHeight 15 
+    #--plotTitle "${histone_label} Bigwig Signal Over CpG Islands in UP,DOWN,UNCHANGING Peaks"
 
 
 
