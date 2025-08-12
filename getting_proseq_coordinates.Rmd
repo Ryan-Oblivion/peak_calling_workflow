@@ -1,0 +1,252 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+# first loading the proseq deseq results
+
+```{r}
+
+# looks like the harvard core used fold change instead of log2fold change, even though their ma-plot is labeled log2fold change
+
+
+proseq_deseq_results = read.table('./proseq_data/Risca001_DEseq_spikeNorm_h1low.vs.scr_results_table.txt', header = TRUE, sep = "\t")
+
+
+proseq_deseq_results
+
+up_regulated_proseq_genes = proseq_deseq_results[which(proseq_deseq_results$FoldChange_h1low.vs.scr > 1.5 & proseq_deseq_results$padj_h1low.vs.scr <= 0.01 & proseq_deseq_results$baseMean_h1low.vs.scr > 1),]
+
+length(up_regulated_proseq_genes[,1])
+
+down_regulated_proseq_genes = proseq_deseq_results[which(proseq_deseq_results$FoldChange_h1low.vs.scr < 1/1.5 & proseq_deseq_results$padj_h1low.vs.scr <= 0.01 & proseq_deseq_results$baseMean_h1low.vs.scr > 1),]
+
+length(down_regulated_proseq_genes[,1])
+
+
+non_changing_proseq_genes = proseq_deseq_results[which( proseq_deseq_results$padj_h1low.vs.scr <= 0.01 & proseq_deseq_results$baseMean_h1low.vs.scr > 1),]
+
+length(non_changing_proseq_genes[,1])
+#which(proseq_deseq_results$log2FoldChange_h1low.vs.scr < -1 & proseq_deseq_results$padj_h1low.vs.scr <= 0.05)
+
+```
+
+# make an histogram of the base mean expression for each of the changing genes
+```{r}
+
+library(ggplot2)
+
+ggplot(proseq_deseq_results, mapping = aes(baseMean_h1low.vs.scr)) +
+  geom_histogram(stat = "bin", bins = 50)+
+  scale_x_continuous(labels = scales::label_number(), limits = c(1,500))+
+  ggtitle("Proseq Basemean distribution")+
+  labs(subtitle = "I want to use the basemean \n to get a range where most genes have around the same basemean \n after determining and differential genes", caption = "This is the basemean column of our proseq \n DESeq2 results. I have shown the frequency of genes that \n have a particular basemean score across all samples. \n This histogram is showing the range where most genes have a basemean between \n 0 and 2k")
+
+
+```
+
+
+
+
+
+# checking how to pull the coordinates from the genes
+
+```{r}
+
+# using the package biomart
+
+library(biomaRt)
+
+# checking a list of ensembl from biomart
+listEnsembl()
+
+# now connecting to the database and the dataset to get the genes
+
+ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+ensembl
+
+
+# getting the attributes
+
+attributes = listAttributes(ensembl)
+attributes[1:5,]
+
+filters = listFilters(ensembl)
+filters[1:5,]
+
+
+my_transcript_attributes = searchAttributes(mart = ensembl, pattern = "ensembl_transcript.*id$")
+
+
+# now we need to build a query and get the data
+
+my_transcript_filters = searchFilters(mart = ensembl, pattern = "ensembl_transcript.*id$")
+
+
+# I want my values to be based on the chromosome_name filter. I only want chromosomes 1 to 22 with X and y chr also, maybe MT
+
+chr_values = c(1:22, "X", "Y")
+
+my_hg38_biomart_transcript_coords = getBM(mart = ensembl, attributes = c("chromosome_name", "start_position", "end_position", "ensembl_transcript_id", "hgnc_symbol"), filters = "chromosome_name" , values = chr_values)
+```
+
+
+
+```{r}
+
+
+
+# now to examine the table 
+my_hg38_biomart_transcript_coords$chromosome_name = paste("chr",my_hg38_biomart_transcript_coords$chromosome_name, sep = "")
+
+my_hg38_biomart_transcript_coords
+
+# I want to find all the coordinates for my up genes
+
+coord_for_up_genes = my_hg38_biomart_transcript_coords[my_hg38_biomart_transcript_coords$ensembl_transcript_id %in% up_regulated_proseq_genes$ID, ] 
+
+ordered_coord_for_up_genes =coord_for_up_genes[order(coord_for_up_genes$chromosome_name, coord_for_up_genes$start_position, decreasing = FALSE),]
+
+
+ordered_coord_for_up_genes
+
+
+coord_for_down_genes = my_hg38_biomart_transcript_coords[ my_hg38_biomart_transcript_coords$ensembl_transcript_id %in% down_regulated_proseq_genes$ID , ]
+
+ordered_coord_for_down_genes = coord_for_down_genes[order(coord_for_down_genes$chromosome_name, coord_for_down_genes$start_position, decreasing = FALSE),]
+
+ordered_coord_for_down_genes
+
+# now for the unchanging gene list
+
+coord_for_unchanging_genes = my_hg38_biomart_transcript_coords[my_hg38_biomart_transcript_coords$ensembl_transcript_id %in% non_changing_proseq_genes$ID,]
+
+ordered_coord_for_unchanging_genes = coord_for_unchanging_genes[order(coord_for_unchanging_genes$chromosome_name, coord_for_unchanging_genes$start_position, decreasing = FALSE),]
+
+
+ordered_coord_for_unchanging_genes
+
+# but i have to get the coordinates for the NR_ and NM_ ID's also in up, down, and unchanging genes also
+
+
+# now doing dyplr
+#filter(my_hg38_biomart_transcript_coords, ensembl_transcript_id %in% up_regulated_proseq_genes$ID)
+
+
+# now adding the coordinates to the correct gene in the up down and unchanging gene lists 
+
+
+
+```
+
+
+# merge the up genes deseq2 results with the coordinates of up genes by the transcript_id
+
+```{r}
+
+# renaming the column name from ID to transcript_id so i can merge
+up_regulated_proseq_genes = up_regulated_proseq_genes %>% rename( "ensembl_transcript_id" = "ID")
+
+up_regulated_proseq_genes
+
+up_genes_with_coordinates = merge(ordered_coord_for_up_genes, up_regulated_proseq_genes, by = "ensembl_transcript_id") 
+
+
+new_up_genes_with_coord = up_genes_with_coordinates %>% dplyr::select(2:4, ensembl_transcript_id, everything())
+
+new_up_genes_with_coord
+
+# now for the down coordinates
+down_regulated_proseq_genes = down_regulated_proseq_genes %>% rename( "ensembl_transcript_id" = "ID")
+
+down_genes_with_coordinates = merge(ordered_coord_for_down_genes, down_regulated_proseq_genes, by = "ensembl_transcript_id") 
+
+new_down_genes_with_coord = down_genes_with_coordinates %>% dplyr::select(2:4, ensembl_transcript_id, everything())
+new_down_genes_with_coord
+
+# now for the unchanging coordinates 
+
+non_changing_proseq_genes = non_changing_proseq_genes %>% rename( "ensembl_transcript_id" = "ID")
+
+non_changing_genes_with_coordinates = merge(ordered_coord_for_unchanging_genes, non_changing_proseq_genes, by = "ensembl_transcript_id") 
+
+library(dplyr)
+new_non_changing_genes_with_coord = non_changing_genes_with_coordinates %>% dplyr::select(2:4, ensembl_transcript_id, everything())
+
+new_non_changing_genes_with_coord
+```
+
+
+# now making the files that contain up, down, unchanging genes/transcripts with the coordinates
+
+```{r}
+
+# order the files by chr name and start first
+
+ordered_new_up_genes = new_up_genes_with_coord[order(new_up_genes_with_coord$chromosome_name, new_up_genes_with_coord$start_position, decreasing = FALSE),]
+
+ordered_new_down_genes = new_down_genes_with_coord[order(new_down_genes_with_coord$chromosome_name, new_down_genes_with_coord$start_position, decreasing = FALSE),]
+
+ordered_new_unchanging_genes = new_non_changing_genes_with_coord[order(new_non_changing_genes_with_coord$chromosome_name, new_non_changing_genes_with_coord$start_position, decreasing = FALSE),]
+
+
+
+write_tsv(ordered_new_up_genes, file = "./proseq_data/proseq_up_genes_with_coord.bed", col_names = FALSE )
+
+write_tsv(ordered_new_down_genes, file = "./proseq_data/proseq_down_genes_with_coord.bed", col_names = FALSE )
+
+write_tsv(ordered_new_unchanging_genes, file = "./proseq_data/proseq_unchanging_genes_with_coord.bed", col_names = FALSE )
+
+
+#new_up_genes_with_coord
+
+# now making the changing proseq file that has basemean 
+#write_tsv(ordered_new_up_genes, file = "./proseq_data/proseq_up_genes_basemean_matched_with_coord.bed", col_names = FALSE )
+
+#write_tsv(ordered_new_down_genes, file = "./proseq_data/proseq_down_genes_basemean_matched_with_coord.bed", col_names = FALSE )
+
+#write_tsv(ordered_new_unchanging_genes, file = "./proseq_data/proseq_unchanging_genes_basemean_matched_with_coord.bed", col_names = FALSE )
+
+```
+
+
+# now making a table showing how many genes in each of the combinations normal and proseq up genes for up, down, unchanging peaks
+
+```{r}
+
+down_peak_norm_up_gene = as.data.frame(read_table('./intersect_peaks_in_genes/closest_norm_up_genes_to_down_peaks.bed', col_names = FALSE))
+up_peak_norm_up_gene = as.data.frame(read_table('./intersect_peaks_in_genes/closest_norm_up_genes_to_up_peaks.bed', col_names = FALSE))
+unchanging_peak_norm_up_gene = as.data.frame(read_table('./intersect_peaks_in_genes/closest_norm_up_genes_to_unchanging_peaks.bed', col_names = FALSE))
+
+
+num_genes_close_to_down_peaks = length(down_peak_norm_up_gene[,1])
+num_genes_close_to_up_peaks = length(up_peak_norm_up_gene[,1])
+num_genes_close_to_unchanging_peaks = length(unchanging_peak_norm_up_gene[,1])
+
+
+df_normal_genes_close_to_peaks = DataFrame(down_peaks = num_genes_close_to_down_peaks, up_peaks = num_genes_close_to_up_peaks, unchanging_peaks = num_genes_close_to_unchanging_peaks, row.names = "up_normal_genes")
+df_normal_genes_close_to_peaks
+
+# now for the proseq genes
+
+down_peak_proseq_up_gene = as.data.frame(read_table('./intersect_peaks_in_genes/closest_up_proseq_gene_down_peaks.bed', col_names = FALSE))
+up_peak_proseq_up_gene = as.data.frame(read_table('./intersect_peaks_in_genes/closest_up_proseq_gene_up_peaks.bed', col_names = FALSE))
+unchanging_peak_proseq_up_gene = as.data.frame(read_table('./intersect_peaks_in_genes/closest_up_proseq_gene_unchanging_peaks.bed', col_names = FALSE))
+
+
+num_proseq_close_to_down_peaks = length(down_peak_proseq_up_gene[,1])
+num_proseq_close_to_up_peaks = length(up_peak_proseq_up_gene[,1])
+num_proseq_close_to_unchanging_peaks = length(unchanging_peak_proseq_up_gene[,1])
+
+df_proseq_genes_close_to_peaks = DataFrame(down_peaks = num_proseq_close_to_down_peaks, up_peaks = num_proseq_close_to_up_peaks, unchanging_peaks = num_proseq_close_to_unchanging_peaks, row.names = "up_proseq_transcripts")
+
+df_proseq_genes_close_to_peaks
+
+
+df_normal_vs_proseq_up_genes_by_peaks = rbind(df_normal_genes_close_to_peaks,df_proseq_genes_close_to_peaks )
+
+df_normal_vs_proseq_up_genes_by_peaks
+
+```
+

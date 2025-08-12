@@ -1,0 +1,46 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+# testing plot
+
+```{r}
+
+
+
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# 1) Read in each file, grabbing peak name and AUC (col 4)
+scrm <- read_tsv("scrm_H3k27me3_r1_50kb_auc.tab",   col_names = FALSE) %>% 
+  select(peak = X1, sum = X4) %>% 
+  mutate(condition = "scrm")
+
+h1low <- read_tsv("H1low_H3k27me3_r1_50kb_auc.tab", col_names = FALSE) %>% 
+  select(peak = X1, sum = X4) %>% 
+  mutate(condition = "h1low")
+
+# 2) Combine into one data frame
+df <- bind_rows(scrm, h1low)
+
+# 3) Make a side-by-side bar plot
+ggplot(df %>% filter(peak %in% paste0("peak", 1:20)), aes(x = peak, y = sum, fill = condition)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  labs(
+    x     = "Peak",
+    y     = "AUC (sum of signal)",
+    title = "Per-peak AUC in scrm vs. H1low"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+

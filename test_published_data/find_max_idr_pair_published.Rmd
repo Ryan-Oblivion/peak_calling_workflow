@@ -426,7 +426,7 @@ head(countMatDiff)
   resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
   ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
     labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
-    theme(plot.caption = element_text(size = 30, face = "bold"))+
+    theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
     scale_colour_manual(values=c("red", "darkgrey", "pink"))+
     scale_x_continuous(trans='log10')+
     ylim(c(min(-max(resLFC$log2FoldChange),min(resLFC$log2FoldChange)), max(max(resLFC$log2FoldChange),-min(resLFC$log2FoldChange))))+
@@ -447,10 +447,10 @@ head(countMatDiff)
   
   
   volcano_plot_removed_reps = EnhancedVolcano(resLFC,
-                  lab = rownames(resLFC),
+                  lab = rownames(resLFC), 
                   title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
                   x = 'log2FoldChange', FCcutoff = 1,
-                  y = 'padj', pCutoff = 0.05, labSize = 3, 
+                  y = 'padj', pCutoff = 0.05, labSize = 0 # if I make lab size 0 instead of 3 I can remove the rownames from being plotted over the points
                   
                   )
   
@@ -485,6 +485,7 @@ percentVar <- round(100 * attr(pcaData, "percentVar"))
 
 pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
   ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+  theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
   geom_point(size=3) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
   ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
@@ -513,6 +514,7 @@ pcaData2
 percentVar <- round(100 * attr(pcaData2, "percentVar"))
 pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
   ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+  theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
   geom_point(size=3) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
   ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
@@ -536,6 +538,8 @@ pca_plot_vst
 
 ```
 
+
+
 # getting the up and down reg peaklist
 ```{r}
 
@@ -543,6 +547,7 @@ pca_plot_vst
 # but it is subtracting 1 from the start coordinates before making the bed file
 # I will have to fix later but currently this is giving me what I want
 
+# I shouldnt have this issue not that i used import on the peak files
 rtracklayer::export.bed(row.names(up_reg), con = "up_regulated_peaks.bed")
 
 rtracklayer::export.bed(row.names(down_reg), con = "down_regulated_peaks.bed")
@@ -728,6 +733,66 @@ ggsave("violin_plot_10kb_merged_lengths_no_cutoff.png", plot = violin_plot_no_cu
 
 print(violin_plot_no_cutoff)
 ```
+
+
+# now I want to load the diff peaks in genes files and make a histogram to see their counts
+
+```{r}
+
+diff_peaks_in_up_genes = read_tsv("../intersect_peaks_in_genes/diff_peaks_in_up_genes_20kb.bed", col_names = FALSE)
+head(diff_peaks_in_up_genes)
+
+diff_peaks_in_down_genes = read_tsv("../intersect_peaks_in_genes/diff_peaks_in_down_genes_20kb.bed", col_names = FALSE)
+
+
+diff_peaks_in_nochange_genes = read_tsv("../intersect_peaks_in_genes/diff_peaks_in_nochange_genes_20kb.bed", col_names = FALSE)
+
+
+df_diff_peaks_up_genes = DataFrame(diff_peaks_up_genes = diff_peaks_in_up_genes$X7)
+up_peaks_in_up_genes_num = length(which("up_regulated_peaks.bed" == df_diff_peaks_up_genes$diff_peaks_up_genes))
+down_peaks_in_up_genes_num = length(which("down_regulated_peaks.bed" == df_diff_peaks_up_genes$diff_peaks_up_genes))
+
+
+
+head(df_diff_peaks_up_genes, 20) 
+ 
+df_diff_peaks_down_genes = DataFrame(diff_peaks_down_genes = diff_peaks_in_down_genes$X7)
+up_peaks_in_down_genes_num = length(which("up_regulated_peaks.bed" == df_diff_peaks_down_genes$diff_peaks_down_genes))
+down_peaks_in_down_genes_num = length(which("down_regulated_peaks.bed" == df_diff_peaks_down_genes$diff_peaks_down_genes))
+
+df_diff_peaks_nochange_genes = DataFrame(diff_peaks_nochange_genes = diff_peaks_in_nochange_genes$X7)
+up_peaks_in_nochange_genes_num = length(which("up_regulated_peaks.bed" == df_diff_peaks_nochange_genes$diff_peaks_nochange_genes))
+down_peaks_in_nochange_genes_num = length(which("down_regulated_peaks.bed" == df_diff_peaks_nochange_genes$diff_peaks_nochange_genes))
+
+
+peaks_in_genes_df = data.frame(up_peaks_in_up_genes_num, down_peaks_in_up_genes_num, up_peaks_in_down_genes_num, down_peaks_in_down_genes_num, up_peaks_in_nochange_genes_num, down_peaks_in_nochange_genes_num)
+
+peaks_in_genes_df
+
+long_peaks_in_genes_df = pivot_longer(peaks_in_genes_df, cols = everything(), names_to = "peaks_genes_category", values_to = "counts")
+
+
+
+diff_peaks_in_genes_plot = ggplot(long_peaks_in_genes_df, aes(peaks_genes_category, counts))+
+  geom_count()+
+  theme(axis.text.x = element_text(angle = 75 , hjust = 1))+
+  scale_y_continuous(labels = scales::label_number())
+ggsave("../intersect_peaks_in_genes/counts_of_diff_peaks_in_diff_genes.png", diff_peaks_in_genes_plot)
+
+
+# to view it here
+ggplot(long_peaks_in_genes_df, aes(peaks_genes_category, counts))+
+  geom_count()+
+  theme(axis.text.x = element_text(angle = 75, hjust = 1))+
+  scale_y_continuous(labels = scales::label_number())
+#ggplot(df_diff_peaks_up_genes, aes("diff_peaks_up_genes"))+
+ # geom_histogram(binwidth = 5)
+
+
+```
+
+
+
 
 
 
