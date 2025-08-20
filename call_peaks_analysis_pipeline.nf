@@ -45,9 +45,13 @@ wtvslownochange = Channel.value(params.wtvs_lownochanging)
 
 // I want a multiqc plot of the duplicate levels for the k27 data
 
-params.dups_log = file('./dup_info/*_dups.log')
-dups_log_ch = Channel.fromPath(params.dups_log)
-
+if (params.dups_log) {
+    params.dups_log = file('./dup_info/*_dups.log')
+    dups_log_ch = Channel.fromPath(params.dups_log)
+}
+else {
+    dups_log_ch = Channel.empty()
+}
 
 
 params.meth_bed_file = file('/lustre/fs4/home/rjohnson/pipelines/hera_pipeline/results_SE/bl_filt_bed/bed_graphs_deeptools/control_CpG_r1r2r3_fp_filt_filt_coor_sorted_BL_filt_sort2_normalized_cpm.bed')
@@ -233,7 +237,7 @@ workflow {
 
     // now putting the methylation bed file in the workflow with the up genes and down genes
 
-    meth_enrichment_analysis_workflow(meth_bed_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch, ref_genome_size_ch)
+    //meth_enrichment_analysis_workflow(meth_bed_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch, ref_genome_size_ch)
 
 
 

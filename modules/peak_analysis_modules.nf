@@ -381,6 +381,7 @@ process plot_histone_at_genes_process {
 process macs2_call_peaks_process_both {
 
     //debug true
+    errorStrategy 'ignore'
 
     label 'normal_big_resources'
 
