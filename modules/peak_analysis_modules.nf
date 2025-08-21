@@ -86,19 +86,21 @@ process make_alignment_bw_process_control {
         --bam \$bam \
         --outFileName \$bigwig_out_name \
         --outFileFormat "bigwig" \
-        --scaleFactor 1 
+        --scaleFactor 1 \
+        --extendReads
 
 
         # now also making the cpm bigwig
 
-        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_normalized.bigwig"
+        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_extendreads_normalized.bigwig"
         
         bamCoverage \
         --bam \$bam \
         --outFileName \$cpm_bigwig_out_name \
         --outFileFormat "bigwig" \
         --scaleFactor 1 \
-        --normalizeUsing CPM
+        --normalizeUsing CPM \
+        --extendReads
 
     done
 
@@ -190,19 +192,21 @@ process make_alignment_bw_process_wt {
         --bam \$bam \
         --outFileName \$bigwig_out_name \
         --outFileFormat "bigwig" \
-        --scaleFactor 1 
+        --scaleFactor 1 \
+        --extendReads
 
 
         # now also making the cpm bigwig
 
-        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_normalized.bigwig"
+        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_extendreads_normalized.bigwig"
         
         bamCoverage \
         --bam \$bam \
         --outFileName \$cpm_bigwig_out_name \
         --outFileFormat "bigwig" \
         --scaleFactor 1 \
-        --normalizeUsing CPM
+        --normalizeUsing CPM \
+        --extendReads
 
     done
 
@@ -971,6 +975,9 @@ process find_diff_peaks_R_process {
     publishDir "./nextflow_R_script_outputs/${idr_histone}/", mode: 'copy', pattern: '*'
 
     label 'normal_big_resources'
+
+    // this will be for any experiments that ended up creating two condition concat peak files that have zero peaks
+    errorStrategy 'ignore'
 
     //debug true
 
