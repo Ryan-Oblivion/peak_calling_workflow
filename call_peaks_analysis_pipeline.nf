@@ -213,7 +213,7 @@ workflow {
     down_peaks_list_true = mk_bw_call_peaks_workflow.out.down_peaks_list_ch
     unchanging_peaks_list_true = mk_bw_call_peaks_workflow.out.unchanging_peaks_list_ch
 
-    idr_merged_peaks = mk_bw_call_peaks_workflow.out.group_10kb_concat_idr_peaks_ch
+    idr_merged_peaks = mk_bw_call_peaks_workflow.out.group_concat_idr_peaks_ch
 
     // adding a workflow here to get the differential peaks
 

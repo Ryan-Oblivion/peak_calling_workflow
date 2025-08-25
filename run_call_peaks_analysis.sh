@@ -41,6 +41,9 @@ conda activate nextflow_three
 
 # IMPORTANT for making sure deseq2 puts your condition of interest (treatment condition) first in the experiment design formula
 # --treatment_name : for your conditions please enter the contition treatment name with the same capitalization as what is seen as your input file name. This will let deseq2 have the treatment condition as the target factor
+# --masterPeak100kb false : add this parameter but make it true if you want the peaks to ber merged by this amount; default is false, but one needs to be selected
+# --masterPeak10kb false : add this parameter but make it true if you want the peaks to ber merged by this amount; default is false, but one needs to be selected
+# --masterPeak30kb false : add this parameter but make it true if you want the peaks to ber merged by this amount; default is false, but one needs to be selected
 ##########################################
 
 nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
@@ -50,8 +53,23 @@ nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume 
 --dups_log './dup_info/*_dups.log' \
 --plot_idr 0.4 \
 --return_idr 0.4 \
---treatment_name 'H1low'
+--treatment_name 'H1low' \
+--masterPeak100kb
 
 # nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
 # --plot_idr 0.4 \
 # --return_idr 0.4
+
+
+########################################## end seq data ##########################################
+# nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
+# --control_bams 'bam_files/H1low_*{bam,bam.bai}' \
+# --wt_bams 'bam_files/Scrm_*{bam,bam.bai}' \
+# --make_html_report true \
+# --dups_log './dup_info/*_dups.log' \
+# --plot_idr 0.4 \
+# --return_idr 0.4 \
+# --treatment_name 'H1low'\
+# --masterPeak100kb
+
+####################################################################################

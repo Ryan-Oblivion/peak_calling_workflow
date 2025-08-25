@@ -275,29 +275,40 @@ workflow mk_bw_call_peaks_workflow {
 
     merge_concat_peaks_process(group_concat_idr_peaks_ch)
 
-    first_10kb_peakfile = merge_concat_peaks_process.out.first_10kb_merged_peak
-    second_10kb_peakfile = merge_concat_peaks_process.out.second_10kb_merged_peak
+    // not using 10kb anymore, better to use 100kb merged peaks
+    // first_10kb_peakfile = merge_concat_peaks_process.out.first_10kb_merged_peak
+    // second_10kb_peakfile = merge_concat_peaks_process.out.second_10kb_merged_peak
+
+    // NOT DOING THIS ANYMORE. I merged the condition peaks in the process and that keeps peaks from chromosomes that were missing peaks
+    //first_10kb_peakfile = merge_concat_peaks_process.out.first_100kb_merged_peak
+    //second_10kb_peakfile = merge_concat_peaks_process.out.second_100kb_merged_peak
+
+    concat_master_peak_10kb = merge_concat_peaks_process.out.concat_10kb_merged_peak
+    concat_master_peak_30kb = merge_concat_peaks_process.out.concat_30kb_merged_peak
+    concat_master_peak_100kb = merge_concat_peaks_process.out.concat_100kb_merged_peak
     //first_10kb_peakfile.view()
 
-    both_10kb_peakfiles = first_10kb_peakfile.concat(second_10kb_peakfile)
+    // this says 10kb merged but it is really whatever is used above
+    //both_10kb_peakfiles = first_10kb_peakfile.concat(second_10kb_peakfile)
 
-    both_10kb_peakfiles
-        .map { file -> 
-        
-        file_basename = file.baseName
-        file_name = file.name
+    // if (params.masterPeak100kb) {
+    //     concat_master_peak_100kb
+    //         .map { file -> 
+            
+    //         file_basename = file.baseName
+    //         file_name = file.name
 
-        tokens = file_basename.tokenize("_")
+    //         tokens = file_basename.tokenize("_")
 
-        condition_label = tokens[2]
-        exper_type = tokens[3]
+    //         condition_label = tokens[2]
+    //         exper_type = tokens[3]
 
-        tuple(condition_label, exper_type, file_name, file)
+    //         tuple(condition_label, exper_type, file_name, file)
 
-        }
-        .groupTuple(by:1, sort:true)
-        .set{group_10kb_concat_idr_peaks_ch}
-
+    //         }
+    //         .groupTuple(by:1, sort:true)
+    //         .set{group_10kb_concat_idr_peaks_ch}
+    // }
 
     //group_10kb_concat_idr_peaks_ch = merge_concat_peaks_process.out.merged_10kb_concat_peaks
     //group_10kb_concat_idr_peaks_ch.view()
@@ -358,8 +369,80 @@ workflow mk_bw_call_peaks_workflow {
     // h3k27me3_idr_peaks_ch.view()
     // h3k27me3_bams_ch.view()
 
+    if (params.masterPeak100kb) {
+        concat_master_peak_100kb
+            .map { file -> 
+            
+            file_basename = file.baseName
+            file_name = file.name
+
+            tokens = file_basename.tokenize("_")
+
+            condition_label = tokens[2]
+            exper_type = tokens[3]
+            merge_dist = tokens[4]
+
+            tuple(condition_label, exper_type, merge_dist, file_name, file)
+
+            }
+            //.groupTuple(by:1, sort:true)
+            .set{group_concat_idr_peaks_ch}
+
+        
+    }
+    else if (params.masterPeak10kb) {
+        concat_master_peak_10kb
+            .map { file -> 
+            
+            file_basename = file.baseName
+            file_name = file.name
+
+            tokens = file_basename.tokenize("_")
+
+            condition_label = tokens[2]
+            exper_type = tokens[3]
+            merge_dist = tokens[4]
+
+            tuple(condition_label, exper_type, merge_dist, file_name, file)
+
+            }
+            //.groupTuple(by:1, sort:true)
+            .set{group_concat_idr_peaks_ch}
+
+        
+    }
+    else if (params.masterPeak30kb) {
+        concat_master_peak_30kb
+            .map { file -> 
+            
+            file_basename = file.baseName
+            file_name = file.name
+
+            tokens = file_basename.tokenize("_")
+
+            condition_label = tokens[2]
+            exper_type = tokens[3]
+            merge_dist = tokens[4]
+
+            tuple(condition_label, exper_type, merge_dist, file_name, file)
+
+            }
+            //.groupTuple(by:1, sort:true)
+            .set{group_concat_idr_peaks_ch}
+
+        
+    }
+    else {
+        onError:
+        throw new IllegalArgumentException("Error: Please put one of the following parameters in CLI when running this pipeline: masterPeak10kb, masterPeak30kb, masterPeak100kb")
+        
+    }
+
+
+    find_diff_peaks_R_process(group_concat_idr_peaks_ch, all_bams_paths)
+
     // using the 10kb merged idr peaks
-    find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
+    //find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
 
     diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
     //diff_peaks_tuple.view()
@@ -478,7 +561,7 @@ workflow mk_bw_call_peaks_workflow {
     broadpeaks_ch
     control_meta_cpm_bw_ch
     wt_meta_cpm_bw_ch
-    group_10kb_concat_idr_peaks_ch
+    group_concat_idr_peaks_ch
     master_peaks_list_ch
     up_peaks_list_ch
     down_peaks_list_ch
@@ -1263,7 +1346,7 @@ workflow get_roadmap_histone_enrichment_workflow {
     // checking how the idr_merged_peaks look
     idr_merged_peaks
         //.view{peaks -> "these should be the idr merged peaks for each condition: $peaks"}
-        .map {condition, exper_type, file_name, path ->
+        .map {condition, exper_type, merge_dist, file_name, path ->
         
         path
         }

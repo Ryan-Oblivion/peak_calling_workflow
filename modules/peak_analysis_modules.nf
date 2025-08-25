@@ -661,7 +661,7 @@ process merge_concat_peaks_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
 
-    publishDir "idr_results/merged_10kb_peaks", mode: 'copy', pattern: "*.bed"
+    publishDir "idr_results/merged_concat_peaks", mode: 'copy', pattern: "*.bed"
 
     label 'normal_big_resources'
 
@@ -684,6 +684,20 @@ process merge_concat_peaks_process {
 
     path("${output_10kb_merged_second_mPeak}"), emit: second_10kb_merged_peak
 
+    path("${output_30kb_merged_first_mPeak}"), emit: first_30kb_merged_peak
+
+    path("${output_30kb_merged_second_mPeak}"), emit: second_30kb_merged_peak
+
+    path("${output_100kb_merged_first_mPeak}"), emit: first_100kb_merged_peak
+
+    path("${output_100kb_merged_second_mPeak}"), emit: second_100kb_merged_peak
+
+    path("${concat_10kb_merged_both_mPeak}"), emit: concat_10kb_merged_peak
+
+    path("${concat_30kb_merged_both_mPeak}"), emit: concat_30kb_merged_peak
+
+    path("${concat_100kb_merged_both_mPeak}"), emit: concat_100kb_merged_peak
+
 
 
     script:
@@ -695,10 +709,20 @@ process merge_concat_peaks_process {
 
     println(first_mPeak)
     println(second_mPeak)
+
     
     
     output_10kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
     output_10kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
+    concat_10kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_10kb_merged.bed"
+
+    output_30kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
+    output_30kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
+    concat_30kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_30kb_merged.bed"
+
+    output_100kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
+    output_100kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
+    concat_100kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_100kb_merged.bed"
 
 
     //list_of_10kb_merged_names =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
@@ -732,6 +756,43 @@ process merge_concat_peaks_process {
     -i sorted_second_peak.broadPeak \
     -d 10000 \
     > ${output_10kb_merged_second_mPeak}
+
+    # concatenating 10kb
+    cat ${output_10kb_merged_first_mPeak} ${output_10kb_merged_second_mPeak} > ${concat_10kb_merged_both_mPeak}
+
+
+    # merging the first concat peaks by 30kb
+    bedtools merge \
+    -i sorted_first_peak.broadPeak \
+    -d 30000 \
+    > ${output_30kb_merged_first_mPeak}
+
+
+    # merging the second concat peaks by 30kb
+    bedtools merge \
+    -i sorted_second_peak.broadPeak \
+    -d 30000 \
+    > ${output_30kb_merged_second_mPeak}
+
+    # concatenating 30kb
+    cat ${output_30kb_merged_first_mPeak} ${output_30kb_merged_second_mPeak} > ${concat_30kb_merged_both_mPeak}
+
+
+    # merging the first concat peaks by 100kb
+    bedtools merge \
+    -i sorted_first_peak.broadPeak \
+    -d 100000 \
+    > ${output_100kb_merged_first_mPeak}
+
+
+    # merging the second concat peaks by 100kb
+    bedtools merge \
+    -i sorted_second_peak.broadPeak \
+    -d 100000 \
+    > ${output_100kb_merged_second_mPeak}
+
+    # concatenating 100kb
+    cat ${output_100kb_merged_first_mPeak} ${output_100kb_merged_second_mPeak} > ${concat_100kb_merged_both_mPeak}
 
 
     """
@@ -976,14 +1037,11 @@ process find_diff_peaks_R_process {
 
     label 'normal_big_resources'
 
-    // this will be for any experiments that ended up creating two condition concat peak files that have zero peaks
-    errorStrategy 'ignore'
-
     //debug true
 
     input:
 
-    tuple val(idr_condition), val(idr_histone), val(idr_peak_name), path(idr_peak_path)
+    tuple val(idr_condition), val(idr_histone), val(merge_dist), val(idr_peak_name), path(idr_peak_path)
 
     // these are all experiment bams.
     // i need to use the histone label, and condition label to get the correct bams in this process
@@ -1008,10 +1066,11 @@ process find_diff_peaks_R_process {
 
     script:
 
-    full_condition = "${idr_condition[0]}vs${idr_condition[1]}"
+    //full_condition = "${idr_condition[0]}vs${idr_condition[1]}"
+    full_condition = "${idr_condition}"
 
-    first_idr_peak = idr_peak_name[0]
-    second_idr_peak = idr_peak_name[1]
+    //first_idr_peak = idr_peak_name[0]
+    //second_idr_peak = idr_peak_name[1]
 
     bam_name_list = bam_path_list.collect { "\"${it.getName()}\"" }.join(',')
 
@@ -1019,7 +1078,7 @@ process find_diff_peaks_R_process {
 
     // need the output file name for masterpeak export
 
-    master_peak_export_out = "masterpeak_${idr_histone}_10kbmerged_${idr_condition[0]}_${idr_condition[1]}_${idr_histone}.bed"
+    master_peak_export_out = "masterpeak_${idr_histone}_${merge_dist}_maxgap_${idr_condition}_${idr_histone}.bed"
 
     up_peaks_out = "up_${idr_histone}_regulated_peaks.bed"
     down_peaks_out = "down_${idr_histone}_regulated_peaks.bed"
@@ -1046,33 +1105,62 @@ process find_diff_peaks_R_process {
     library(chromVAR)
     library(tidyr)
     library(EnhancedVolcano)
+    library(readr)
 
     print(dir())
     # making the master peak genomic ranges object
     
-    mPeak = GRanges()
+    #mPeak = GRanges()
 
-    for (peakfile in c("./${first_idr_peak}", "./${second_idr_peak}")) {
+    #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
     
         #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
     
         #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
     
-        gr_object = rtracklayer::import(peakfile, format = "BED")
+        #gr_object = rtracklayer::import(peakfile, format = "BED")
 
-        mPeak = append(mPeak, gr_object)
-    }
+        #mPeak = append(mPeak, gr_object)
+    #}
+
+    #peaktable = read.table("\${idr_peak_name}", header = FALSE)
+    #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+
+    mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
 
     # making sure there are no redundant peaks
-    masterPeak = reduce(mPeak)
-    print(masterPeak)
+    # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
+    
+    
+    #masterPeak2 = reduce(mPeak)
+
+    # using resize to extnd regions
+    extended_master_peak = resize(mPeak, width = width(mPeak)+100000, fix = "center")
+
+    # before trimming i need to add the sequence lengths of the correct genome
+    # will have to find a way to automate this step for other genomes
+
+    library(BSgenome.Hsapiens.UCSC.hg38)
+    #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
+    #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
+    #trimmed_master_peak = trim(extended_master_peak)
+    #masterPeak_beta = reduce(trimmed_master_peak)
+
+    masterPeak_beta = reduce(extended_master_peak)
+    # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+    
+    new_peak_size = width(masterPeak_beta)-100000
+    masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+    
+    #print(masterPeak)
 
     # now I want to keep the standard chromosomes
-    seqnames_to_keep =masterPeak@seqnames@values[1:23]
+    #seqnames_to_keep =masterPeak@seqnames@values[1:23]
 
-    masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+    #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
 
     # hoping to export my GRanges object master peaks to a bed file
+    #write_tsv("\${master_peak_export_out}")
     rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
 
     
@@ -1206,7 +1294,7 @@ process find_diff_peaks_R_process {
     # I want to get the idr threshold and use that as input for the file names and other things
 
     #peak_file = basename(peaklist[[1]])
-    peak_file = basename("./${first_idr_peak}")
+    peak_file = basename("./${idr_peak_name}")
 
     idr_used = strsplit(peak_file, split = "_")[[1]][10]
     idr_used
