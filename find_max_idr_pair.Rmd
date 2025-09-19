@@ -48,7 +48,7 @@ best_scrm_idr = scrm_peak_counts[which.max(scrm_peak_counts$peak_counts),]$file
 # I will create the master peak file
 
 #peaklist = list(best_hlow_idr, best_scrm_idr )
-peaklist = list('./idr_results/H3k27me3/H1low/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak', './idr_results/H3k27me3/Scrm/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak')
+#peaklist = list('./idr_results/H3k27me3/H1low/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak', './idr_results/H3k27me3/Scrm/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak')
 
 #peaklist = list('./idr_results/H3k27me3/H1low/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak', './idr_results/H3k27me3/published/concat_IDR_published_H3k27me3_r1_vs_r2_vs_null_0.4_pairs.broadPeak')
 
@@ -62,28 +62,45 @@ library(tidyr)
 library(EnhancedVolcano)
 
 # making the master peak genomic ranges object
-mPeak = GRanges()
-
-for (peakfile in peaklist) {
-  
-  peaktable = read.table(peakfile, header = FALSE, sep = "\t")
-  
-  gr_object = GRanges(seqnames = peaktable$V1, IRanges(start = peaktable$V2, end = peaktable$V3), strand = "*" )
-  
-  mPeak = append(mPeak, gr_object)
-}
+# mPeak = GRanges()
+# 
+# for (peakfile in peaklist) {
+#   
+#   peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+#   
+#   gr_object = GRanges(seqnames = peaktable$V1, IRanges(start = peaktable$V2, end = peaktable$V3), strand = "*" )
+#   
+#   mPeak = append(mPeak, gr_object)
+# }
 
 # making sure there are no redundant peaks
-masterPeak = reduce(mPeak)
+#masterPeak = reduce(mPeak)
 
 
 
+#new method used in the pipeline
+mPeak = rtracklayer::import('./idr_results/merged_concat_peaks/concat_master_bothConditions_H3K27me3_100kb_merged.bed', format = "BED")
+
+# using resize to extnd regions
+extended_master_peak = resize(mPeak, width = width(mPeak)+100000, fix = "center")
+
+# before trimming i need to add the sequence lengths of the correct genome
+# will have to find a way to automate this step for other genomes
+
+
+masterPeak_beta = reduce(extended_master_peak)
+# now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+
+new_peak_size = width(masterPeak_beta)-100000
+masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+
+# by choosing the center of 100000 i will get 50kb on the left and right of a peak then the merged peak will have it reduced by the same amount
 
 ```
 
 ## Now do I use all of the bam files to get counts with the chromVAR get counts package or do I only use the 4 libraries that went into making the idr pair peak files?
 
-# this is me getting the correct bam files 
+# this is me getting the correct bam files, dont use this chunk
 ```{r}
 
 # now lets use chromVAR to load in the counts
@@ -166,10 +183,10 @@ for (x in scrm_bam_files) {
 
 ```{r}
 
-hlow_bam_files = list.files(path="./bam_files/", pattern="H1low.*H3k27me3.*bam$", full.names = TRUE )
+hlow_bam_files = list.files(path="./merged_bams/", pattern="H1lo.*H3K27me3.*bam$", full.names = TRUE )
 hlow_bam_files
 
-scrm_bam_files = list.files(path="./bam_files/", pattern="Scrm.*H3k27me3.*bam$", full.names = TRUE )
+scrm_bam_files = list.files(path="./merged_bams/", pattern="Scr.*H3K27me3.*bam$", full.names = TRUE )
 scrm_bam_files
 
 list_of_mBams = c(hlow_bam_files, scrm_bam_files)
@@ -260,6 +277,8 @@ condition_num = as.numeric(condition_counts)
 
 # now i can put both lists in to get back the experiment design
 condition_factor = factor(rep(condition_names, times=condition_num))
+# will need to relevel here 
+condition_factor = relevel(condition_factor, levels(condition_factor)[2])
 
 # repeating the above to have another column with type (replicates)
 type_counts = table(unlist(type_design))
@@ -322,16 +341,16 @@ head(countMatDiff)
   
   # finding the up and down regulated counts that pass the threshold
 
-  up_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange >= 2) ,]
+  up_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange >= 1) ,]
   total_up_reg = length(up_reg[,1])
   #total_up_reg
-  down_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange <= -2) ,]
+  down_reg = resLFC[which(resLFC$padj < 0.05 & resLFC$log2FoldChange <= -1) ,]
   total_down_reg = length(down_reg[,1])
   total_down_reg
   
-  resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=2, "|LFC| > 2 & padj < 0.05", "padj < 0.05" ))
+  resLFC$Label = ifelse(resLFC$padj > 0.05, "not significant", ifelse(abs(resLFC$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
   ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
-    labs(caption = paste("Up reg (green +2 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -2 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
+    labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
     theme(plot.caption = element_text(size = 15, face = "bold"))+
     scale_colour_manual(values=c("green", "red", "yellow"))+
     scale_x_continuous(trans='log10')+
@@ -341,34 +360,34 @@ head(countMatDiff)
   print(ma_plot_labeled)
   
   
-  pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_all_reps.png", sep = "_"), width = 10, height = 10)
+  #pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_all_reps.png", sep = "_"), width = 10, height = 10)
   
-  print(ma_plot_labeled)
-  dev.off()
+  #print(ma_plot_labeled)
+  #dev.off()
   
-  png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
-  
-  print(ma_plot_labeled)
-  dev.off()
+  # png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_all_reps.png", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  # 
+  # print(ma_plot_labeled)
+  # dev.off()
   
   
   volcano_plot_removed_reps = EnhancedVolcano(resLFC,
                   lab = rownames(resLFC),
                   title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
-                  x = 'log2FoldChange', FCcutoff = 2,
+                  x = 'log2FoldChange', FCcutoff = 1,
                   y = 'padj', pCutoff = 0.05, labSize = 3, 
                   
                   )
   
   print(volcano_plot_removed_reps)
   
-  png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_all_reps.pdf", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
-  print(volcano_plot_removed_reps)
-  dev.off()
+  # png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_all_reps.pdf", sep = "_"), width = 1000, height = 1000, antialias = "subpixel")
+  # print(volcano_plot_removed_reps)
+  # dev.off()
   
-  pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
-  print(volcano_plot_removed_reps)
-  dev.off()
+  # pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_all_reps.pdf", sep = "_"), width = 10, height = 10)
+  # print(volcano_plot_removed_reps)
+  # dev.off()
   
 
 
@@ -398,15 +417,15 @@ pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type
 #pca_plot
 name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "rlog.png", sep = "_")
 
-png(filename = name_for_rlog_png_file, width = 1000, height = 1000, antialias = "subpixel")
-print(pca_plot_rlog)
-dev.off()
+# png(filename = name_for_rlog_png_file, width = 1000, height = 1000, antialias = "subpixel")
+# print(pca_plot_rlog)
+# dev.off()
 
 name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "rlog.pdf", sep = "_")
 
-pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
-print(pca_plot_rlog)
-dev.off()
+# pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+# print(pca_plot_rlog)
+# dev.off()
 
 
 # testing with vst
@@ -427,17 +446,113 @@ pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type
 
 #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
 
-pdf(file = paste(experiment_design_name,"PCA_plot_IDR",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
-print(pca_plot_vst)
-dev.off()
+# pdf(file = paste(experiment_design_name,"PCA_plot_IDR",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+# print(pca_plot_vst)
+# dev.off()
 
-png(file = paste(experiment_design_name,"PCA_plot_IDR", idr_used,"vst_all_reps.png", sep = "_"), width = 1000, height = 1000)
-print(pca_plot_vst)
-dev.off()
+# png(file = paste(experiment_design_name,"PCA_plot_IDR", idr_used,"vst_all_reps.png", sep = "_"), width = 1000, height = 1000)
+# print(pca_plot_vst)
+# dev.off()
 
 #pca_plot_rlog
 
 #pca_plot_vst
+
+
+```
+
+
+
+```{r}
+# lets see if i can just use chipSeeker with the diff peaks variables 
+
+library(ChIPseeker)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+rtracklayer::export.bed(row.names(up_reg), con = "up_H3K27me3_peaks.bed")
+
+rtracklayer::export.bed(row.names(down_reg), con = "down_H3K27me3_peaks.bed")
+
+# now exporting the unchanging peaks
+
+rtracklayer::export.bed(row.names(unchanging_reg), con = "unchanging_H3K27me3_peaks.bed")
+
+# up_annotated_peaks = annotatePeak(peak= "./up_H3K27me3_peaks.bed", tssRegion = c(-5000, 5000))
+# 
+# down_annotated_peaks = annotatePeak(peak= "./down_H3K27me3_peaks.bed", tssRegion = c(-5000, 5000))
+
+# this will be the plotted up peaks
+# plotAnnoPie(down_annotated_peaks)
+# plotAnnoPie(up_annotated_peaks)
+
+
+# now to read in the peak files
+peak_files = c("./up_H3K27me3_peaks.bed", "./down_H3K27me3_peaks.bed", "./unchanging_H3K27me3_peaks.bed")
+up_peak_file = readPeakFile(peakfile = "./up_H3K27me3_peaks.bed")
+
+unchanging_peak_file = readPeakFile(peakfile = "./unchanging_H3K27me3_peaks.bed")
+unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+plotAnnoPie(up_annotated_peaks)
+
+down_peak_file = readPeakFile(peakfile = "./down_H3K27me3_peaks.bed")
+down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+plotAnnoPie(down_annotated_peaks)
+
+
+
+plotDistToTSS(down_annotated_peaks,
+              title="Distribution of H3K27me3 peaks\nrelative to TSS")
+
+
+# diff_peaks = GRanges()
+# 
+# # so i appended the two peak files to a granges list
+# diff_peaks = append(diff_peaks, up_peak_file)
+# diff_peaks = append(diff_peaks, down_peak_file)
+# 
+# reduce(diff_peaks)
+
+# peak_files = c("./up_H3K27me3_peaks.bed", "./down_H3K27me3_peaks.bed", "./unchanging_H3K27me3_peaks.bed")
+peak_files = c(up_peak_file = "./up_H3K27me3_peaks.bed", down_peak_file = "./down_H3K27me3_peaks.bed", unchanging_peak_file = "./unchanging_H3K27me3_peaks.bed")
+# this is using the hg38 as txdb
+annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+
+
+# now get the number of total annotated peaks
+down_annotated_df <- as.data.frame(down_annotated_peaks)
+num_down_annotated_peaks = count(down_annotated_df)[[1]]
+
+up_annotated_df <- as.data.frame(up_annotated_peaks)
+num_up_annotated_peaks = count(up_annotated_df)[[1]]
+
+unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
+num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
+
+# then plot with bar because it uses a ggplot object
+plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of peaks in Genomic Regions", subtitle = paste("Number of down peaks annotated ", num_down_annotated_peaks, "\nNumber of up peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging peaks annotated ", num_unchanging_annotated_peaks ) )
+
+vennpie(down_annotated_peaks)
+upsetplot(down_annotated_peaks, vennpie=TRUE)
+```
+
+
+```{r}
+
+# getting the number of peaks that fall in each feature
+down_annotated_df <- as.data.frame(down_annotated_peaks)
+
+count(down_annotated_df)[[1]]
+
+
+down_peak_promoters = down_annotated_df[grep("Promoter", down_annotated_df$annotation), ]
+num_of_down_peaks_in_promoters = count(down_peak_promoters)[[1]]
+num_of_down_peaks_in_promoters
 
 
 ```

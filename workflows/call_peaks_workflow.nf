@@ -28,7 +28,12 @@ include {
     plot_over_diff_cpg_regions_process;
     atac_enrich_counts_process;
     r_atac_enrich_plot_process;
-    get_atacPeaks_in_roadmapPeaks_process
+    get_atacPeaks_in_roadmapPeaks_process;
+    get_atacPeaks_in_genetss_process;
+    merge_bams_on_condition_process;
+    get_merged_bigwig_process;
+    atac_enrich_counts_2nd_version_process;
+    r_atac_enrich_plot_2nd_version_process
     // macs2_call_peaks_process_wt
     
 
@@ -199,266 +204,405 @@ workflow mk_bw_call_peaks_workflow {
     //chrom_size_ch
 
 
-    // now getting the channel for the broadpeaks and will have to emit it from the workflow and put into a new workflow to plot the bigwig signal onto the called broad peaks
 
-    broadpeaks_ch = macs2_call_peaks_process_both.out.broadpeaks
-    broadpeaks_ch_backup = macs2_call_peaks_process_both.out.broadpeaks
-    //broadpeaks_ch.view() // now got the peaks so time to emit this channel.
+    if (params.NarrowPeak_data) {
 
-    // okay, another thing to do is to use bedtools to merge peaks by 1kb, 2kb, and 5kb to see how they look
+        macspeaks_ch = macs2_call_peaks_process_both.out.narrow_peaks
 
-    merge_peaks_bedtools_process(broadpeaks_ch)
+        macspeaks_ch_backup = macs2_call_peaks_process_both.out.narrow_peaks
 
 
-
-
-    broadpeaks_ch_backup
-        .map{ peakpath -> 
-        
-        basename = peakpath.baseName
-        file_name = peakpath.name
-
-        tokens = basename.tokenize("_")
-
-        condition = tokens[0]
-        histone = tokens[1]
-        replicate = tokens[2]
-        bio_rep = tokens[3]
-
-        grouping_key = "${condition}_${histone}"
-
-        tuple(grouping_key, condition, histone, replicate, bio_rep, file_name, basename, peakpath)
-        
-        }
-        .groupTuple(by:0, sort:true)
-        //.view()
-        .set{broadpeak_gtuple_meta_ch}
-
-    // split the broadpeaks so i have them grouped by their condition label
-
-
-    // now i want to get the idr peaks per each replicate combination
-    //broadpeak_gtuple_meta_ch.view()
-    find_idr_in_replicates_process(broadpeak_gtuple_meta_ch)
-
-    // these were the peaks without 10kb merged
-    concat_idr_peaks = find_idr_in_replicates_process.out.final_concat_peaks
-
-    
-    // now with the concat peaks, I need to put them in R and get the list of up peaks and down peaks
-
-    concat_idr_peaks
-        .map {file -> 
-        
-        basename = file.baseName
-
-        file_name = file.name
-
-        // concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3
-        tokens = basename.tokenize("_")
-
-        condition = tokens[2]
-        histone = tokens[3]
-
-        tuple(histone, condition, file_name, file)
-
-        
-        
-        }
-        .groupTuple(by:0, sort: true)
-        //.view()
-        // H1low is first and scrambled is next but if the file is named something else you should not hard code which is which
-        // example: [H3k27me3, [conditions], [concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak], [/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/32/d1583cfe217bf08b629e50f5d2c843/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, /lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/72/7a61681f524cbe7de6d547ad41a86d/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak]]
-        .set{group_concat_idr_peaks_ch}
-
-    // now I should merge these concat peaks but keep them separate and output them in the same meta channel as above
-
-    merge_concat_peaks_process(group_concat_idr_peaks_ch)
-
-    // not using 10kb anymore, better to use 100kb merged peaks
-    // first_10kb_peakfile = merge_concat_peaks_process.out.first_10kb_merged_peak
-    // second_10kb_peakfile = merge_concat_peaks_process.out.second_10kb_merged_peak
-
-    // NOT DOING THIS ANYMORE. I merged the condition peaks in the process and that keeps peaks from chromosomes that were missing peaks
-    //first_10kb_peakfile = merge_concat_peaks_process.out.first_100kb_merged_peak
-    //second_10kb_peakfile = merge_concat_peaks_process.out.second_100kb_merged_peak
-
-    concat_master_peak_10kb = merge_concat_peaks_process.out.concat_10kb_merged_peak
-    concat_master_peak_30kb = merge_concat_peaks_process.out.concat_30kb_merged_peak
-    concat_master_peak_100kb = merge_concat_peaks_process.out.concat_100kb_merged_peak
-    //first_10kb_peakfile.view()
-
-    // this says 10kb merged but it is really whatever is used above
-    //both_10kb_peakfiles = first_10kb_peakfile.concat(second_10kb_peakfile)
-
-    // if (params.masterPeak100kb) {
-    //     concat_master_peak_100kb
-    //         .map { file -> 
+        macspeaks_ch_backup
+            .map{ peakpath -> 
             
-    //         file_basename = file.baseName
-    //         file_name = file.name
-
-    //         tokens = file_basename.tokenize("_")
-
-    //         condition_label = tokens[2]
-    //         exper_type = tokens[3]
-
-    //         tuple(condition_label, exper_type, file_name, file)
-
-    //         }
-    //         .groupTuple(by:1, sort:true)
-    //         .set{group_10kb_concat_idr_peaks_ch}
-    // }
-
-    //group_10kb_concat_idr_peaks_ch = merge_concat_peaks_process.out.merged_10kb_concat_peaks
-    //group_10kb_concat_idr_peaks_ch.view()
-
-
-    // now I also need the bam files
-    // load all bams in but use the histone mark to get the correct bams
-    // the bam meta ch looks like this tuple(condition_label, histone_label, replicate_label, meta_name, bam_file_name, bam_path, bai_path)
-    
-     control_bams_index_tuple_ch
-        .concat(wt_bams_index_tuple_ch)
-        .map { key, tuple ->
-    
-        
-            bam = tuple[0]
-            bai = tuple[1]
-            basename = bam.baseName
-            file_name = bam.name
+            basename = peakpath.baseName
+            file_name = peakpath.name
 
             tokens = basename.tokenize("_")
 
             condition = tokens[0]
             histone = tokens[1]
+            replicate = tokens[2]
+            bio_rep = tokens[3]
 
-            bam
-            //tuple(histone, condition, file_name, bam)
-        
-        }
-        .collect()
-        // just get all bams
-        // . map { bam ->
-        
-        // basename = bam.baseName
-        // file_name = bam.name
+            grouping_key = "${condition}_${histone}"
 
-        // tokens = basename.tokenize("_")
-
-        // condition = tokens[0]
-        // histone = tokens[1]
-
-        // tuple(histone, condition, file_name, bam)
-        
-        // }
-        // .groupTuple(by:0, sort:true)
-        //.view()
-        //.set{meta_bam_histone_group_tuple_ch}
-        .set{all_bams_paths}
-    
-    //all_bams_paths.view()
-    //meta_bam_histone_group_tuple_ch.view()
-    
-    //group_concat_idr_peaks_ch.view()
-    
-    // filtering channels 
-    // h3k27me3_idr_peaks_ch = group_concat_idr_peaks_ch.filter { it[0] == 'H3k27me3' }
-    // h3k27me3_bams_ch = meta_bam_histone_group_tuple_ch.filter { it[0] == 'H3k27me3' }
-
-    // h3k27me3_idr_peaks_ch.view()
-    // h3k27me3_bams_ch.view()
-
-    if (params.masterPeak100kb) {
-        concat_master_peak_100kb
-            .map { file -> 
+            tuple(grouping_key, condition, histone, replicate, bio_rep, file_name, basename, peakpath)
             
-            file_basename = file.baseName
+            }
+            .groupTuple(by:0, sort:true)
+            //.view()
+            .set{macspeak_gtuple_meta_ch}
+
+        // split the broadpeaks so i have them grouped by their condition label
+
+
+        // now i want to get the idr peaks per each replicate combination
+        //broadpeak_gtuple_meta_ch.view()
+        find_idr_in_replicates_process(macspeak_gtuple_meta_ch)
+
+        // these were the peaks without 10kb merged
+        concat_idr_peaks = find_idr_in_replicates_process.out.final_concat_peaks.collect()
+
+        // now group the concat_idr_peaks without merging
+        concat_idr_peaks
+            .flatten()
+            .map {file -> 
+            
+            basename = file.baseName
+
             file_name = file.name
 
-            tokens = file_basename.tokenize("_")
+            // concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3
+            tokens = basename.tokenize("_")
 
-            condition_label = tokens[2]
-            exper_type = tokens[3]
-            merge_dist = tokens[4]
+            condition = tokens[2]
+            histone = tokens[3]
 
-            tuple(condition_label, exper_type, merge_dist, file_name, file)
+            tuple(histone, condition, file_name, file)
 
-            }
-            //.groupTuple(by:1, sort:true)
-            .set{group_concat_idr_peaks_ch}
-
-        
-    }
-    else if (params.masterPeak10kb) {
-        concat_master_peak_10kb
-            .map { file -> 
             
-            file_basename = file.baseName
-            file_name = file.name
-
-            tokens = file_basename.tokenize("_")
-
-            condition_label = tokens[2]
-            exper_type = tokens[3]
-            merge_dist = tokens[4]
-
-            tuple(condition_label, exper_type, merge_dist, file_name, file)
-
-            }
-            //.groupTuple(by:1, sort:true)
-            .set{group_concat_idr_peaks_ch}
-
-        
-    }
-    else if (params.masterPeak30kb) {
-        concat_master_peak_30kb
-            .map { file -> 
             
-            file_basename = file.baseName
-            file_name = file.name
-
-            tokens = file_basename.tokenize("_")
-
-            condition_label = tokens[2]
-            exper_type = tokens[3]
-            merge_dist = tokens[4]
-
-            tuple(condition_label, exper_type, merge_dist, file_name, file)
-
             }
-            //.groupTuple(by:1, sort:true)
+            .groupTuple(by:0, sort: true)
+            .view{it -> "these are the peaks to send to merge_concat_peaks_process: $it"}
+            // H1low is first and scrambled is next but if the file is named something else you should not hard code which is which
+            // example: [H3k27me3, [conditions], [concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak], [/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/32/d1583cfe217bf08b629e50f5d2c843/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, /lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/72/7a61681f524cbe7de6d547ad41a86d/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak]]
             .set{group_concat_idr_peaks_ch}
 
+        merge_concat_peaks_process(group_concat_idr_peaks_ch)
+
+        atac_concat_peaks_ch = merge_concat_peaks_process.out.concat_ATAC_peak
         
+        // here i dont output the merge by 10, 30 ,100 kb becasue this is for ATAC peaks. I dont think we will ever merge
+        // but i also dont think any narrow peaks assay will ever be merged
+
+        atac_concat_peaks_ch
+                //.flatten()
+                .map { file -> 
+                
+                file_basename = file.baseName
+                file_name = file.name
+
+                tokens = file_basename.tokenize("_")
+
+                condition_label = tokens[2]
+                exper_type = tokens[3]
+                //merge_dist = tokens[4]
+                rep_label = tokens[4]
+
+                tuple(condition_label, exper_type, rep_label, file_name, file)
+
+                }
+                //.groupTuple(by:1, sort:true)
+                .view{it -> "these are the atac/narrowpeaks concat files $it" }
+                .set{group_concat_meta_peaks_ch}
+
+        
+
+        control_bams_index_tuple_ch
+            .concat(wt_bams_index_tuple_ch)
+            .map { key, tuple ->
+        
+            
+                bam = tuple[0]
+                bai = tuple[1]
+                basename = bam.baseName
+                file_name = bam.name
+
+                tokens = basename.tokenize("_")
+
+                condition = tokens[0]
+                histone = tokens[1]
+
+                bam
+                //tuple(histone, condition, file_name, bam)
+            
+            }
+            .collect()
+            .set{all_bams_paths}
+
+        find_diff_peaks_R_process(group_concat_meta_peaks_ch, all_bams_paths)
+
+        // using the 10kb merged idr peaks
+        //find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
+
+        diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+        //diff_peaks_tuple.view()
+
+        // try keeping the peaks in separate channels
+        // then when I put this into a process or workflow, just check to see if the histones match
+        master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+        up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+        down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+        unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+
     }
     else {
-        onError:
-        throw new IllegalArgumentException("Error: Please put one of the following parameters in CLI when running this pipeline: masterPeak10kb, masterPeak30kb, masterPeak100kb")
+        // now getting the channel for the broadpeaks and will have to emit it from the workflow and put into a new workflow to plot the bigwig signal onto the called broad peaks
         
+        // this is what i called the channels before changing it to macspeaks...
+        //broadpeaks_ch
+        //broadpeaks_ch_backup
+        macspeaks_ch = macs2_call_peaks_process_both.out.broad_peaks
+        macspeaks_ch_backup = macs2_call_peaks_process_both.out.broad_peaks
+        //broadpeaks_ch.view() // now got the peaks so time to emit this channel.
+
+        // okay, another thing to do is to use bedtools to merge peaks by 1kb, 2kb, and 5kb to see how they look
+
+        merge_peaks_bedtools_process(macspeaks_ch)
+
+
+
+
+        macspeaks_ch_backup
+            .map{ peakpath -> 
+            
+            basename = peakpath.baseName
+            file_name = peakpath.name
+
+            tokens = basename.tokenize("_")
+
+            condition = tokens[0]
+            histone = tokens[1]
+            replicate = tokens[2]
+            bio_rep = tokens[3]
+
+            grouping_key = "${condition}_${histone}"
+
+            tuple(grouping_key, condition, histone, replicate, bio_rep, file_name, basename, peakpath)
+            
+            }
+            .groupTuple(by:0, sort:true)
+            //.view()
+            .set{broadpeak_gtuple_meta_ch}
+
+        // split the broadpeaks so i have them grouped by their condition label
+
+
+        // now i want to get the idr peaks per each replicate combination
+        //broadpeak_gtuple_meta_ch.view()
+        find_idr_in_replicates_process(broadpeak_gtuple_meta_ch)
+
+        // these were the peaks without 10kb merged
+        concat_idr_peaks = find_idr_in_replicates_process.out.final_concat_peaks
+
+        
+        // now with the concat peaks, I need to put them in R and get the list of up peaks and down peaks
+
+        concat_idr_peaks
+            .map {file -> 
+            
+            basename = file.baseName
+
+            file_name = file.name
+
+            // concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3
+            tokens = basename.tokenize("_")
+
+            condition = tokens[2]
+            histone = tokens[3]
+
+            tuple(histone, condition, file_name, file)
+
+            
+            
+            }
+            .groupTuple(by:0, sort: true)
+            //.view()
+            // H1low is first and scrambled is next but if the file is named something else you should not hard code which is which
+            // example: [H3k27me3, [conditions], [concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak], [/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/32/d1583cfe217bf08b629e50f5d2c843/concat_IDR_H1low_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak, /lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/work/72/7a61681f524cbe7de6d547ad41a86d/concat_IDR_Scrm_H3k27me3_r1_vs_r2_vs_r3_0.4_pairs.broadPeak]]
+            .set{group_concat_idr_peaks_ch}
+
+        // now I should merge these concat peaks but keep them separate and output them in the same meta channel as above
+
+        merge_concat_peaks_process(group_concat_idr_peaks_ch)
+
+        // not using 10kb anymore, better to use 100kb merged peaks
+        // first_10kb_peakfile = merge_concat_peaks_process.out.first_10kb_merged_peak
+        // second_10kb_peakfile = merge_concat_peaks_process.out.second_10kb_merged_peak
+
+        // NOT DOING THIS ANYMORE. I merged the condition peaks in the process and that keeps peaks from chromosomes that were missing peaks
+        //first_10kb_peakfile = merge_concat_peaks_process.out.first_100kb_merged_peak
+        //second_10kb_peakfile = merge_concat_peaks_process.out.second_100kb_merged_peak
+
+        concat_master_peak_10kb = merge_concat_peaks_process.out.concat_10kb_merged_peak
+        concat_master_peak_30kb = merge_concat_peaks_process.out.concat_30kb_merged_peak
+        concat_master_peak_100kb = merge_concat_peaks_process.out.concat_100kb_merged_peak
+        //first_10kb_peakfile.view()
+
+        // this says 10kb merged but it is really whatever is used above
+        //both_10kb_peakfiles = first_10kb_peakfile.concat(second_10kb_peakfile)
+
+        // if (params.masterPeak100kb) {
+        //     concat_master_peak_100kb
+        //         .map { file -> 
+                
+        //         file_basename = file.baseName
+        //         file_name = file.name
+
+        //         tokens = file_basename.tokenize("_")
+
+        //         condition_label = tokens[2]
+        //         exper_type = tokens[3]
+
+        //         tuple(condition_label, exper_type, file_name, file)
+
+        //         }
+        //         .groupTuple(by:1, sort:true)
+        //         .set{group_10kb_concat_idr_peaks_ch}
+        // }
+
+        //group_10kb_concat_idr_peaks_ch = merge_concat_peaks_process.out.merged_10kb_concat_peaks
+        //group_10kb_concat_idr_peaks_ch.view()
+
+
+        // now I also need the bam files
+        // load all bams in but use the histone mark to get the correct bams
+        // the bam meta ch looks like this tuple(condition_label, histone_label, replicate_label, meta_name, bam_file_name, bam_path, bai_path)
+        
+        control_bams_index_tuple_ch
+            .concat(wt_bams_index_tuple_ch)
+            .map { key, tuple ->
+        
+            
+                bam = tuple[0]
+                bai = tuple[1]
+                basename = bam.baseName
+                file_name = bam.name
+
+                tokens = basename.tokenize("_")
+
+                condition = tokens[0]
+                histone = tokens[1]
+
+                bam
+                //tuple(histone, condition, file_name, bam)
+            
+            }
+            .collect()
+            // just get all bams
+            // . map { bam ->
+            
+            // basename = bam.baseName
+            // file_name = bam.name
+
+            // tokens = basename.tokenize("_")
+
+            // condition = tokens[0]
+            // histone = tokens[1]
+
+            // tuple(histone, condition, file_name, bam)
+            
+            // }
+            // .groupTuple(by:0, sort:true)
+            //.view()
+            //.set{meta_bam_histone_group_tuple_ch}
+            .set{all_bams_paths}
+        
+        //all_bams_paths.view()
+        //meta_bam_histone_group_tuple_ch.view()
+        
+        //group_concat_idr_peaks_ch.view()
+        
+        // filtering channels 
+        // h3k27me3_idr_peaks_ch = group_concat_idr_peaks_ch.filter { it[0] == 'H3k27me3' }
+        // h3k27me3_bams_ch = meta_bam_histone_group_tuple_ch.filter { it[0] == 'H3k27me3' }
+
+        // h3k27me3_idr_peaks_ch.view()
+        // h3k27me3_bams_ch.view()
+
+        if (params.masterPeak100kb) {
+            concat_master_peak_100kb
+                .map { file -> 
+                
+                file_basename = file.baseName
+                file_name = file.name
+
+                tokens = file_basename.tokenize("_")
+
+                condition_label = tokens[2]
+                exper_type = tokens[3]
+                merge_dist = tokens[4]
+
+                tuple(condition_label, exper_type, merge_dist, file_name, file)
+
+                }
+                //.groupTuple(by:1, sort:true)
+                .set{group_concat_idr_peaks_ch}
+
+            
+        }
+        else if (params.masterPeak10kb) {
+            concat_master_peak_10kb
+                .map { file -> 
+                
+                file_basename = file.baseName
+                file_name = file.name
+
+                tokens = file_basename.tokenize("_")
+
+                condition_label = tokens[2]
+                exper_type = tokens[3]
+                merge_dist = tokens[4]
+
+                tuple(condition_label, exper_type, merge_dist, file_name, file)
+
+                }
+                //.groupTuple(by:1, sort:true)
+                .set{group_concat_idr_peaks_ch}
+
+            
+        }
+        else if (params.masterPeak30kb) {
+            concat_master_peak_30kb
+                .map { file -> 
+                
+                file_basename = file.baseName
+                file_name = file.name
+
+                tokens = file_basename.tokenize("_")
+
+                condition_label = tokens[2]
+                exper_type = tokens[3]
+                merge_dist = tokens[4]
+
+                tuple(condition_label, exper_type, merge_dist, file_name, file)
+
+                }
+                //.groupTuple(by:1, sort:true)
+                .set{group_concat_idr_peaks_ch}
+
+            
+        }
+        else {
+            onError:
+            throw new IllegalArgumentException("Error: Please put one of the following parameters in CLI when running this pipeline: masterPeak10kb, masterPeak30kb, masterPeak100kb")
+            
+        }
+
+    
+
+        find_diff_peaks_R_process(group_concat_idr_peaks_ch, all_bams_paths)
+
+        // using the 10kb merged idr peaks
+        //find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
+
+        diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+        //diff_peaks_tuple.view()
+
+        // try keeping the peaks in separate channels
+        // then when I put this into a process or workflow, just check to see if the histones match
+        master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+        up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+        down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+        unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+
+        //up_peaks_list_ch
+            //.collect()
+            //.view()
+
     }
-
-
-    find_diff_peaks_R_process(group_concat_idr_peaks_ch, all_bams_paths)
-
-    // using the 10kb merged idr peaks
-    //find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
-
-    diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
-    //diff_peaks_tuple.view()
-
-    // try keeping the peaks in separate channels
-    // then when I put this into a process or workflow, just check to see if the histones match
-    master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
-    up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
-    down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
-    unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
-
-    //up_peaks_list_ch
-        //.collect()
-        //.view()
-
-
 
     if (params.make_html_report = true) {
         // running multiqc on the duplicate log files
@@ -558,7 +702,7 @@ workflow mk_bw_call_peaks_workflow {
     emit:
     control_meta_bw_ch
     wt_meta_bw_ch
-    broadpeaks_ch
+    macspeaks_ch
     control_meta_cpm_bw_ch
     wt_meta_cpm_bw_ch
     group_concat_idr_peaks_ch
@@ -1326,6 +1470,166 @@ workflow find_then_plot_cpgIslands_in_peaks_workflow {
     plot_over_diff_cpg_regions_process( bigwig_cpg_changing_peaks_mets_ch)
 
 
+}
+
+workflow get_proximal_distal_atac_peaks_workflow {
+
+
+    take:
+    up_peaks_list_ch
+    down_peaks_list_ch
+    unchanging_peaks_list_ch
+    master_peak_list_true
+    proseq_up_gene_ch
+    proseq_down_gene_ch
+    proseq_unchanging_gene_ch
+    ref_genome_size_ch
+
+    // I want to get the histone (H3k27me3) bigwigs in here for the calculations
+
+    control_histone_bams
+    treatment_histone_bams
+
+
+
+    main:
+
+    up_peaks_list_ch
+        .concat(down_peaks_list_ch, unchanging_peaks_list_ch, master_peak_list_true)
+        .flatten()
+        .map{ peaks -> 
+        
+        basename = peaks.baseName
+
+        tokens = basename.tokenize("_")
+
+        peak_type = tokens[0]
+        exper_type = tokens[1]
+
+        tuple(peak_type, exper_type, peaks)
+
+        }
+        //.groupTuple(by:1)
+        .view{it -> "this is the atac peaks that should be flattened without grouping $it"}
+        .set{all_true_atac_peaks_ch}
+    
+    // what i need to do is get the peaks and use bedtools intersect to subset for the atac-seq peaks that are in these diff genes
+    get_atacPeaks_in_genetss_process(all_true_atac_peaks_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, ref_genome_size_ch)
+
+    proximal_up_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_up_genes
+    proximal_down_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_down_genes
+    proximal_unchanging_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_unchanging_genes
+
+    // I think what I should do now is get the differential proximal ATAC-peaks and see the fold change of H3k27me3 scrambled and H1low signal in them
+    if (params.ATAC_analysis) {
+        proximal_up_atac
+            .concat(proximal_down_atac, proximal_unchanging_atac)
+            .toList()
+            .map {file ->
+            
+            basename = file.baseName
+            name = file.name
+
+            tuple(name, basename, file)
+
+
+            }
+            .view{it -> "these are the atac analysis pipeline peaks $it"}
+            .set{proximal_atac_peaks_meta_ch}
+
+        // now I will have to merge the h1low bams and scrm bams to get an all merge bam
+        // making a samtools process to merge the histone experiment bams to get one merged bam per condition
+
+        // make a meta channel so I can grab which histone or experiment type I am working with
+        control_histone_bams
+            .map { tuple_key, bam_index_tuple -> 
+
+            key_tokens = tuple_key.tokenize("_")
+            exper_type = key_tokens[1]
+
+            bam = bam_index_tuple[0]
+            index = bam_index_tuple[1]
+            
+            basename = bam.baseName
+
+            tokens = basename.tokenize("_")
+
+            condition = tokens[0]
+            //exper_type = tokens[1]
+
+            tuple(exper_type, condition, bam)
+
+            }
+            .groupTuple(by:0)
+            .set{control_histone_meta_bams}
+        
+        treatment_histone_bams
+            //.view{it -> "this is the treatment histone bam: $it"}
+            .map { tuple_key, bam_index_tuple ->
+
+            key_tokens = tuple_key.tokenize("_")
+            exper_type = key_tokens[1]
+
+            bam = bam_index_tuple[0]
+            index = bam_index_tuple[1]
+
+            basename = bam.baseName
+
+            tokens = basename.tokenize("_")
+
+            condition = tokens[0]
+            //exper_type = tokens[1]
+
+            tuple(exper_type, condition, bam)
+
+            }
+            .groupTuple(by:0)
+            .view{it -> "this is the treatment histone tuple after grouping: $it"}
+            .set{treatment_histone_meta_bams}
+
+        merge_bams_on_condition_process(control_histone_meta_bams, treatment_histone_meta_bams)
+        
+        allmerge_control_tuple = merge_bams_on_condition_process.out.merged_control_bam_index_tuple
+        allmerge_treatment_tuple = merge_bams_on_condition_process.out.merged_treatment_bam_index_tuple
+
+        both_all_merge_tuple = allmerge_control_tuple.concat(allmerge_treatment_tuple)
+        // now to get the bigwig of each of these bams
+        get_merged_bigwig_process(both_all_merge_tuple)
+
+        allmerged_bigwigs = get_merged_bigwig_process.out.allmerged_bigwig.collect()
+
+        // now to do the merging of bams channel and get the histone enrichment log2FC
+
+        allmerged_bigwigs.view{it -> "these are the all merged bigwigs $it"}
+        atac_enrich_counts_2nd_version_process(proximal_atac_peaks_meta_ch, both_all_merge_tuple)
+
+        enrich_counts_tab_ch = atac_enrich_counts_2nd_version_process.out.raw_enrichment_counts.collect()
+
+        enrich_counts_tab_ch
+            .flatten()
+            .map{ file ->
+            // i need to get the tokens and find which used broad and narrow then group them by that, so i have scrm with h1low broad, and scrm with h1low narrow
+            basename = file.baseName
+
+            filename = file.name
+
+            tokens = basename.tokenize("_")
+
+            condition = tokens[0]
+            peak_type = tokens[1]
+
+            tuple(peak_type, basename, filename, file)
+
+            }
+            .groupTuple(by:0)
+            .view(tuple -> "This is the meta channel for enrichment counts tab file grouped by peak type: $tuple")
+            .set{enrich_counts_tab_meta_ch}
+
+        r_atac_enrich_plot_2nd_version_process(enrich_counts_tab_meta_ch)
+
+    }
+
+    //emit:
 }
 
 

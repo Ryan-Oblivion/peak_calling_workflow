@@ -405,7 +405,8 @@ process macs2_call_peaks_process_both {
 
 
     output:
-    path("*broad*"), emit: broadpeaks
+    path("*broadPeak"), optional: true, emit: broad_peaks
+    path("*NarrowPeak"), optional: true, emit: narrow_peaks
     path("*"), emit: macs2_files
     path("*ppois*"), emit: ppois_macs2_file
 
@@ -418,90 +419,180 @@ process macs2_call_peaks_process_both {
     old_peak_files = "${bam_file_name}_old_macs2_stats"
     
 
-        
-    """
-    #!/usr/bin/env bash
+    if (params.NarrowPeak_data) {
 
-    ##### macs2 params ######
-    # use this code to find params used
-    # macs2 callpeak --help
-
-    # changed --fe-cutoff from 2 to 1 which is default. to see if it will give results in the bio rep s10 file
-    # that didn't change anything
-
-    # I want to call peaks less stringently so we can bring a bit more noise into the peaks that were called and then idr will find the best ones
-    # so changing --fe-cutoff from 2 to 1, but i will remove it altogether
-    # changing -qvalue from '0.05' to '0.01' probably not using it anymore
-    # using --pvalue 1e-3 
-    #########################
-
-    #echo "these are the file names: \${bam_file_name}"
-
-    #bam_list=( \${bam_file_name.join(' ')} )
-
-        
-
-    #bam_basename=\$(basename \${bam_list[i]})
-
-
-    macs2 callpeak \
-    --treatment ${bam_file_name} \
-    --format "BAM" \
-    --gsize "hs" \
-    --keep-dup '1' \
-    --outdir . \
-    --name ${bam_file_name} \
-    --bdg  \
-    --trackline \
-    --pvalue '1e-3' \
-    --broad \
-    --cutoff-analysis \
-    --nolambda
-
-    # first compute the sval score then use it in macs2 bdgcmp
-    chipReads=\$(cat "${bam_file_name}_peaks.broadPeak"| wc -l | awk '{printf "%f", \$1/1000000}')
     
-    # since we do not have a control we do not have to get the control reads and compare it with the chipReads(C&T reads) to find which is the lower reads and use that as sval
-    # so we will just use the chipReads as sval
-    sval=\$(echo "\$chipReads")
+        
+        """
+        #!/usr/bin/env bash
 
-    echo "sval when creating pvalue bigwig from macs2 is \$sval"
+        ##### macs2 params ######
+        # use this code to find params used
+        # macs2 callpeak --help
 
+        # changed --fe-cutoff from 2 to 1 which is default. to see if it will give results in the bio rep s10 file
+        # that didn't change anything
 
-    # now we need to create the signal pvalue bigwig file. (according to the encode chip-seq pipeline google doc: https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0)
+        # I want to call peaks less stringently so we can bring a bit more noise into the peaks that were called and then idr will find the best ones
+        # so changing --fe-cutoff from 2 to 1, but i will remove it altogether
+        # changing -qvalue from '0.05' to '0.01' probably not using it anymore
+        # using --pvalue 1e-3 
+        #########################
 
-    macs2 bdgcmp \
-    -t *_treat_pileup.bdg \
-    -c *_control_lambda.bdg \
-    -o ${bam_file_name}_ppois.bdg \
-    -m ppois \
-    -S \$sval
+        #echo "these are the file names: \${bam_file_name}"
 
+        #bam_list=( \${bam_file_name.join(' ')} )
 
+            
 
-
-    # this is me trying to get the old peak files that produce the correct signal in peaks
-    #macs2 callpeak \
-    --treatment \${bam_file_name} \
-    --format "BAM" \
-    --gsize "hs" \
-    --keep-dup '1' \
-    --outdir . \
-    --name \${old_peak_files} \
-    --bdg  \
-    --trackline \
-    --qvalue '0.05' \
-    --broad \
-    --fe-cutoff 2 \
-    --cutoff-analysis
-    
-    # use bedtools merge, in another process, on all the broadpeak files  and the option -b for merging at 1kb, 2kb, 5kb. generate different merged files for the same data to compare
-
-    # I need to remove nolambda because scrm r1 only is calling 7 peaks and the IDR tool needs at least 20 peaks to run
-    # this is according to the IDR error output
+        #bam_basename=\$(basename \${bam_list[i]})
 
 
-    """
+        macs2 callpeak \
+        --treatment ${bam_file_name} \
+        --format "BAM" \
+        --gsize "hs" \
+        --keep-dup '1' \
+        --outdir . \
+        --name ${bam_file_name} \
+        --bdg  \
+        --trackline \
+        --pvalue '1e-3' \
+        --cutoff-analysis 
+
+        # first compute the sval score then use it in macs2 bdgcmp
+        chipReads=\$(cat "${bam_file_name}_peaks.narrowPeak"| wc -l | awk '{printf "%f", \$1/1000000}')
+        
+        # since we do not have a control we do not have to get the control reads and compare it with the chipReads(C&T reads) to find which is the lower reads and use that as sval
+        # so we will just use the chipReads as sval
+        sval=\$(echo "\$chipReads")
+
+        echo "sval when creating pvalue bigwig from macs2 is \$sval"
+
+
+        # now we need to create the signal pvalue bigwig file. (according to the encode chip-seq pipeline google doc: https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0)
+
+        macs2 bdgcmp \
+        -t *_treat_pileup.bdg \
+        -c *_control_lambda.bdg \
+        -o ${bam_file_name}_ppois.bdg \
+        -m ppois \
+        -S \$sval
+
+
+
+
+        # this is me trying to get the old peak files that produce the correct signal in peaks
+        #macs2 callpeak \
+        --treatment \${bam_file_name} \
+        --format "BAM" \
+        --gsize "hs" \
+        --keep-dup '1' \
+        --outdir . \
+        --name \${old_peak_files} \
+        --bdg  \
+        --trackline \
+        --qvalue '0.05' \
+        --broad \
+        --fe-cutoff 2 \
+        --cutoff-analysis
+        
+        # use bedtools merge, in another process, on all the broadpeak files  and the option -b for merging at 1kb, 2kb, 5kb. generate different merged files for the same data to compare
+
+        # I need to remove nolambda because scrm r1 only is calling 7 peaks and the IDR tool needs at least 20 peaks to run
+        # this is according to the IDR error output
+
+
+        """
+    }
+    else {
+
+        """
+        #!/usr/bin/env bash
+
+        ##### macs2 params ######
+        # use this code to find params used
+        # macs2 callpeak --help
+
+        # changed --fe-cutoff from 2 to 1 which is default. to see if it will give results in the bio rep s10 file
+        # that didn't change anything
+
+        # I want to call peaks less stringently so we can bring a bit more noise into the peaks that were called and then idr will find the best ones
+        # so changing --fe-cutoff from 2 to 1, but i will remove it altogether
+        # changing -qvalue from '0.05' to '0.01' probably not using it anymore
+        # using --pvalue 1e-3 
+        #########################
+
+        #echo "these are the file names: \${bam_file_name}"
+
+        #bam_list=( \${bam_file_name.join(' ')} )
+
+            
+
+        #bam_basename=\$(basename \${bam_list[i]})
+
+
+        macs2 callpeak \
+        --treatment ${bam_file_name} \
+        --format "BAM" \
+        --gsize "hs" \
+        --keep-dup '1' \
+        --outdir . \
+        --name ${bam_file_name} \
+        --bdg  \
+        --trackline \
+        --pvalue '1e-3' \
+        --broad \
+        --cutoff-analysis \
+        --nolambda
+
+        # first compute the sval score then use it in macs2 bdgcmp
+        chipReads=\$(cat "${bam_file_name}_peaks.broadPeak"| wc -l | awk '{printf "%f", \$1/1000000}')
+        
+        # since we do not have a control we do not have to get the control reads and compare it with the chipReads(C&T reads) to find which is the lower reads and use that as sval
+        # so we will just use the chipReads as sval
+        sval=\$(echo "\$chipReads")
+
+        echo "sval when creating pvalue bigwig from macs2 is \$sval"
+
+
+        # now we need to create the signal pvalue bigwig file. (according to the encode chip-seq pipeline google doc: https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0)
+
+        macs2 bdgcmp \
+        -t *_treat_pileup.bdg \
+        -c *_control_lambda.bdg \
+        -o ${bam_file_name}_ppois.bdg \
+        -m ppois \
+        -S \$sval
+
+
+
+
+        # this is me trying to get the old peak files that produce the correct signal in peaks
+        #macs2 callpeak \
+        --treatment \${bam_file_name} \
+        --format "BAM" \
+        --gsize "hs" \
+        --keep-dup '1' \
+        --outdir . \
+        --name \${old_peak_files} \
+        --bdg  \
+        --trackline \
+        --qvalue '0.05' \
+        --broad \
+        --fe-cutoff 2 \
+        --cutoff-analysis
+        
+        # use bedtools merge, in another process, on all the broadpeak files  and the option -b for merging at 1kb, 2kb, 5kb. generate different merged files for the same data to compare
+
+        # I need to remove nolambda because scrm r1 only is calling 7 peaks and the IDR tool needs at least 20 peaks to run
+        # this is according to the IDR error output
+
+
+        """
+
+
+    }
     
 
     
@@ -680,25 +771,25 @@ process merge_concat_peaks_process {
 
     //tuple val(histone), val(condition), val(list_of_10kb_merged_names), val(list_of_10kb_merged_paths) , emit: merged_10kb_concat_peaks
 
-    path("${output_10kb_merged_first_mPeak}"), emit: first_10kb_merged_peak
+    path("${output_10kb_merged_first_mPeak}"), optional: true, emit: first_10kb_merged_peak
 
-    path("${output_10kb_merged_second_mPeak}"), emit: second_10kb_merged_peak
+    path("${output_10kb_merged_second_mPeak}"), optional: true, emit: second_10kb_merged_peak
 
-    path("${output_30kb_merged_first_mPeak}"), emit: first_30kb_merged_peak
+    path("${output_30kb_merged_first_mPeak}"), optional: true, emit: first_30kb_merged_peak
 
-    path("${output_30kb_merged_second_mPeak}"), emit: second_30kb_merged_peak
+    path("${output_30kb_merged_second_mPeak}"), optional: true, emit: second_30kb_merged_peak
 
-    path("${output_100kb_merged_first_mPeak}"), emit: first_100kb_merged_peak
+    path("${output_100kb_merged_first_mPeak}"), optional: true, emit: first_100kb_merged_peak
 
-    path("${output_100kb_merged_second_mPeak}"), emit: second_100kb_merged_peak
+    path("${output_100kb_merged_second_mPeak}"), optional: true, emit: second_100kb_merged_peak
 
-    path("${concat_10kb_merged_both_mPeak}"), emit: concat_10kb_merged_peak
+    path("${concat_10kb_merged_both_mPeak}"), optional: true, emit: concat_10kb_merged_peak
 
-    path("${concat_30kb_merged_both_mPeak}"), emit: concat_30kb_merged_peak
+    path("${concat_30kb_merged_both_mPeak}"), optional: true, emit: concat_30kb_merged_peak
 
-    path("${concat_100kb_merged_both_mPeak}"), emit: concat_100kb_merged_peak
+    path("${concat_100kb_merged_both_mPeak}"), optional: true, emit: concat_100kb_merged_peak
 
-
+    path("${atac_combined_peak}"), optional: true, emit: concat_ATAC_peak
 
     script:
 
@@ -712,90 +803,184 @@ process merge_concat_peaks_process {
 
     
     
-    output_10kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
-    output_10kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
-    concat_10kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_10kb_merged.bed"
-
-    output_30kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
-    output_30kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
-    concat_30kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_30kb_merged.bed"
-
-    output_100kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
-    output_100kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
-    concat_100kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_100kb_merged.bed"
-
 
     //list_of_10kb_merged_names =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
     //list_of_10kb_merged_paths =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
 
-    """
-    #!/usr/bin/env bash
+    if (params.NarrowPeak_data){
+        output_10kb_merged_first_mPeak = first_mPeak.replace(/.narrowPeak/, "_10kb_merged.bed")
+        output_10kb_merged_second_mPeak = second_mPeak.replace(/.narrowPeak/, "_10kb_merged.bed")
+        concat_10kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_10kb_merged.bed"
 
-    ###### bedtools merge parameters to use ##########
-    # the -c parameter: allows you to choose a column and determine what will happen when combined with -o parameter
-    # the -o parameter: you can get the counts of how many regions were merged to create that one region. "count" will report the the sum of merged intervals
+        output_30kb_merged_first_mPeak = first_mPeak.replace(/.narrowPeak/, "_30kb_merged.bed")
+        output_30kb_merged_second_mPeak = second_mPeak.replace(/.narrowPeak/, "_30kb_merged.bed")
+        concat_30kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_30kb_merged.bed"
 
-    ##################################################
+        output_100kb_merged_first_mPeak = first_mPeak.replace(/.narrowPeak/, "_100kb_merged.bed")
+        output_100kb_merged_second_mPeak = second_mPeak.replace(/.narrowPeak/, "_100kb_merged.bed")
+        concat_100kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_100kb_merged.bed"
+        
+        atac_combined_peak = "concat_master_bothConditions_${histone}_ATAC.bed"
 
-    # have to sort the broadPeak files first
-    sort -k1,1 -k2,2n ${first_mPeak} > sorted_first_peak.broadPeak
+        """
+        #!/usr/bin/env bash
 
-    sort -k1,1 -k2,2n ${second_mPeak} > sorted_second_peak.broadPeak
+        ###### bedtools merge parameters to use ##########
+        # the -c parameter: allows you to choose a column and determine what will happen when combined with -o parameter
+        # the -o parameter: you can get the counts of how many regions were merged to create that one region. "count" will report the the sum of merged intervals
+
+        ##################################################
+
+        # have to sort the broadPeak files first
+        sort -k1,1 -k2,2n ${first_mPeak} > sorted_first_peak.broadPeak
+
+        sort -k1,1 -k2,2n ${second_mPeak} > sorted_second_peak.broadPeak
+
+        
+
+        # merging the first concat peaks by 10kb
+        bedtools merge \
+        -i sorted_first_peak.broadPeak \
+        -d 10000 \
+        > ${output_10kb_merged_first_mPeak}
+
+
+        # merging the second concat peaks by 10kb
+        bedtools merge \
+        -i sorted_second_peak.broadPeak \
+        -d 10000 \
+        > ${output_10kb_merged_second_mPeak}
+
+        # concatenating 10kb
+        cat ${output_10kb_merged_first_mPeak} ${output_10kb_merged_second_mPeak} > ${concat_10kb_merged_both_mPeak}
+
+
+        # merging the first concat peaks by 30kb
+        bedtools merge \
+        -i sorted_first_peak.broadPeak \
+        -d 30000 \
+        > ${output_30kb_merged_first_mPeak}
+
+
+        # merging the second concat peaks by 30kb
+        bedtools merge \
+        -i sorted_second_peak.broadPeak \
+        -d 30000 \
+        > ${output_30kb_merged_second_mPeak}
+
+        # concatenating 30kb
+        cat ${output_30kb_merged_first_mPeak} ${output_30kb_merged_second_mPeak} > ${concat_30kb_merged_both_mPeak}
+
+
+        # merging the first concat peaks by 100kb
+        bedtools merge \
+        -i sorted_first_peak.broadPeak \
+        -d 100000 \
+        > ${output_100kb_merged_first_mPeak}
+
+
+        # merging the second concat peaks by 100kb
+        bedtools merge \
+        -i sorted_second_peak.broadPeak \
+        -d 100000 \
+        > ${output_100kb_merged_second_mPeak}
+
+        # concatenating 100kb
+        cat ${output_100kb_merged_first_mPeak} ${output_100kb_merged_second_mPeak} > ${concat_100kb_merged_both_mPeak}
+
+        cat ${first_mPeak} ${first_mPeak} > test_atac.narrowPeak
+
+        cut -f 1-3 test_atac.narrowPeak > ${atac_combined_peak}
+
+
+        """
+
+
+    }
+    else {
+
+        output_10kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
+        output_10kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
+        concat_10kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_10kb_merged.bed"
+
+        output_30kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
+        output_30kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
+        concat_30kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_30kb_merged.bed"
+
+        output_100kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
+        output_100kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
+        concat_100kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_100kb_merged.bed"
 
     
+        """
+        #!/usr/bin/env bash
 
-    # merging the first concat peaks by 10kb
-    bedtools merge \
-    -i sorted_first_peak.broadPeak \
-    -d 10000 \
-    > ${output_10kb_merged_first_mPeak}
+        ###### bedtools merge parameters to use ##########
+        # the -c parameter: allows you to choose a column and determine what will happen when combined with -o parameter
+        # the -o parameter: you can get the counts of how many regions were merged to create that one region. "count" will report the the sum of merged intervals
 
+        ##################################################
 
-    # merging the second concat peaks by 10kb
-    bedtools merge \
-    -i sorted_second_peak.broadPeak \
-    -d 10000 \
-    > ${output_10kb_merged_second_mPeak}
+        # have to sort the broadPeak files first
+        sort -k1,1 -k2,2n ${first_mPeak} > sorted_first_peak.broadPeak
 
-    # concatenating 10kb
-    cat ${output_10kb_merged_first_mPeak} ${output_10kb_merged_second_mPeak} > ${concat_10kb_merged_both_mPeak}
+        sort -k1,1 -k2,2n ${second_mPeak} > sorted_second_peak.broadPeak
 
+        
 
-    # merging the first concat peaks by 30kb
-    bedtools merge \
-    -i sorted_first_peak.broadPeak \
-    -d 30000 \
-    > ${output_30kb_merged_first_mPeak}
+        # merging the first concat peaks by 10kb
+        bedtools merge \
+        -i sorted_first_peak.broadPeak \
+        -d 10000 \
+        > ${output_10kb_merged_first_mPeak}
 
 
-    # merging the second concat peaks by 30kb
-    bedtools merge \
-    -i sorted_second_peak.broadPeak \
-    -d 30000 \
-    > ${output_30kb_merged_second_mPeak}
+        # merging the second concat peaks by 10kb
+        bedtools merge \
+        -i sorted_second_peak.broadPeak \
+        -d 10000 \
+        > ${output_10kb_merged_second_mPeak}
 
-    # concatenating 30kb
-    cat ${output_30kb_merged_first_mPeak} ${output_30kb_merged_second_mPeak} > ${concat_30kb_merged_both_mPeak}
-
-
-    # merging the first concat peaks by 100kb
-    bedtools merge \
-    -i sorted_first_peak.broadPeak \
-    -d 100000 \
-    > ${output_100kb_merged_first_mPeak}
+        # concatenating 10kb
+        cat ${output_10kb_merged_first_mPeak} ${output_10kb_merged_second_mPeak} > ${concat_10kb_merged_both_mPeak}
 
 
-    # merging the second concat peaks by 100kb
-    bedtools merge \
-    -i sorted_second_peak.broadPeak \
-    -d 100000 \
-    > ${output_100kb_merged_second_mPeak}
-
-    # concatenating 100kb
-    cat ${output_100kb_merged_first_mPeak} ${output_100kb_merged_second_mPeak} > ${concat_100kb_merged_both_mPeak}
+        # merging the first concat peaks by 30kb
+        bedtools merge \
+        -i sorted_first_peak.broadPeak \
+        -d 30000 \
+        > ${output_30kb_merged_first_mPeak}
 
 
-    """
+        # merging the second concat peaks by 30kb
+        bedtools merge \
+        -i sorted_second_peak.broadPeak \
+        -d 30000 \
+        > ${output_30kb_merged_second_mPeak}
+
+        # concatenating 30kb
+        cat ${output_30kb_merged_first_mPeak} ${output_30kb_merged_second_mPeak} > ${concat_30kb_merged_both_mPeak}
+
+
+        # merging the first concat peaks by 100kb
+        bedtools merge \
+        -i sorted_first_peak.broadPeak \
+        -d 100000 \
+        > ${output_100kb_merged_first_mPeak}
+
+
+        # merging the second concat peaks by 100kb
+        bedtools merge \
+        -i sorted_second_peak.broadPeak \
+        -d 100000 \
+        > ${output_100kb_merged_second_mPeak}
+
+        # concatenating 100kb
+        cat ${output_100kb_merged_first_mPeak} ${output_100kb_merged_second_mPeak} > ${concat_100kb_merged_both_mPeak}
+
+
+        """
+    }
 }
 
 
@@ -822,11 +1007,11 @@ process find_idr_in_replicates_process {
     output:
     // now i need to output the final idr broadpeak and then get all the others for this experiment histone mark and combine them
     // I can create another process that will filter these using the blacklist and bedtools intersect but lets look at it as is for now. 
-    path("*broadPeak"), emit: idr_peaks
+    path("*Peak"), emit: idr_peaks
 
     path("*.png"), emit:idr_pngs
 
-    path("${concat_peaks_name}"), emit: final_concat_peaks
+    path("${concat_peaks_name}*"), emit: final_concat_peaks
 
     script:
 
@@ -859,169 +1044,324 @@ process find_idr_in_replicates_process {
 
     // now to create the output names for checking each replicate
 
-    idr_out_1_2_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_${params.return_idr}.broadPeak"
-    idr_out_2_3_name = "IDR_${condition_label}_${histone_label}_${rep_label2}_vs_${rep_label3}_${params.return_idr}.broadPeak"
-    idr_out_1_3_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label3}_${params.return_idr}.broadPeak"
-    idr_out_final_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_${params.return_idr}.broadPeak"
-    idr_out_final_merged_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_2_merged_${params.return_idr}.broadPeak"
+    idr_out_1_2_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_${params.return_idr}"
+    idr_out_2_3_name = "IDR_${condition_label}_${histone_label}_${rep_label2}_vs_${rep_label3}_${params.return_idr}"
+    idr_out_1_3_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label3}_${params.return_idr}"
+    idr_out_final_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_${params.return_idr}"
+    idr_out_final_merged_name = "IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_2_merged_${params.return_idr}"
 
-    concat_peaks_name = "concat_IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_${params.return_idr}_pairs.broadPeak"
+    concat_peaks_name = "concat_IDR_${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_${params.return_idr}_pairs"
 
     // name for pooled broad peak files 
-    broadpeak_pool = "broadpeak_pool.broadPeak"
-    sort_broadpeak_pool = "sort_${broadpeak_pool}.gz"
+    peak_pool = "broadpeak_pool.Peak"
+    sort_peak_pool = "sort_${peak_pool}"
 
     // now creating the file name for the idr's of all the reps
 
     // idr_final_sorted_file = "${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_IDR_${params.return_idr}.broadPeak.gz"
 
-    """
-    #!/usr/bin/env bash
+    if (params.NarrowPeak_data) {
 
-    ###### idr parameters ########
-    # plot_idr = 0.05 // the default is 0.05 to report in the png plots which peaks passed this threshold
-    # return_idr = 1  // the default is all peaks will be returned even if the report plots the ones that pass a certain number. 1 as default here will give back all peaks like idr has set
+        """
+        #!/usr/bin/env bash
 
-    #--peak-list is not provided
-    #Peaks are grouped by overlap and then merged. The merged peak aggregate value is determined by --peak-merge-method.
+        ###### idr parameters ########
+        # plot_idr = 0.05 // the default is 0.05 to report in the png plots which peaks passed this threshold
+        # return_idr = 1  // the default is all peaks will be returned even if the report plots the ones that pass a certain number. 1 as default here will give back all peaks like idr has set
 
-    #Peaks that don't overlap another peak in every other replicate are not included unless --use-nonoverlapping-peaks is set.
-    ##############################
+        #--peak-list is not provided
+        #Peaks are grouped by overlap and then merged. The merged peak aggregate value is determined by --peak-merge-method.
 
-    # i need to pool the 3 reps so i can have the pooled file for input in idr
-    cat ${peak1} ${peak2} ${peak3} > ${broadpeak_pool}
+        #Peaks that don't overlap another peak in every other replicate are not included unless --use-nonoverlapping-peaks is set.
+        ##############################
 
-    # i have to gzip the file
-    #gzip -nc \${peak1} > "\${peak1}.gz"
-    #gzip -nc \${peak2} > "\${peak2}.gz"
-    #gzip -nc \${peak3} > "\${peak3}.gz"
+        # i need to pool the 3 reps so i can have the pooled file for input in idr
+        cat ${peak1} ${peak2} ${peak3} > "${peak_pool}.Peak"
 
-
-    # now sorting all the peaks by their pvalue column
-    sort -k8,8nr "${peak1}" | gzip > ${sort_peak1}
-    sort -k8,8nr "${peak2}" | gzip > ${sort_peak2}
-    sort -k8,8nr "${peak3}"| gzip > ${sort_peak3}
-    sort -k8,8nr ${broadpeak_pool} | gzip > "${sort_broadpeak_pool}"
-
-    # now i have everything to put into idr
-    # i think its best to return all peaks that passed the merging criteria for rep1 vs rep2 and rep2 vs rep3
-    # then when i do rep1_2 vs rep2_3 I only return the peaks that have the 0.05 IDR threshold passed; these peaks will also be the ones that pass the merging threshold.
-    # you can change this idr by changing the value in the --return_idr parameter when running nextflow
-
-    # i will make a if then statement where i will choose to run the idr if the length of the peak file is larger than 21 lines
-    peak1_length=\$(less ${sort_peak1} | wc -l )
-    peak2_length=\$(less ${sort_peak2} | wc -l )
-    peak3_length=\$(less ${sort_peak3} | wc -l )
-
-    # rep 1 vs 2
-    
-    if ((\$peak1_length > 21 && \$peak2_length > 21)); then
-        idr --samples ${sort_peak1} ${sort_peak2} \
-        --input-file-type broadPeak \
-        --output-file ${idr_out_1_2_name} \
-        --rank p.value \
-        --idr-threshold ${params.return_idr} \
-        --soft-idr-threshold ${params.plot_idr} \
-        --plot \
-        --use-best-multisummit-IDR
-    else
-        touch ${idr_out_1_2_name}
-        touch "place_holder.png"
-    fi 
-
-    # now rep 2 vs 3
-
-    if ((\$peak2_length > 21 && \$peak3_length > 21)); then
-        idr --samples ${sort_peak2} ${sort_peak3} \
-        --input-file-type broadPeak \
-        --output-file ${idr_out_2_3_name} \
-        --rank p.value \
-        --idr-threshold ${params.return_idr} \
-        --soft-idr-threshold ${params.plot_idr} \
-        --plot \
-        --use-best-multisummit-IDR
-    else
-        touch ${idr_out_2_3_name}
-        touch "place_holder.png"
-    fi 
-
-    # now doing 1 vs 3
-
-    if ((\$peak1_length > 21 && \$peak3_length > 21)); then
-        idr --samples ${sort_peak1} ${sort_peak3} \
-        --input-file-type broadPeak \
-        --output-file ${idr_out_1_3_name} \
-        --rank p.value \
-        --idr-threshold ${params.return_idr} \
-        --soft-idr-threshold ${params.plot_idr} \
-        --plot \
-        --use-best-multisummit-IDR
-    else
-        touch ${idr_out_1_3_name}
-        touch "place_holder.png"
-    fi 
-
-    # maybe we dont look at the final output and just select the output of peak pairs that has the most peaks that pass the 0.05 threshold
-    # this is according to section 4d of the encode 3 pipeline 'https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0#heading=h.9ecc41kilcvq' 
-    # I will instead load all the files into R and use only the one from each condition that has the max number of peaks called
-    # then I will merge the two files; the max from hlow and the max from scrm to get the masterpeak
-    
-    #idr_1_2_count=\$(less \${idr_out_1_2_name} | wc -l)
-    #idr_1_3_count=\$(less \${idr_out_1_3_name} | wc -l)
-    #idr_2_3_count=\$(less \${idr_out_2_3_name} | wc -l)
+        # i have to gzip the file
+        #gzip -nc \${peak1} > "\${peak1}.gz"
+        #gzip -nc \${peak2} > "\${peak2}.gz"
+        #gzip -nc \${peak3} > "\${peak3}.gz"
 
 
+        # now sorting all the peaks by their pvalue column
+        sort -k8,8nr "${peak1}" | gzip > ${sort_peak1}
+        sort -k8,8nr "${peak2}" | gzip > ${sort_peak2}
+        sort -k8,8nr "${peak3}"| gzip > ${sort_peak3}
+        sort -k8,8nr "${peak_pool}.Peak" | gzip > "${sort_peak_pool}.narrowPeak.gz"
+
+        # now i have everything to put into idr
+        # i think its best to return all peaks that passed the merging criteria for rep1 vs rep2 and rep2 vs rep3
+        # then when i do rep1_2 vs rep2_3 I only return the peaks that have the 0.05 IDR threshold passed; these peaks will also be the ones that pass the merging threshold.
+        # you can change this idr by changing the value in the --return_idr parameter when running nextflow
+
+        # i will make a if then statement where i will choose to run the idr if the length of the peak file is larger than 21 lines
+        peak1_length=\$(less ${sort_peak1} | wc -l )
+        peak2_length=\$(less ${sort_peak2} | wc -l )
+        peak3_length=\$(less ${sort_peak3} | wc -l )
+
+        # rep 1 vs 2
+        
+        if ((\$peak1_length > 21 && \$peak2_length > 21)); then
+            idr --samples ${sort_peak1} ${sort_peak2} \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_1_2_name}.narrowPeak" \
+            --rank p.value \
+            --idr-threshold ${params.return_idr} \
+            --soft-idr-threshold ${params.plot_idr} \
+            --plot \
+            --use-best-multisummit-IDR
+        else
+            touch "${idr_out_1_2_name}.narrowPeak"
+            touch "place_holder.png"
+        fi 
+
+        # now rep 2 vs 3
+
+        if ((\$peak2_length > 21 && \$peak3_length > 21)); then
+            idr --samples ${sort_peak2} ${sort_peak3} \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_2_3_name}.narrowPeak" \
+            --rank p.value \
+            --idr-threshold ${params.return_idr} \
+            --soft-idr-threshold ${params.plot_idr} \
+            --plot \
+            --use-best-multisummit-IDR
+        else
+            touch "${idr_out_2_3_name}.narrowPeak"
+            touch "place_holder.png"
+        fi 
+
+        # now doing 1 vs 3
+
+        if ((\$peak1_length > 21 && \$peak3_length > 21)); then
+            idr --samples ${sort_peak1} ${sort_peak3} \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_1_3_name}.narrowPeak" \
+            --rank p.value \
+            --idr-threshold ${params.return_idr} \
+            --soft-idr-threshold ${params.plot_idr} \
+            --plot \
+            --use-best-multisummit-IDR
+        else
+            touch "${idr_out_1_3_name}.narrowPeak"
+            touch "place_holder.png"
+        fi 
+
+        # maybe we dont look at the final output and just select the output of peak pairs that has the most peaks that pass the 0.05 threshold
+        # this is according to section 4d of the encode 3 pipeline 'https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0#heading=h.9ecc41kilcvq' 
+        # I will instead load all the files into R and use only the one from each condition that has the max number of peaks called
+        # then I will merge the two files; the max from hlow and the max from scrm to get the masterpeak
+        
+        #idr_1_2_count=\$(less \${idr_out_1_2_name} | wc -l)
+        #idr_1_3_count=\$(less \${idr_out_1_3_name} | wc -l)
+        #idr_2_3_count=\$(less \${idr_out_2_3_name} | wc -l)
+
+
+            
+
+
+        # now the final output
+        # this would be merging according to idr standards, keeping all the peaks from the 2 of the 3 pairs
+        
+        if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
+            idr --samples "${idr_out_1_2_name}.narrowPeak" "${idr_out_2_3_name}.narrowPeak" \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_final_merged_name}.narrowPeak" \
+            --rank p.value \
+            --plot \
+            --use-best-multisummit-IDR
+        fi
+
+
+        # just concatenate them and see
+        
+        cat "${idr_out_1_2_name}.narrowPeak" "${idr_out_2_3_name}.narrowPeak" "${idr_out_1_3_name}.narrowPeak" > "${concat_peaks_name}.narrowPeak"
         
 
 
-    # now the final output
-    # this would be merging according to idr standards, keeping all the peaks from the 2 of the 3 pairs
+
+        #if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
+            #idr --samples \${idr_out_1_2_name} \${idr_out_2_3_name} \
+            --input-file-type broadPeak \
+            --output-file \${idr_out_final_name} \
+            --idr-threshold \${params.return_idr} \
+            --soft-idr-threshold \${params.plot_idr} \
+            --rank p.value \
+            --plot \
+            --use-best-multisummit-IDR
+        #fi
+
+
+        # will have to ask johanna what this next bit of code does, but i can convert it to work here in nextflow as i did above
+        # it checks to see if column 12 is greater than or equal to the idr_thresh_transformed, if so print all the columns
+
+        # dont need this since it might be using the wrong column and IDR already has a parameter to get only peaks passing the threshold
+        
+        # IDR_THRESH_TRANSFORMED=\$(awk -v p=0.05 'BEGIN{print -log(p)/log(10)}')
+
+        # can change this to print 0 instead of listing all of them in. that will print all the columns
+        
+        # if you read the documentation, broad peak outputs do not have a summit columns (10,18,22 for 2 replicates), so that means i am actually using column 11 not 12 for broad peaks not narrow peaks
+        #awk 'BEGIN{OFS="\t"} \$11>='"\${IDR_THRESH_TRANSFORMED}"' {print \$0}' \${idr_out_final_name} | \
+        sort | uniq | sort -k7n,7n | gzip -nc > \${idr_final_sorted_file}
+
+
+
+        """
+
+    }
+    else {
+
     
-    if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
-        idr --samples ${idr_out_1_2_name} ${idr_out_2_3_name} \
-        --input-file-type broadPeak \
-        --output-file ${idr_out_final_merged_name} \
-        --rank p.value \
-        --plot \
-        --use-best-multisummit-IDR
-    fi
+        """
+        #!/usr/bin/env bash
+
+        ###### idr parameters ########
+        # plot_idr = 0.05 // the default is 0.05 to report in the png plots which peaks passed this threshold
+        # return_idr = 1  // the default is all peaks will be returned even if the report plots the ones that pass a certain number. 1 as default here will give back all peaks like idr has set
+
+        #--peak-list is not provided
+        #Peaks are grouped by overlap and then merged. The merged peak aggregate value is determined by --peak-merge-method.
+
+        #Peaks that don't overlap another peak in every other replicate are not included unless --use-nonoverlapping-peaks is set.
+        ##############################
+
+        # i need to pool the 3 reps so i can have the pooled file for input in idr
+        cat ${peak1} ${peak2} ${peak3} > "${peak_pool}.Peak"
+
+        # i have to gzip the file
+        #gzip -nc \${peak1} > "\${peak1}.gz"
+        #gzip -nc \${peak2} > "\${peak2}.gz"
+        #gzip -nc \${peak3} > "\${peak3}.gz"
 
 
-    # just concatenate them and see
-    
-    cat ${idr_out_1_2_name} ${idr_out_2_3_name} ${idr_out_1_3_name} > ${concat_peaks_name}
-    
+        # now sorting all the peaks by their pvalue column
+        sort -k8,8nr "${peak1}" | gzip > ${sort_peak1}
+        sort -k8,8nr "${peak2}" | gzip > ${sort_peak2}
+        sort -k8,8nr "${peak3}"| gzip > ${sort_peak3}
+        sort -k8,8nr "${peak_pool}.Peak" | gzip > "${sort_peak_pool}.broadPeak.gz"
+
+        # now i have everything to put into idr
+        # i think its best to return all peaks that passed the merging criteria for rep1 vs rep2 and rep2 vs rep3
+        # then when i do rep1_2 vs rep2_3 I only return the peaks that have the 0.05 IDR threshold passed; these peaks will also be the ones that pass the merging threshold.
+        # you can change this idr by changing the value in the --return_idr parameter when running nextflow
+
+        # i will make a if then statement where i will choose to run the idr if the length of the peak file is larger than 21 lines
+        peak1_length=\$(less ${sort_peak1} | wc -l )
+        peak2_length=\$(less ${sort_peak2} | wc -l )
+        peak3_length=\$(less ${sort_peak3} | wc -l )
+
+        # rep 1 vs 2
+        
+        if ((\$peak1_length > 21 && \$peak2_length > 21)); then
+            idr --samples ${sort_peak1} ${sort_peak2} \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_1_2_name}.broadPeak" \
+            --rank p.value \
+            --idr-threshold ${params.return_idr} \
+            --soft-idr-threshold ${params.plot_idr} \
+            --plot \
+            --use-best-multisummit-IDR
+        else
+            touch "${idr_out_1_2_name}.broadPeak"
+            touch "place_holder.png"
+        fi 
+
+        # now rep 2 vs 3
+
+        if ((\$peak2_length > 21 && \$peak3_length > 21)); then
+            idr --samples ${sort_peak2} ${sort_peak3} \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_2_3_name}.broadPeak" \
+            --rank p.value \
+            --idr-threshold ${params.return_idr} \
+            --soft-idr-threshold ${params.plot_idr} \
+            --plot \
+            --use-best-multisummit-IDR
+        else
+            touch "${idr_out_2_3_name}.broadPeak"
+            touch "place_holder.png"
+        fi 
+
+        # now doing 1 vs 3
+
+        if ((\$peak1_length > 21 && \$peak3_length > 21)); then
+            idr --samples ${sort_peak1} ${sort_peak3} \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_1_3_name}.broadPeak" \
+            --rank p.value \
+            --idr-threshold ${params.return_idr} \
+            --soft-idr-threshold ${params.plot_idr} \
+            --plot \
+            --use-best-multisummit-IDR
+        else
+            touch "${idr_out_1_3_name}.broadPeak"
+            touch "place_holder.png"
+        fi 
+
+        # maybe we dont look at the final output and just select the output of peak pairs that has the most peaks that pass the 0.05 threshold
+        # this is according to section 4d of the encode 3 pipeline 'https://docs.google.com/document/d/1lG_Rd7fnYgRpSIqrIfuVlAz2dW1VaSQThzk836Db99c/edit?tab=t.0#heading=h.9ecc41kilcvq' 
+        # I will instead load all the files into R and use only the one from each condition that has the max number of peaks called
+        # then I will merge the two files; the max from hlow and the max from scrm to get the masterpeak
+        
+        #idr_1_2_count=\$(less \${idr_out_1_2_name} | wc -l)
+        #idr_1_3_count=\$(less \${idr_out_1_3_name} | wc -l)
+        #idr_2_3_count=\$(less \${idr_out_2_3_name} | wc -l)
+
+
+            
+
+
+        # now the final output
+        # this would be merging according to idr standards, keeping all the peaks from the 2 of the 3 pairs
+        
+        if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
+            idr --samples "${idr_out_1_2_name}.broadPeak" "${idr_out_2_3_name}.broadPeak" \
+            --input-file-type broadPeak \
+            --output-file "${idr_out_final_merged_name}.broadPeak" \
+            --rank p.value \
+            --plot \
+            --use-best-multisummit-IDR
+        fi
+
+
+        # just concatenate them and see
+        
+        cat "${idr_out_1_2_name}.broadPeak" "${idr_out_2_3_name}.broadPeak" "${idr_out_1_3_name}.broadPeak" > "${concat_peaks_name}.broadPeak"
+        
 
 
 
-    #if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
-        #idr --samples \${idr_out_1_2_name} \${idr_out_2_3_name} \
-        --input-file-type broadPeak \
-        --output-file \${idr_out_final_name} \
-        --idr-threshold \${params.return_idr} \
-        --soft-idr-threshold \${params.plot_idr} \
-        --rank p.value \
-        --plot \
-        --use-best-multisummit-IDR
-    #fi
+        #if ((\$peak1_length > 21 && \$peak2_length > 21 && \$peak3_length > 21)); then
+            #idr --samples \${idr_out_1_2_name} \${idr_out_2_3_name} \
+            --input-file-type broadPeak \
+            --output-file \${idr_out_final_name} \
+            --idr-threshold \${params.return_idr} \
+            --soft-idr-threshold \${params.plot_idr} \
+            --rank p.value \
+            --plot \
+            --use-best-multisummit-IDR
+        #fi
 
 
-    # will have to ask johanna what this next bit of code does, but i can convert it to work here in nextflow as i did above
-    # it checks to see if column 12 is greater than or equal to the idr_thresh_transformed, if so print all the columns
+        # will have to ask johanna what this next bit of code does, but i can convert it to work here in nextflow as i did above
+        # it checks to see if column 12 is greater than or equal to the idr_thresh_transformed, if so print all the columns
 
-    # dont need this since it might be using the wrong column and IDR already has a parameter to get only peaks passing the threshold
-    
-    # IDR_THRESH_TRANSFORMED=\$(awk -v p=0.05 'BEGIN{print -log(p)/log(10)}')
+        # dont need this since it might be using the wrong column and IDR already has a parameter to get only peaks passing the threshold
+        
+        # IDR_THRESH_TRANSFORMED=\$(awk -v p=0.05 'BEGIN{print -log(p)/log(10)}')
 
-    # can change this to print 0 instead of listing all of them in. that will print all the columns
-    
-    # if you read the documentation, broad peak outputs do not have a summit columns (10,18,22 for 2 replicates), so that means i am actually using column 11 not 12 for broad peaks not narrow peaks
-    #awk 'BEGIN{OFS="\t"} \$11>='"\${IDR_THRESH_TRANSFORMED}"' {print \$0}' \${idr_out_final_name} | \
-    sort | uniq | sort -k7n,7n | gzip -nc > \${idr_final_sorted_file}
+        # can change this to print 0 instead of listing all of them in. that will print all the columns
+        
+        # if you read the documentation, broad peak outputs do not have a summit columns (10,18,22 for 2 replicates), so that means i am actually using column 11 not 12 for broad peaks not narrow peaks
+        #awk 'BEGIN{OFS="\t"} \$11>='"\${IDR_THRESH_TRANSFORMED}"' {print \$0}' \${idr_out_final_name} | \
+        sort | uniq | sort -k7n,7n | gzip -nc > \${idr_final_sorted_file}
 
 
 
-    """
+        """
+    }
 
 
 
@@ -1085,466 +1425,936 @@ process find_diff_peaks_R_process {
     unchanging_peaks_out = "unchanging_${idr_histone}_regulated_peaks.bed"
 
 
-    """
-    #!/usr/bin/env Rscript
+    if (params.NarrowPeak_data) {
 
-    bam_list = c(${bam_name_list})
+        """
+        #!/usr/bin/env Rscript
 
-    print(bam_list)
+        bam_list = c(${bam_name_list})
 
-    #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
-    #peaklist = \${peaks_list}
+        print(bam_list)
 
-    #print(peaklist)
+        #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
+        #peaklist = \${peaks_list}
 
-    #best_hlow_idr
-    #best_scrm_idr
+        #print(peaklist)
 
-    library(DESeq2)
-    library(GenomicRanges)
-    library(chromVAR)
-    library(tidyr)
-    library(EnhancedVolcano)
-    library(readr)
+        #best_hlow_idr
+        #best_scrm_idr
 
-    print(dir())
-    # making the master peak genomic ranges object
-    
-    #mPeak = GRanges()
+        library(DESeq2)
+        library(GenomicRanges)
+        library(chromVAR)
+        library(tidyr)
+        library(EnhancedVolcano)
+        library(readr)
 
-    #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
-    
-        #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
-    
-        #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
-    
-        #gr_object = rtracklayer::import(peakfile, format = "BED")
-
-        #mPeak = append(mPeak, gr_object)
-    #}
-
-    #peaktable = read.table("\${idr_peak_name}", header = FALSE)
-    #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
-
-    mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
-
-    # making sure there are no redundant peaks
-    # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
-    
-    
-    #masterPeak2 = reduce(mPeak)
-
-    # using resize to extnd regions
-    extended_master_peak = resize(mPeak, width = width(mPeak)+100000, fix = "center")
-
-    # before trimming i need to add the sequence lengths of the correct genome
-    # will have to find a way to automate this step for other genomes
-
-    library(BSgenome.Hsapiens.UCSC.hg38)
-    #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
-    #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
-    #trimmed_master_peak = trim(extended_master_peak)
-    #masterPeak_beta = reduce(trimmed_master_peak)
-
-    masterPeak_beta = reduce(extended_master_peak)
-    # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
-    
-    new_peak_size = width(masterPeak_beta)-100000
-    masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
-    
-    #print(masterPeak)
-
-    # now I want to keep the standard chromosomes
-    #seqnames_to_keep =masterPeak@seqnames@values[1:23]
-
-    #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
-
-    # hoping to export my GRanges object master peaks to a bed file
-    #write_tsv("\${master_peak_export_out}")
-    rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
-
-    
-
-    list_of_mBams = c()
-    
-    for (bam in bam_list) {
-  
-        tokens = strsplit(bam, split = "_")[[1]]
-        #print(tokens)
+        print(dir())
+        # making the master peak genomic ranges object
         
-        histone = tokens[2]
-        #print(histone)
+        #mPeak = GRanges()
 
-        #list_of_mBams = list()
+        #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
+        
+            #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+        
+            #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+        
+            #gr_object = rtracklayer::import(peakfile, format = "BED")
 
-        if ("${idr_histone}" == histone) {
-            #print(bam)
-            list_of_mBams = c(list_of_mBams, bam)
+            #mPeak = append(mPeak, gr_object)
+        #}
 
+        #peaktable = read.table("\${idr_peak_name}", header = FALSE)
+        #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+
+        # might have to let it auto detect the file type when using narrow peaks that arent merged into a strict bed file
+        mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
+
+        # making sure there are no redundant peaks
+        # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
+        
+        
+        #masterPeak2 = reduce(mPeak)
+
+        # using resize to extnd regions
+        extended_master_peak = resize(mPeak, width = width(mPeak)+1, fix = "center")
+
+        # before trimming i need to add the sequence lengths of the correct genome
+        # will have to find a way to automate this step for other genomes
+
+        library(BSgenome.Hsapiens.UCSC.hg38)
+        #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
+        #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
+        #trimmed_master_peak = trim(extended_master_peak)
+        #masterPeak_beta = reduce(trimmed_master_peak)
+
+        masterPeak_beta = reduce(extended_master_peak)
+        # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+        
+        new_peak_size = width(masterPeak_beta)-1
+        masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+        
+        #print(masterPeak)
+
+        # now I want to keep the standard chromosomes
+        #seqnames_to_keep =masterPeak@seqnames@values[1:23]
+
+        #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+
+        # hoping to export my GRanges object master peaks to a bed file
+        #write_tsv("\${master_peak_export_out}")
+        rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
+
+        
+
+        list_of_mBams = c()
+        
+        for (bam in bam_list) {
+    
+            tokens = strsplit(bam, split = "_")[[1]]
+            #print(tokens)
+            
+            histone = tokens[2]
+            #print(histone)
+
+            #list_of_mBams = list()
+
+            if ("${idr_histone}" == histone) {
+                #print(bam)
+                list_of_mBams = c(list_of_mBams, bam)
+
+            }
         }
+
+        print(list_of_mBams)
+    
+        
+        # now doing the next section to make the count matrix and the condition and experiment design
+
+        # making the matrix 
+
+        countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+
+
+        # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+        seqnames(masterPeak)
+
+        # i should put the unique ids from the master peak object in the matrix as row names.
+        unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+
+        rownames(countsMatrix) = unique_masterPeak_ids
+
+        #getting the list of bam base names to add to the matrix column names
+        list_bam_basenames = list()
+
+
+        # for deseq2 i need the condition design. so hlow and scrm
+        # then i will find a way to tally how many of each are there so i can automate the rep count
+        condition_design = list()
+
+        type_design = list()
+
+        for (x in c(1:length(list_of_mBams))) {
+        
+        path_bam = list_of_mBams[[x]]
+        print(path_bam)
+        bam_basename = basename(path_bam)
+        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+        
+        # labeling the important tokens so it is easier to keep track of
+        condition = bam_tokens[1]
+        histone = bam_tokens[2]
+        replicate = bam_tokens[3]
+        
+        
+        # for later parts I need the condition and to know how many times to repeat them
+        condition_design = append(condition_design, paste(condition,histone,sep="_"))
+        
+        
+        # also get the replicate too for type design
+        type_design = append(type_design, replicate)
+        #type_design = append(type_design, paste(histone,replicate, sep="_"))
+        
+        
+        
+        # using chromVAR getCounts function
+        fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+        
+        
+        # putting the fragment counts in the column labeled by the bam name
+        countsMatrix[,x] = counts(fragment_counts)[,1]
+        
+        list_bam_basenames = append(list_bam_basenames, bam_basename)
+        
+        }
+
+        colnames(countsMatrix) = list_bam_basenames
+
+        ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
+
+        #first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+        keep_Rows = which(rowSums(countsMatrix) > 5)
+
+        filt_countmatrix = countsMatrix[keep_Rows,]
+
+        # now to get the condition_design
+        condition_counts = table(unlist(condition_design))
+
+        # this gives back the names and the counts give back the counts for each of the names
+        condition_names = names(condition_counts)
+        condition_num = as.numeric(condition_counts)
+
+
+
+
+        # now i can put both lists in to get back the experiment design
+        condition_factor = factor(rep(condition_names, times=condition_num))
+
+
+        # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
+
+        # for treatment I need to make nextflow take the users input so they can relevel this section
+        #treatment = "H1low_H3k27me3"
+        treatment = "${params.treatment_name}_${idr_histone}"
+
+        if (levels(condition_factor)[1] == treatment ) {
+        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+        }else {
+        condition_factor
+        }
+        print(condition_factor)
+
+        # repeating the above to have another column with type (replicates)
+        type_counts = table(unlist(type_design))
+        type_names = names(type_counts)
+        type_num = as.numeric(type_counts)
+
+        #type_factor = factor(rep(type_names, times=type_counts))
+        type_factor = factor(rep(type_names, times=type_num[1]))
+
+        # I want to get the idr threshold and use that as input for the file names and other things
+
+        #peak_file = basename(peaklist[[1]])
+        peak_file = basename("./${idr_peak_name}")
+
+        idr_used = strsplit(peak_file, split = "_")[[1]][10]
+        idr_used
+
+        # now for deseq2 workflow
+
+
+        # now to do the normal deseq2 workflow
+
+        dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+                                    colData = DataFrame(condition_factor, type_factor),
+                                    design = ~ condition_factor)
+
+
+        # using the function on our data
+        DDS = DESeq(dds)
+
+        norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+
+        # adding _norm onto the column names in the normalized matrix
+        colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+
+
+        # provides independent filtering using the mean of normalized counts
+        res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+
+        # this is looking at the differences between the 3 deseq analyzed options
+        countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+
+        head(countMatDiff)
+
+
+
+
+        # getting the results name and addding to the coef we want to shrink
+        experiment_design_name = resultsNames(DDS)[2]
+
+        # useful for visualization and ranking of genes or in this case peaks
+        resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+
+
+        # finding the up and down regulated counts that pass the threshold
+
+        up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
+        total_up_reg = length(up_reg[,1])
+        #total_up_reg
+        down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
+        total_down_reg = length(down_reg[,1])
+        total_down_reg
+
+        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        total_unchanging_reg = length(unchanging_reg[,1])
+        total_unchanging_reg
+
+        resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
+        ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
+        labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
+        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 25), axis.title.y = element_text(size = 25), legend.text = element_text(size = 25))+
+        scale_colour_manual(values=c("red", "darkgrey", "pink"))+
+        scale_x_continuous(trans='log10')+
+        ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
+        geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 3)
+
+        print(ma_plot_labeled)
+
+
+        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+
+        print(ma_plot_labeled)
+        dev.off()
+
+        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+
+        print(ma_plot_labeled)
+        dev.off()
+
+
+        volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+                        lab = rownames(resLFC),
+                        title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
+                        x = 'log2FoldChange', FCcutoff = 1,
+                        y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
+                        
+                        )
+
+        print(volcano_plot_removed_reps)
+
+        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+        print(volcano_plot_removed_reps)
+        dev.off()
+
+        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+        print(volcano_plot_removed_reps)
+        dev.off()
+        
+
+
+
+        # using rlog over vst for transformation
+
+        rld = rlog(DDS, blind=FALSE)
+
+        #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+        head(assay(rld), 5)
+
+
+        library(ggplot2)
+
+        pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+        pcaData
+
+        percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+        pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+        ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+        geom_point(size=3) +
+        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+        coord_fixed()
+        #pca_plot
+        name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
+
+        png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
+        print(pca_plot_rlog)
+        dev.off()
+
+        name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
+
+        pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+        print(pca_plot_rlog)
+        dev.off()
+
+
+        # testing with vst
+        #vsd_t = vst(DDS, blind = FALSE)
+
+        # for histone mark k36me2 vst fails so i have to use the direct function
+        vsd_t <- tryCatch({
+            vst(DDS, blind = FALSE)
+        }, error = function(e) {
+            message("vst() failed, using varianceStabilizingTransformation() instead.")
+            varianceStabilizingTransformation(DDS, blind = FALSE)
+        })
+
+        head(assay(vsd_t), 5)
+
+        pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+        pcaData2
+
+        percentVar <- round(100 * attr(pcaData2, "percentVar"))
+        pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+        ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+        geom_point(size=3) +
+        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+        coord_fixed()
+
+
+        #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
+
+        pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+        print(pca_plot_vst)
+        dev.off()
+
+        png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
+        print(pca_plot_vst)
+        dev.off()
+
+        pca_plot_rlog
+
+        pca_plot_vst
+
+
+        rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+
+        rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+
+        # now exporting the unchanging peaks
+
+        rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+        # now hoping to get the peak lengths histone
+
+
+        ###### if any errors happen here then dont do anything ######
+        tryCatch({
+        up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
+
+        up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
+        print(max(up_peak_lengths))
+
+        png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+        hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+        dev.off()
+
+        # just to view it here, not needed in nextflow here.
+        #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+        #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+
+        down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
+
+        down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
+        print(max(down_peak_lengths))
+
+        png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+        hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+        dev.off()
+
+
+        unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
+
+        unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
+        print(max(unchanging_peak_lengths))
+
+        png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+        hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+        dev.off()
+
+        ########## now violin plots for peak lengths ################
+
+        up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
+        down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
+        unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
+
+
+        df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
+
+        #df_all_peak_lengths
+
+        df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
+        
+        all_peak_lengths_violin = df_all_peak_lengths_gg+
+            geom_violin()+
+            scale_y_continuous(labels = scales::label_number())
+        ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.png", plot = all_peak_lengths_violin)
+        
+        
+        }, error = function(x) {
+        
+        message("some of the peak files had no lenght so plotting is pointless")
+        })
+
+        """
+
+
     }
+    else {
 
-    print(list_of_mBams)
-   
     
-    # now doing the next section to make the count matrix and the condition and experiment design
+        """
+        #!/usr/bin/env Rscript
 
-    # making the matrix 
+        bam_list = c(${bam_name_list})
 
-    countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+        print(bam_list)
+
+        #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
+        #peaklist = \${peaks_list}
+
+        #print(peaklist)
+
+        #best_hlow_idr
+        #best_scrm_idr
+
+        library(DESeq2)
+        library(GenomicRanges)
+        library(chromVAR)
+        library(tidyr)
+        library(EnhancedVolcano)
+        library(readr)
+
+        print(dir())
+        # making the master peak genomic ranges object
+        
+        #mPeak = GRanges()
+
+        #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
+        
+            #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+        
+            #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+        
+            #gr_object = rtracklayer::import(peakfile, format = "BED")
+
+            #mPeak = append(mPeak, gr_object)
+        #}
+
+        #peaktable = read.table("\${idr_peak_name}", header = FALSE)
+        #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+
+        mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
+
+        # making sure there are no redundant peaks
+        # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
+        
+        
+        #masterPeak2 = reduce(mPeak)
+
+        # using resize to extnd regions
+        extended_master_peak = resize(mPeak, width = width(mPeak)+100000, fix = "center")
+
+        # before trimming i need to add the sequence lengths of the correct genome
+        # will have to find a way to automate this step for other genomes
+
+        library(BSgenome.Hsapiens.UCSC.hg38)
+        #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
+        #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
+        #trimmed_master_peak = trim(extended_master_peak)
+        #masterPeak_beta = reduce(trimmed_master_peak)
+
+        masterPeak_beta = reduce(extended_master_peak)
+        # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+        
+        new_peak_size = width(masterPeak_beta)-100000
+        masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+        
+        #print(masterPeak)
+
+        # now I want to keep the standard chromosomes
+        #seqnames_to_keep =masterPeak@seqnames@values[1:23]
+
+        #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+
+        # hoping to export my GRanges object master peaks to a bed file
+        #write_tsv("\${master_peak_export_out}")
+        rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
+
+        
+
+        list_of_mBams = c()
+        
+        for (bam in bam_list) {
+    
+            tokens = strsplit(bam, split = "_")[[1]]
+            #print(tokens)
+            
+            histone = tokens[2]
+            #print(histone)
+
+            #list_of_mBams = list()
+
+            if ("${idr_histone}" == histone) {
+                #print(bam)
+                list_of_mBams = c(list_of_mBams, bam)
+
+            }
+        }
+
+        print(list_of_mBams)
+    
+        
+        # now doing the next section to make the count matrix and the condition and experiment design
+
+        # making the matrix 
+
+        countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
 
 
-    # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
-    seqnames(masterPeak)
+        # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+        seqnames(masterPeak)
 
-    # i should put the unique ids from the master peak object in the matrix as row names.
-    unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+        # i should put the unique ids from the master peak object in the matrix as row names.
+        unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
 
-    rownames(countsMatrix) = unique_masterPeak_ids
+        rownames(countsMatrix) = unique_masterPeak_ids
 
-    #getting the list of bam base names to add to the matrix column names
-    list_bam_basenames = list()
+        #getting the list of bam base names to add to the matrix column names
+        list_bam_basenames = list()
 
 
-    # for deseq2 i need the condition design. so hlow and scrm
-    # then i will find a way to tally how many of each are there so i can automate the rep count
-    condition_design = list()
+        # for deseq2 i need the condition design. so hlow and scrm
+        # then i will find a way to tally how many of each are there so i can automate the rep count
+        condition_design = list()
 
-    type_design = list()
+        type_design = list()
 
-    for (x in c(1:length(list_of_mBams))) {
-    
-    path_bam = list_of_mBams[[x]]
-    print(path_bam)
-    bam_basename = basename(path_bam)
-    bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
-    
-    # labeling the important tokens so it is easier to keep track of
-    condition = bam_tokens[1]
-    histone = bam_tokens[2]
-    replicate = bam_tokens[3]
-    
-    
-    # for later parts I need the condition and to know how many times to repeat them
-    condition_design = append(condition_design, paste(condition,histone,sep="_"))
-    
-    
-    # also get the replicate too for type design
-    type_design = append(type_design, replicate)
-    #type_design = append(type_design, paste(histone,replicate, sep="_"))
-    
-    
-    
-    # using chromVAR getCounts function
-    fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
-    
-    
-    # putting the fragment counts in the column labeled by the bam name
-    countsMatrix[,x] = counts(fragment_counts)[,1]
-    
-    list_bam_basenames = append(list_bam_basenames, bam_basename)
-    
+        for (x in c(1:length(list_of_mBams))) {
+        
+        path_bam = list_of_mBams[[x]]
+        print(path_bam)
+        bam_basename = basename(path_bam)
+        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+        
+        # labeling the important tokens so it is easier to keep track of
+        condition = bam_tokens[1]
+        histone = bam_tokens[2]
+        replicate = bam_tokens[3]
+        
+        
+        # for later parts I need the condition and to know how many times to repeat them
+        condition_design = append(condition_design, paste(condition,histone,sep="_"))
+        
+        
+        # also get the replicate too for type design
+        type_design = append(type_design, replicate)
+        #type_design = append(type_design, paste(histone,replicate, sep="_"))
+        
+        
+        
+        # using chromVAR getCounts function
+        fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+        
+        
+        # putting the fragment counts in the column labeled by the bam name
+        countsMatrix[,x] = counts(fragment_counts)[,1]
+        
+        list_bam_basenames = append(list_bam_basenames, bam_basename)
+        
+        }
+
+        colnames(countsMatrix) = list_bam_basenames
+
+        ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
+
+        #first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+        keep_Rows = which(rowSums(countsMatrix) > 5)
+
+        filt_countmatrix = countsMatrix[keep_Rows,]
+
+        # now to get the condition_design
+        condition_counts = table(unlist(condition_design))
+
+        # this gives back the names and the counts give back the counts for each of the names
+        condition_names = names(condition_counts)
+        condition_num = as.numeric(condition_counts)
+
+
+
+
+        # now i can put both lists in to get back the experiment design
+        condition_factor = factor(rep(condition_names, times=condition_num))
+
+
+        # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
+
+        # for treatment I need to make nextflow take the users input so they can relevel this section
+        #treatment = "H1low_H3k27me3"
+        treatment = "${params.treatment_name}_${idr_histone}"
+
+        if (levels(condition_factor)[1] == treatment ) {
+        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+        }else {
+        condition_factor
+        }
+        print(condition_factor)
+
+        # repeating the above to have another column with type (replicates)
+        type_counts = table(unlist(type_design))
+        type_names = names(type_counts)
+        type_num = as.numeric(type_counts)
+
+        #type_factor = factor(rep(type_names, times=type_counts))
+        type_factor = factor(rep(type_names, times=type_num[1]))
+
+        # I want to get the idr threshold and use that as input for the file names and other things
+
+        #peak_file = basename(peaklist[[1]])
+        peak_file = basename("./${idr_peak_name}")
+
+        idr_used = strsplit(peak_file, split = "_")[[1]][10]
+        idr_used
+
+        # now for deseq2 workflow
+
+
+        # now to do the normal deseq2 workflow
+
+        dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+                                    colData = DataFrame(condition_factor, type_factor),
+                                    design = ~ condition_factor)
+
+
+        # using the function on our data
+        DDS = DESeq(dds)
+
+        norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+
+        # adding _norm onto the column names in the normalized matrix
+        colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+
+
+        # provides independent filtering using the mean of normalized counts
+        res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+
+        # this is looking at the differences between the 3 deseq analyzed options
+        countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+
+        head(countMatDiff)
+
+
+
+
+        # getting the results name and addding to the coef we want to shrink
+        experiment_design_name = resultsNames(DDS)[2]
+
+        # useful for visualization and ranking of genes or in this case peaks
+        resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+
+
+        # finding the up and down regulated counts that pass the threshold
+
+        up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
+        total_up_reg = length(up_reg[,1])
+        #total_up_reg
+        down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
+        total_down_reg = length(down_reg[,1])
+        total_down_reg
+
+        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        total_unchanging_reg = length(unchanging_reg[,1])
+        total_unchanging_reg
+
+        resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
+        ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
+        labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
+        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 25), axis.title.y = element_text(size = 25), legend.text = element_text(size = 25))+
+        scale_colour_manual(values=c("red", "darkgrey", "pink"))+
+        scale_x_continuous(trans='log10')+
+        ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
+        geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 3)
+
+        print(ma_plot_labeled)
+
+
+        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+
+        print(ma_plot_labeled)
+        dev.off()
+
+        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+
+        print(ma_plot_labeled)
+        dev.off()
+
+
+        volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+                        lab = rownames(resLFC),
+                        title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
+                        x = 'log2FoldChange', FCcutoff = 1,
+                        y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
+                        
+                        )
+
+        print(volcano_plot_removed_reps)
+
+        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+        print(volcano_plot_removed_reps)
+        dev.off()
+
+        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+        print(volcano_plot_removed_reps)
+        dev.off()
+        
+
+
+
+        # using rlog over vst for transformation
+
+        rld = rlog(DDS, blind=FALSE)
+
+        #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+        head(assay(rld), 5)
+
+
+        library(ggplot2)
+
+        pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+        pcaData
+
+        percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+        pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+        ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+        geom_point(size=3) +
+        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+        coord_fixed()
+        #pca_plot
+        name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
+
+        png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
+        print(pca_plot_rlog)
+        dev.off()
+
+        name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
+
+        pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+        print(pca_plot_rlog)
+        dev.off()
+
+
+        # testing with vst
+        #vsd_t = vst(DDS, blind = FALSE)
+
+        # for histone mark k36me2 vst fails so i have to use the direct function
+        vsd_t <- tryCatch({
+            vst(DDS, blind = FALSE)
+        }, error = function(e) {
+            message("vst() failed, using varianceStabilizingTransformation() instead.")
+            varianceStabilizingTransformation(DDS, blind = FALSE)
+        })
+
+        head(assay(vsd_t), 5)
+
+        pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+        pcaData2
+
+        percentVar <- round(100 * attr(pcaData2, "percentVar"))
+        pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+        ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+        geom_point(size=3) +
+        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+        coord_fixed()
+
+
+        #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
+
+        pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+        print(pca_plot_vst)
+        dev.off()
+
+        png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
+        print(pca_plot_vst)
+        dev.off()
+
+        pca_plot_rlog
+
+        pca_plot_vst
+
+
+        rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+
+        rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+
+        # now exporting the unchanging peaks
+
+        rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+        # now hoping to get the peak lengths histone
+
+
+        ###### if any errors happen here then dont do anything ######
+        tryCatch({
+        up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
+
+        up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
+        print(max(up_peak_lengths))
+
+        png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+        hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+        dev.off()
+
+        # just to view it here, not needed in nextflow here.
+        #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+        #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+
+        down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
+
+        down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
+        print(max(down_peak_lengths))
+
+        png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+        hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+        dev.off()
+
+
+        unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
+
+        unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
+        print(max(unchanging_peak_lengths))
+
+        png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+        hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+        dev.off()
+
+        ########## now violin plots for peak lengths ################
+
+        up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
+        down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
+        unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
+
+
+        df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
+
+        #df_all_peak_lengths
+
+        df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
+        
+        all_peak_lengths_violin = df_all_peak_lengths_gg+
+            geom_violin()+
+            scale_y_continuous(labels = scales::label_number())
+        ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.png", plot = all_peak_lengths_violin)
+        
+        
+        }, error = function(x) {
+        
+        message("some of the peak files had no lenght so plotting is pointless")
+        })
+
+        """
     }
-
-    colnames(countsMatrix) = list_bam_basenames
-
-    ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
-
-    #first removing the low count fragments. only keeping the rows that are above 5 count in total
-
-    keep_Rows = which(rowSums(countsMatrix) > 5)
-
-    filt_countmatrix = countsMatrix[keep_Rows,]
-
-    # now to get the condition_design
-    condition_counts = table(unlist(condition_design))
-
-    # this gives back the names and the counts give back the counts for each of the names
-    condition_names = names(condition_counts)
-    condition_num = as.numeric(condition_counts)
-
-
-
-
-    # now i can put both lists in to get back the experiment design
-    condition_factor = factor(rep(condition_names, times=condition_num))
-
-
-    # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
-
-    # for treatment I need to make nextflow take the users input so they can relevel this section
-    #treatment = "H1low_H3k27me3"
-    treatment = "${params.treatment_name}_${idr_histone}"
-
-    if (levels(condition_factor)[1] == treatment ) {
-    condition_factor = relevel(condition_factor, levels(condition_factor)[2])
-    }else {
-    condition_factor
-    }
-    print(condition_factor)
-
-    # repeating the above to have another column with type (replicates)
-    type_counts = table(unlist(type_design))
-    type_names = names(type_counts)
-    type_num = as.numeric(type_counts)
-
-    #type_factor = factor(rep(type_names, times=type_counts))
-    type_factor = factor(rep(type_names, times=type_num[1]))
-
-    # I want to get the idr threshold and use that as input for the file names and other things
-
-    #peak_file = basename(peaklist[[1]])
-    peak_file = basename("./${idr_peak_name}")
-
-    idr_used = strsplit(peak_file, split = "_")[[1]][10]
-    idr_used
-
-    # now for deseq2 workflow
-
-
-    # now to do the normal deseq2 workflow
-
-    dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
-                                colData = DataFrame(condition_factor, type_factor),
-                                design = ~ condition_factor)
-
-
-    # using the function on our data
-    DDS = DESeq(dds)
-
-    norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
-
-    # adding _norm onto the column names in the normalized matrix
-    colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
-
-
-    # provides independent filtering using the mean of normalized counts
-    res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
-
-
-    # this is looking at the differences between the 3 deseq analyzed options
-    countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
-
-    head(countMatDiff)
-
-
-
-
-    # getting the results name and addding to the coef we want to shrink
-    experiment_design_name = resultsNames(DDS)[2]
-
-    # useful for visualization and ranking of genes or in this case peaks
-    resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
-
-
-    # finding the up and down regulated counts that pass the threshold
-
-    up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
-    total_up_reg = length(up_reg[,1])
-    #total_up_reg
-    down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
-    total_down_reg = length(down_reg[,1])
-    total_down_reg
-
-    unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
-    total_unchanging_reg = length(unchanging_reg[,1])
-    total_unchanging_reg
-
-    resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
-    ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
-    labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
-    theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 25), axis.title.y = element_text(size = 25), legend.text = element_text(size = 25))+
-    scale_colour_manual(values=c("red", "darkgrey", "pink"))+
-    scale_x_continuous(trans='log10')+
-    ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
-    geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 3)
-
-    print(ma_plot_labeled)
-
-
-    pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
-
-    print(ma_plot_labeled)
-    dev.off()
-
-    png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
-
-    print(ma_plot_labeled)
-    dev.off()
-
-
-    volcano_plot_removed_reps = EnhancedVolcano(resLFC,
-                    lab = rownames(resLFC),
-                    title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
-                    x = 'log2FoldChange', FCcutoff = 1,
-                    y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
-                    
-                    )
-
-    print(volcano_plot_removed_reps)
-
-    png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
-    print(volcano_plot_removed_reps)
-    dev.off()
-
-    pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
-    print(volcano_plot_removed_reps)
-    dev.off()
-    
-
-
-
-    # using rlog over vst for transformation
-
-    rld = rlog(DDS, blind=FALSE)
-
-    #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
-    head(assay(rld), 5)
-
-
-    library(ggplot2)
-
-    pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
-    pcaData
-
-    percentVar <- round(100 * attr(pcaData, "percentVar"))
-
-
-    pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-    ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
-    theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
-    geom_point(size=3) +
-    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-    coord_fixed()
-    #pca_plot
-    name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
-
-    png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
-    print(pca_plot_rlog)
-    dev.off()
-
-    name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
-
-    pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
-    print(pca_plot_rlog)
-    dev.off()
-
-
-    # testing with vst
-    #vsd_t = vst(DDS, blind = FALSE)
-
-    # for histone mark k36me2 vst fails so i have to use the direct function
-    vsd_t <- tryCatch({
-        vst(DDS, blind = FALSE)
-    }, error = function(e) {
-        message("vst() failed, using varianceStabilizingTransformation() instead.")
-        varianceStabilizingTransformation(DDS, blind = FALSE)
-    })
-
-    head(assay(vsd_t), 5)
-
-    pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
-    pcaData2
-
-    percentVar <- round(100 * attr(pcaData2, "percentVar"))
-    pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-    ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
-    theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
-    geom_point(size=3) +
-    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-    coord_fixed()
-
-
-    #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
-
-    pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
-    print(pca_plot_vst)
-    dev.off()
-
-    png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
-    print(pca_plot_vst)
-    dev.off()
-
-    pca_plot_rlog
-
-    pca_plot_vst
-
-
-    rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
-
-    rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
-
-    # now exporting the unchanging peaks
-
-    rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
-
-    # now hoping to get the peak lengths histone
-
-
-    ###### if any errors happen here then dont do anything ######
-    tryCatch({
-    up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
-
-    up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
-    print(max(up_peak_lengths))
-
-    png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-    hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
-    axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-    dev.off()
-
-    # just to view it here, not needed in nextflow here.
-    #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
-    #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-
-    down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
-
-    down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
-    print(max(down_peak_lengths))
-
-    png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-    hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
-    axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-    dev.off()
-
-
-    unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
-
-    unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
-    print(max(unchanging_peak_lengths))
-
-    png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-    hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
-    axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-    dev.off()
-
-    ########## now violin plots for peak lengths ################
-
-    up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
-    down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
-    unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
-
-
-    df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
-
-    #df_all_peak_lengths
-
-    df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
-    
-    all_peak_lengths_violin = df_all_peak_lengths_gg+
-        geom_violin()+
-        scale_y_continuous(labels = scales::label_number())
-    ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.png", plot = all_peak_lengths_violin)
-    
-    
-    }, error = function(x) {
-    
-    message("some of the peak files had no lenght so plotting is pointless")
-    })
-
-    """
 }
 
 
@@ -2426,12 +3236,75 @@ process plot_at_up_down_peaks_process {
 
     # I THINK THE BEST THING IS TO ONLY HAVE BOTH UP AND DOWN TOGETHER
 
-    computeMatrix reference-point -S ${bw_names.join(' ')} ${bisulfate_bigwig_name} \
-    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${master_peaks_nozero}" "${cpg_island_unmasked_bed}" \
+    #computeMatrix reference-point -S \${bw_names.join(' ')} \${bisulfate_bigwig_name} \
+    -R "\${up_peaks_nozero}" "\${down_peaks_nozero}" "\${master_peaks_nozero}" "\${cpg_island_unmasked_bed}" \
     --referencePoint center \
     --beforeRegionStartLength 50000 \
     --afterRegionStartLength 50000 \
     --skipZeros \
+    --quiet \
+    --binSize 1000 \
+    --numberOfProcessors "max" \
+    -o "\${out_matrix_scores_both}"
+
+    #plotHeatmap -m "\${out_matrix_scores_both}" \
+    -out "\${png_heatmap_both}" \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax 3 \
+    --samplesLabel \${name_list.join(' ')} 'CpG_site_bigwig_signal' \
+    --labelRotation 30 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 8 \
+    --heatmapHeight 20 \
+    --dpi 300 
+    #--plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
+
+    #plotProfile -m "\${out_matrix_scores_both}" \
+    -out "\${png_profile_both_peaks}" \
+    --plotHeight 20 \
+    --plotWidth 20 \
+    --perGroup \
+    --dpi 300 \
+    --samplesLabel \${name_list.join(' ')} 'CpG_site_bigwig_signal' \
+    --plotTitle "Bigwig Signal and CpG signal over both peaks"
+
+    // svg
+
+    #plotHeatmap -m "\${out_matrix_scores_both}" \
+    -out "\${svg_heatmap_both}" \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax 3 \
+    --samplesLabel \${name_list.join(' ')} 'CpG_site_bigwig_signal' \
+    --labelRotation 30 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 8 \
+    --heatmapHeight 20 \
+    --dpi 300 
+    #--plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
+
+    #plotProfile -m "\${out_matrix_scores_both}" \
+    -out "\${svg_profile_both_peaks}" \
+    --plotHeight 20 \
+    --plotWidth 20 \
+    --perGroup \
+    --dpi 300 \
+    --samplesLabel \${name_list.join(' ')} 'CpG_site_bigwig_signal' \
+    --plotTitle "Bigwig Signal and CpG signal over both peaks"
+
+
+    # SO THE CpG island bigwigs are NO LONGER THERE SO DOING THIS WITHOUT THAT
+
+    computeMatrix reference-point -S ${bw_names.join(' ')} \
+    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${master_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 50000 \
+    --afterRegionStartLength 50000 \
+    --skipZeros \
+    --missingDataAsZero \
     --quiet \
     --binSize 1000 \
     --numberOfProcessors "max" \
@@ -2442,14 +3315,14 @@ process plot_at_up_down_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax 3 \
-    --samplesLabel ${name_list.join(' ')} 'CpG_site_bigwig_signal' \
+    --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
+    #--plotTitle "Bigwig Signal Up and Down Peaks"
 
     plotProfile -m "${out_matrix_scores_both}" \
     -out "${png_profile_both_peaks}" \
@@ -2457,8 +3330,8 @@ process plot_at_up_down_peaks_process {
     --plotWidth 20 \
     --perGroup \
     --dpi 300 \
-    --samplesLabel ${name_list.join(' ')} 'CpG_site_bigwig_signal' \
-    --plotTitle "Bigwig Signal and CpG signal over both peaks"
+    --samplesLabel ${name_list.join(' ')}  \
+    --plotTitle "Bigwig Signal  over both peaks"
 
     // svg
 
@@ -2467,14 +3340,14 @@ process plot_at_up_down_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax 3 \
-    --samplesLabel ${name_list.join(' ')} 'CpG_site_bigwig_signal' \
+    --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
     --perGroup \
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal and CpG signal Over Up and Down Peaks"
+    #--plotTitle "Bigwig Signal Over Up and Down Peaks"
 
     plotProfile -m "${out_matrix_scores_both}" \
     -out "${svg_profile_both_peaks}" \
@@ -2482,10 +3355,8 @@ process plot_at_up_down_peaks_process {
     --plotWidth 20 \
     --perGroup \
     --dpi 300 \
-    --samplesLabel ${name_list.join(' ')} 'CpG_site_bigwig_signal' \
-    --plotTitle "Bigwig Signal and CpG signal over both peaks"
-
-
+    --samplesLabel ${name_list.join(' ')} \
+    --plotTitle "Bigwig Signal over both peaks"
 
 
 
@@ -2612,8 +3483,8 @@ process atac_signal_over_peaks_process {
     computeMatrix reference-point -S ${control_atac_bigwig} ${treatment_atac_bigwig} \
     -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${unchanging_peaks_nozero}" "${cpg_island_unmasked_regions}" \
     --referencePoint center \
-    --beforeRegionStartLength 50000 \
-    --afterRegionStartLength 50000 \
+    --beforeRegionStartLength 5000 \
+    --afterRegionStartLength 5000 \
     --skipZeros \
     --quiet \
     --binSize 200 \
@@ -3381,6 +4252,143 @@ process get_CpG_islands_in_peaks_process {
     """
 }
 
+// similar to the above process but finding atac-seq peaks in genes
+process get_atacPeaks_in_genetss_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+    label 'normal_big_resources'
+
+    publishDir "./intersect_ATACpeaks_in_tssGenes", mode: 'copy', pattern: '*'
+
+    
+
+    input:
+    tuple val(peak_type), val(exper_type), path(all_true_peaks_ch)
+
+    path(up_genes)
+
+    path(down_genes)
+
+    path(unchanging_genes)
+
+    path(chr_size)
+
+
+
+    output:
+
+    path("${peaks_proximal_tss_up_genes}"), emit: diff_peaks_up_genes
+    path("${peaks_proximal_tss_down_genes}"), emit: diff_peaks_down_genes
+    path("${peaks_proximal_tss_unchanging_genes}"), emit: diff_peaks_unchanging_genes
+
+    //path("proximal*"), emit: gene_tss_proximal
+
+
+
+    script:
+
+    // dont do this, i will flatten the peaks channel so it runs in parallel and get the tokens to make different files
+
+    // up_peaks_ch = "${all_true_peaks_ch[0]}"
+    // down_peaks_ch = "${all_true_peaks_ch[1]}"
+    // unchanging_peaks_ch = "${all_true_peaks_ch[2]}"
+    // masterpeaks_merged_peaks_ch = "${all_true_peaks_ch[3]}"
+
+    // // i need multiple combinations of peaks in diff genes
+    // // for now lets just do the up atac peaks that are distal or proximal to the tss of genes
+    // up_peaks_near_upgenes_tss = "up_ATACpeaks_near_tss_"
+    // down_peaks_in_up_genes =
+    // unchanging_peaks_in_up_genes =
+    // master_peaks_in_up_genes =
+
+    // create a out file that is dynamic
+
+    peaks_proximal_tss_up_genes = "${peak_type}_${exper_type}_proximal_upTSS_5kb.bed"
+    peaks_proximal_tss_down_genes = "${peak_type}_${exper_type}_proximal_downTSS_5kb.bed"
+    peaks_proximal_tss_unchanging_genes = "${peak_type}_${exper_type}_proximal_unchangingTSS_5kb.bed"
+
+    up_gene_tss = "up_genes.tss.bed"
+    down_gene_tss = "down_genes.tss.bed"
+    unchanging_gene_tss = "unchanging_genes.tss.bed"
+
+    proximal_up_gene_tss = "proximal_up_gene.tss.bed"
+    proximal_down_gene_tss = "proximal_down_gene.tss.bed"
+    proximal_unchanging_gene_tss = "proximal_unchanging_gene.tss.bed"
+
+    """
+    #!/usr/bin/env bash
+
+    # first I need to get the start coordinates of the proseq genes and make a range of 5kb upstream of the gene tss and 1kb into the gene body
+
+    awk 'BEGIN{OFS="\t"} {
+    print \$1,\$2,\$2+1 
+    }' "${up_genes}" > "${up_gene_tss}"
+
+    awk 'BEGIN{OFS="\t"} { 
+    print \$1,\$2,\$2+1  
+    }' "${down_genes}" > "${down_gene_tss}"
+
+    awk 'BEGIN{OFS="\t"}  { 
+    print \$1,\$2,\$2+1  
+    }' "${unchanging_genes}" > "${unchanging_gene_tss}"
+
+    
+    # now I can use bedtools slop to get the proximal range of the tss
+    
+    bedtools slop \
+    -i "${up_gene_tss}" \
+    -g "${chr_size}" \
+    -r 1000 \
+    -l 5000 \
+    > "${proximal_up_gene_tss}"
+
+    bedtools slop \
+    -i "${down_gene_tss}" \
+    -g "${chr_size}" \
+    -r 1000 \
+    -l 5000 \
+    > "${proximal_down_gene_tss}"
+
+    bedtools slop \
+    -i "${unchanging_gene_tss}" \
+    -g "${chr_size}" \
+    -r 1000 \
+    -l 5000 \
+    > "${proximal_unchanging_gene_tss}"
+
+
+    # now to find the intersection. "B" will be the peak file, and i will get the peaks that are proximal to the tss ranges i set
+
+    # first which peaks are in up genes tss
+    bedtools intersect \
+    -a "${proximal_up_gene_tss}" \
+    -b "${all_true_peaks_ch}" \
+    -wb \
+    > "${peaks_proximal_tss_up_genes}"
+
+    # now peaks in down genes tss
+    bedtools intersect \
+    -a "${proximal_down_gene_tss}" \
+    -b "${all_true_peaks_ch}" \
+    -wb \
+    > "${peaks_proximal_tss_down_genes}"
+
+    # now peaks in unchanging genes tss
+    bedtools intersect \
+    -a "${proximal_unchanging_gene_tss}" \
+    -b "${all_true_peaks_ch}" \
+    -wb \
+    > "${peaks_proximal_tss_unchanging_genes}"
+
+
+
+
+
+
+
+    """
+}
+
 process plot_over_diff_cpg_regions_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
@@ -3657,6 +4665,249 @@ process atac_enrich_counts_process {
     """
 }
 
+// this is a process to merge all bams per the two conditions, treatment and control
+process merge_bams_on_condition_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/samtools-1.21_rj'
+    label 'normal_big_resources'
+
+    publishDir "atac_analysis/allmerged_bams", mode: 'copy', pattern: '*'
+
+    input:
+    tuple val(control_exper_type), val(control_condition), path(control_bams) 
+    tuple val(treatment_exper_type), val(treatment_condition), path(treatment_bams)
+
+
+
+    output:
+
+    tuple path("${control_allmerge_bam_out}"), path("${control_allmerge_bam_out}.bai"), emit: merged_control_bam_index_tuple
+
+    tuple path("${treatment_allmerge_bam_out}"), path("${treatment_allmerge_bam_out}.bai"), emit: merged_treatment_bam_index_tuple
+
+
+
+    script:
+
+    control_allmerge_bam_out = "${control_condition[0]}_${control_exper_type}_allmerge.bam"
+
+    treatment_allmerge_bam_out = "${treatment_condition[0]}_${treatment_exper_type}_allmerge.bam"
+
+
+    """
+    #!/usr/bin/env bash
+
+    # now to merge the control
+
+    samtools merge -o ${control_allmerge_bam_out} ${control_bams.join(' ')} 
+    
+    # then to index the control
+
+    samtools index ${control_allmerge_bam_out}
+
+
+
+    # now to merge the treatment
+
+    samtools merge -o ${treatment_allmerge_bam_out} ${treatment_bams.join(' ')} 
+    
+    # then to index the treatment
+
+    samtools index ${treatment_allmerge_bam_out}
+
+    
+
+    
+
+
+
+    """
+
+
+}
+
+process get_merged_bigwig_process {
+
+    label 'normal_big_resources'
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
+
+    publishDir "atac_analysis/allmerged_bigwigs", mode:'copy', pattern: "*"
+
+
+    input:
+
+    // tuple path(control_bam), path(control_index)
+
+    // tuple path(treatment_bam), path(treatment_index)
+
+    tuple path(bam), path(index)
+
+
+
+    output:
+
+    // path("${control_bigwig_name}"), emit: allmerged_control_bigwig
+    // path("${treatment_bigwig_name}"), emit: allmerged_treatment_bigwig
+
+    path("${bigwig_name}"), emit: allmerged_bigwig
+
+
+
+    script:
+
+    // control_bigwig_name = "${control_bam.baseName}.bigwig"
+    // treatment_bigwig_name = "${treatment_bam.baseName}.bigwig"
+    bigwig_name = "${bam.baseName}.bigwig"
+
+    """
+    #!/usr/bin/env bash
+
+    bamCoverage \
+    --bam ${bam} \
+    --outFileName "${bigwig_name}" \
+    --outFileFormat "bigwig" \
+    --extendReads \
+    --scaleFactor 1 \
+    --normalizeUsing CPM 
+
+    #bamCoverage \
+    --bam \${control_bam} \
+    --outFileName "\${control_bigwig_name}" \
+    --outFileFormat "bigwig" \
+    --extendReads \
+    --scaleFactor 1 \
+    --normalizeUsing CPM 
+
+    #bamCoverage \
+    --bam \${treatment_bam} \
+    --outFileName "\${treatment_bigwig_name}" \
+    --outFileFormat "bigwig" \
+    --extendReads \
+    --scaleFactor 1 \
+    --normalizeUsing CPM 
+
+
+
+
+
+
+
+
+    """
+}
+
+// repeating this process but only with the pipeline peaks part
+
+process atac_enrich_counts_2nd_version_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
+    label 'normal_big_resources'
+
+    publishDir "./atac_analysis/enrichment_of_experiment/", mode: 'copy', pattern: '*'
+
+    debug true
+
+    input:
+
+
+    // these are our own peak files to find which peaks are enriched in regions that go up in accessibility
+    tuple val(pipeline_peaks_filename), val(pipeline_peaks_names), path(pipeline_peaks_path)
+
+    //path(atac_bigwig)
+    path(bam_files)
+
+
+    output:
+
+    path("*.png"), emit: atac_enrichment_plot
+    path("*.tab"), emit: raw_enrichment_counts
+
+
+
+    script:
+
+    // getting the true base name of the pipeline peak files
+    name_list = []
+    file_list = []
+
+    num_files = pipeline_peaks_names.size()
+    
+    for (int i = 0; i < num_files; i++) {
+
+        
+
+        //println("${pipeline_peaks_filename[i]}".readLines().size())
+        //true_basename = "${pipeline_peaks_names[i]}".replaceFirst(/r{1,2,3}.*/, '')
+        basename_split = "${pipeline_peaks_filename[i]}".split('_')
+
+
+        condition = basename_split[0]
+        exper_type = basename_split[1]
+
+        true_basename = "${basename_split[0]}_${basename_split[1]}_${basename_split[2]}_${basename_split[3]}_"
+
+        name_list << true_basename
+
+        file_list << pipeline_peaks_filename[i]
+
+        // try this
+        //matcher = "${pipeline_peaks_names[i]}" =~ / (\d+)\_(\d+)\./
+        
+    }
+
+    //pipeline_bed_files = name_list.collect{ file("${it}*new_sorted.bed") }.join(' ')
+    //pipeline_regions_name = name_list.join(' ')
+
+    //out_npz_file = "${atac_bigwig.baseName}_counts.npz"
+    //out_tab_file = "${atac_bigwig.baseName}_counts.tab"
+
+    // making the plot file name that will be outputted
+    // out_broad_enrich_plot = "${bam_files[1].baseName}_broad_enrichment_plot.png"
+    // out_broad_enrich_counts = "${bam_files[1].baseName}_broad_enrichment_counts.tab"
+
+    // out_narrow_enrich_plot = "${bam_files[1].baseName}_narrow_enrichment_plot.png"
+    // out_narrow_enrich_counts = "${bam_files[1].baseName}_narrow_enrichment_counts.tab"
+
+    out_pipeline_enrich_plot = "${bam_files[0].baseName}_pipeline_enrichment_plot.png"
+    out_pipeline_enrich_counts = "${bam_files[0].baseName}_pipeline_enrichment_counts.tab"
+
+    """
+    #!/usr/bin/env bash
+
+    
+
+    pipeline_list=(${file_list.join(' ')})
+
+    for file in \${pipeline_list[@]}; do
+
+        if [ \$(wc -l < \${file}) -gt 0 ]; then
+            file_basename=\$(basename \${file} .bed)
+            awk 'BEGIN{OFS="\t"} \$3 > \$2 {print \$1, \$2, \$3 }' \${file} > \${file_basename}_new.bed
+
+            sort -k1,1 -k2,2n \${file_basename}_new.bed >\${file_basename}_new_sorted.bed
+        fi
+    done
+
+
+
+    # now plotting for the peaks from our own data
+
+    pipelinePeak_files=\$(ls *new_sorted.bed)
+
+    plotEnrichment \
+    --perSample \
+    --bamfiles ${bam_files[0]} \
+    --BED \${pipelinePeak_files[@]} \
+    --variableScales \
+    --outRawCounts ${out_pipeline_enrich_counts} \
+    --plotFile ${out_pipeline_enrich_plot}
+
+
+
+    """
+}
+
 process r_atac_enrich_plot_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/r_language'
@@ -3761,6 +5012,114 @@ process r_atac_enrich_plot_process {
 
 
     """
+}
+
+process r_atac_enrich_plot_2nd_version_process {
+
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/r_language'
+    label 'normal_big_resources'
+    publishDir "./atac_analysis/enrichment_process", mode: 'copy', pattern:'*'
+
+    input:
+
+    // this is where the enrichment tab meta channel will be 
+    // the basename, filename, and peakpath will have two elements(conditions) the list, scrm and h1low counts in histone peaks
+    // just plot both h1low/scrm and scrm/h1low
+    tuple val(peak_type), val(basename), val(filename), path(peakpath)
+    
+
+    output:
+
+    path("*.png"), emit: atac_enrichment_plots
+
+
+    script:
+
+    condition_one = filename[0]
+
+    condition_two = filename[1]
+
+    // i need to automate the out file names
+    atac_enrich_png_v1 = "${peak_type}_histones_in_atac_peaks_in_v1.png"
+    atac_enrich_png_v2 = "${peak_type}_histones_in_atac_peaks_in_v2.png"
+    
+
+    """
+    #!/usr/bin/env Rscript
+
+    # now just read the tab files into R
+
+    # i have to load the readr package to use read_*
+
+    library(readr)
+    library(ggplot2)
+
+    condition_one = read_tsv("./${condition_one}")
+    condition_two = read_tsv("./${condition_two}")
+
+    atac_narrow_enrichment_counts_v1 = data.frame(featureType = condition_one\$featureType, log2FC = log2(condition_one\$percent/condition_two\$percent) )
+
+    atac_narrow_enrichment_counts_v2 = data.frame(featureType = condition_one\$featureType, log2FC = log2(condition_two\$percent/condition_one\$percent) )
+
+    # using ifelse is a conditional that does this 
+    # setting another column for both the versions of calculating
+    atac_narrow_enrichment_counts_v1\$color = ifelse( atac_narrow_enrichment_counts_v1\$log2FC > 0, 'up', 'down')
+
+    atac_narrow_enrichment_counts_v2\$color = ifelse( atac_narrow_enrichment_counts_v2\$log2FC > 0, 'up', 'down')
+
+
+    # only need to get the new names one time
+
+    print(atac_narrow_enrichment_counts_v1\$featureType)
+
+    string_test = strsplit(atac_narrow_enrichment_counts_v1\$featureType, "_")
+
+    new_names = sapply(string_test, function(x) {
+        paste(na.omit(x[c(1:4,12,13)]), collapse = "_")
+    })
+
+    new_names
+
+    #new_name = paste(na.omit(string_test[[1]][1:5-12-13]), collapse = "_")
+    #new_name
+
+    # now here is where I change the featureType names to the new names that should be shorter, and do it in both versions of the experiment design
+    atac_narrow_enrichment_counts_v1["featureType"] = new_names
+    atac_narrow_enrichment_counts_v2["featureType"] = new_names
+
+    print(atac_narrow_enrichment_counts_v1\$featureType)
+                                         
+
+    ggplot(data = atac_narrow_enrichment_counts_v1, aes(x = featureType, y = log2FC, fill = color) )+
+        geom_bar(stat = "identity")+
+        scale_fill_manual(values=c( "up" = "green", "down" = "gray"))+
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
+        plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
+        labs(title = paste0('Bigwig signal ', "${peak_type} ", 'log2FC ', condition_one\$file[1], '_vs_', condition_two\$file[1]))+
+        scale_y_continuous(labels = scales::label_number())
+
+    ggsave("${atac_enrich_png_v1}", plot=last_plot(), width = 12, height = 8, units = "in", dpi = 300)
+
+
+    # now version 2
+
+    ggplot(data = atac_narrow_enrichment_counts_v2, aes(x = featureType, y = log2FC, fill = color) )+
+        geom_bar(stat = "identity")+
+        scale_fill_manual(values=c( "up" = "green", "down" = "gray"))+
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
+        plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
+        labs(title = paste0('Bigwig signal ', "${peak_type} ", 'log2FC ', condition_two\$file[1], '_vs_',condition_one\$file[1]))+
+        scale_y_continuous(labels = scales::label_number())
+
+    ggsave("${atac_enrich_png_v2}", plot=last_plot(), width = 12, height = 8, units = "in", dpi = 300)
+
+
+
+
+
+    """
+
+
 }
 
 process get_atacPeaks_in_roadmapPeaks_process {

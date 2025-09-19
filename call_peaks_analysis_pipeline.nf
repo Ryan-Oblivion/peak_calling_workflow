@@ -122,6 +122,12 @@ up_atac_peaks_ch = Channel.value(params.up_ATAC_peaks_bed)
 params.nochange_ATAC_peaks_bed = file('/lustre/fs4/risc_lab/scratch/iduba/linker-histone/ATAC-seq/KA23/DEseq/rep-peaks-scrvslow-nochange.bed')
 nochange_atac_peaks_ch = Channel.value(params.nochange_ATAC_peaks_bed)
 
+// get histone bam files from the user if they are running ATAC-seq analysis
+params.control_histone_signal = '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/Scr_H3K27me3*{bam,bai}'
+control_histone_bams = Channel.fromFilePairs(params.control_histone_signal)
+
+params.treatment_histone_signal = '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/H1lo_H3K27me3*{bam,bai}'
+treatment_histone_bams = Channel.fromFilePairs(params.treatment_histone_signal)
 
 /////////////////// Now for the roadmap bedfiles //////////////////////
 // location:  /lustre/fs4/home/ascortea/store/ascortea/beds/k562
@@ -165,7 +171,8 @@ include {
     plot_atac_signal_over_diff_peaks_workflow;
     find_then_plot_cpgIslands_in_peaks_workflow;
     get_roadmap_histone_enrichment_workflow;
-    find_then_plot_atacseqPeaks_in_experiment_peaks_workflow
+    find_then_plot_atacseqPeaks_in_experiment_peaks_workflow;
+    get_proximal_distal_atac_peaks_workflow
     //get_diff_peaks_workflow
 
 }from './workflows/call_peaks_workflow.nf'
@@ -206,7 +213,7 @@ workflow {
     wt_meta_cpm_bw = mk_bw_call_peaks_workflow.out.wt_meta_cpm_bw_ch
 
     // the mk_bw_call_peaks_workflow workflow also emits the broad peaks that were called so I will grab those
-    all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.broadpeaks_ch
+    all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.macspeaks_ch
 
     master_peak_list_true = mk_bw_call_peaks_workflow.out.master_peaks_list_ch
     up_peaks_list_true = mk_bw_call_peaks_workflow.out.up_peaks_list_ch
@@ -250,62 +257,74 @@ workflow {
     // it has this format tuple(condition, histone, replicate, file_name, file)
     //combined_bigwig_meta_2grouped_ch = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_cpm_ch
 
-    /////////////////////////////////////// For when creating master peaks generated in this pipeline /////////////
-    // this is replicating the process that uses peaks so i can use the peaks that were made in the pipeline
-    plot_signal_up_down_peaks_workflow(control_meta_cpm_bw, wt_meta_cpm_bw, up_peaks_list_true, down_peaks_list_true, bisulfate_bigwig_ch, master_peak_list_true, unchanging_peaks_list_true, cpg_island_unmasked_ch)
+    // when using narrowPeak_data, lets not do these analyses
 
-    // the grouped channel that uses only data from the pipeline not geo control
-    combined_bigwig_peak_2grouped_ch = plot_signal_up_down_peaks_workflow.out.exper_rep_bigwig_peak_group
+    if (params.NarrowPeak_data) {
 
-    // if i want to keep using this channel, it also has to be below the workflow (only for when using geo control data)
-    combined_bigwig_meta_2grouped_ch = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_cpm_ch
+        // this will be to find the atac-seq peaks that are near the proseq genes
 
-    bigwig_meta_ch_to_join = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_to_join_ch
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // now lets see how to get differential peaks to be plot over the up and down genes TSS plus 5kb
-    // I will also plot the signal over genes tss plus 20kb in this workflow, because I already made the 20kb changed from 5kb
-    // will put the combined bigwig channel here emitted from the other workflow
-    //plot_diff_peaks_over_diff_genes_workflow(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, master_peaks_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch, wtvslownochange, gtf_ch, ref_genome_size_ch, knownGene_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, combined_bigwig_meta_2grouped_ch)
-
-    // now recreating the above that will only use the true peak files generated from the pipeline itself
-    plot_diff_peaks_over_diff_genes_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, wtvslowup_genebody_ch, wtvslowdown_nochange_ch, wtvslownochange, gtf_ch, ref_genome_size_ch, knownGene_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, combined_bigwig_peak_2grouped_ch)
-    
-    // now to add a workflow to plot the atac-seq signal over the cut&run peaks
+        // i want to get the up peaks that are near proseq gene tss or distal from them
+        get_proximal_distal_atac_peaks_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, ref_genome_size_ch, control_histone_bams, treatment_histone_bams)
 
 
+    }
+    else { 
+        /////////////////////////////////////// For when creating master peaks generated in this pipeline /////////////
+        // this is replicating the process that uses peaks so i can use the peaks that were made in the pipeline
+        plot_signal_up_down_peaks_workflow(control_meta_cpm_bw, wt_meta_cpm_bw, up_peaks_list_true, down_peaks_list_true, bisulfate_bigwig_ch, master_peak_list_true, unchanging_peaks_list_true, cpg_island_unmasked_ch)
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////
-    // need to update the below workflow to take the actual peaks generated in the pipeline
-    //plot_atac_signal_over_diff_peaks_workflow(control_atac_bigwig_ch, treatment_atac_bigwig_ch, up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_meta_2grouped_ch, cpg_island_unmasked_ch )
-    
-    // this below will be the copy of the above workflow but using actual peaks generated in pipeline
-    plot_atac_signal_over_diff_peaks_workflow(control_atac_bigwig_ch, treatment_atac_bigwig_ch, up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_peak_2grouped_ch, cpg_island_unmasked_ch )
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+        // the grouped channel that uses only data from the pipeline not geo control
+        combined_bigwig_peak_2grouped_ch = plot_signal_up_down_peaks_workflow.out.exper_rep_bigwig_peak_group
 
+        // if i want to keep using this channel, it also has to be below the workflow (only for when using geo control data)
+        combined_bigwig_meta_2grouped_ch = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_cpm_ch
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // now we want to first find the CpG islands that are overlapping up, down, unchanging experiment(histone) peaks
-    // then we plot the h1low, scrm and bisulfate signal over the new "CpG_in_up_peaks, CpG_in_down_peaks, and CpG_in_unchanging_peaks"
+        bigwig_meta_ch_to_join = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_to_join_ch
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    //find_then_plot_cpgIslands_in_peaks_workflow(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch )
+        // now lets see how to get differential peaks to be plot over the up and down genes TSS plus 5kb
+        // I will also plot the signal over genes tss plus 20kb in this workflow, because I already made the 20kb changed from 5kb
+        // will put the combined bigwig channel here emitted from the other workflow
+        //plot_diff_peaks_over_diff_genes_workflow(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, master_peaks_ch, wtvslowup_genebody_ch, wtvslowdown_nochange_ch, wtvslownochange, gtf_ch, ref_genome_size_ch, knownGene_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, combined_bigwig_meta_2grouped_ch)
 
-    // this is the version of the above workflow that will only use the peaks generated within the pipeline
-
-    
-    find_then_plot_cpgIslands_in_peaks_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch, combined_bigwig_peak_2grouped_ch, bigwig_meta_ch_to_join )
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // now I want to use roadmap histone data to get and enrichment barplot of which histones have more ATAC-accessability
-
-    //get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, control_atac_bigwig_ch, treatment_atac_bigwig_ch)
-    
-    get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch)
+        // now recreating the above that will only use the true peak files generated from the pipeline itself
+        plot_diff_peaks_over_diff_genes_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, wtvslowup_genebody_ch, wtvslowdown_nochange_ch, wtvslownochange, gtf_ch, ref_genome_size_ch, knownGene_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, combined_bigwig_peak_2grouped_ch)
+        
+        // now to add a workflow to plot the atac-seq signal over the cut&run peaks
 
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // recreating the plot cpgIslands workflow but for finding which ATAC-seq peaks are in histone mark peaks
 
-    find_then_plot_atacseqPeaks_in_experiment_peaks_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, nochange_atac_peaks_ch, up_atac_peaks_ch, roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch)
-    
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+        // need to update the below workflow to take the actual peaks generated in the pipeline
+        //plot_atac_signal_over_diff_peaks_workflow(control_atac_bigwig_ch, treatment_atac_bigwig_ch, up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_meta_2grouped_ch, cpg_island_unmasked_ch )
+        
+        // this below will be the copy of the above workflow but using actual peaks generated in pipeline
+        plot_atac_signal_over_diff_peaks_workflow(control_atac_bigwig_ch, treatment_atac_bigwig_ch, up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_peak_2grouped_ch, cpg_island_unmasked_ch )
+        ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////
+        // now we want to first find the CpG islands that are overlapping up, down, unchanging experiment(histone) peaks
+        // then we plot the h1low, scrm and bisulfate signal over the new "CpG_in_up_peaks, CpG_in_down_peaks, and CpG_in_unchanging_peaks"
+
+        //find_then_plot_cpgIslands_in_peaks_workflow(up_peaks_ch, down_peaks_ch, unchanging_peaks_ch, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch )
+
+        // this is the version of the above workflow that will only use the peaks generated within the pipeline
+
+        
+        find_then_plot_cpgIslands_in_peaks_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, cpg_island_unmasked_ch, combined_bigwig_meta_2grouped_ch, combined_bigwig_peak_2grouped_ch, bigwig_meta_ch_to_join )
+        ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // now I want to use roadmap histone data to get and enrichment barplot of which histones have more ATAC-accessability
+
+        //get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, control_atac_bigwig_ch, treatment_atac_bigwig_ch)
+        
+        get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch)
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////
+        // recreating the plot cpgIslands workflow but for finding which ATAC-seq peaks are in histone mark peaks
+
+        find_then_plot_atacseqPeaks_in_experiment_peaks_workflow(up_peaks_list_true, down_peaks_list_true, unchanging_peaks_list_true, master_peak_list_true, nochange_atac_peaks_ch, up_atac_peaks_ch, roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch)
+    }
 }
