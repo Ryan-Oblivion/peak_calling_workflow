@@ -406,7 +406,7 @@ process macs2_call_peaks_process_both {
 
     output:
     path("*broadPeak"), optional: true, emit: broad_peaks
-    path("*NarrowPeak"), optional: true, emit: narrow_peaks
+    path("*narrowPeak"), optional: true, emit: narrow_peaks
     path("*"), emit: macs2_files
     path("*ppois*"), emit: ppois_macs2_file
 
@@ -419,7 +419,7 @@ process macs2_call_peaks_process_both {
     old_peak_files = "${bam_file_name}_old_macs2_stats"
     
 
-    if (params.NarrowPeak_data) {
+    if (params.narrowPeak_data) {
 
     
         
@@ -798,8 +798,8 @@ process merge_concat_peaks_process {
     first_mPeak = concat_peaks_names[0]
     second_mPeak = concat_peaks_names[1]
 
-    println(first_mPeak)
-    println(second_mPeak)
+    // println(first_mPeak)
+    // println(second_mPeak)
 
     
     
@@ -807,7 +807,7 @@ process merge_concat_peaks_process {
     //list_of_10kb_merged_names =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
     //list_of_10kb_merged_paths =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
 
-    if (params.NarrowPeak_data){
+    if (params.narrowPeak_data){
         output_10kb_merged_first_mPeak = first_mPeak.replace(/.narrowPeak/, "_10kb_merged.bed")
         output_10kb_merged_second_mPeak = second_mPeak.replace(/.narrowPeak/, "_10kb_merged.bed")
         concat_10kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_10kb_merged.bed"
@@ -1060,7 +1060,7 @@ process find_idr_in_replicates_process {
 
     // idr_final_sorted_file = "${condition_label}_${histone_label}_${rep_label1}_vs_${rep_label2}_vs_${rep_label3}_IDR_${params.return_idr}.broadPeak.gz"
 
-    if (params.NarrowPeak_data) {
+    if (params.narrowPeak_data) {
 
         """
         #!/usr/bin/env bash
@@ -1425,7 +1425,7 @@ process find_diff_peaks_R_process {
     unchanging_peaks_out = "unchanging_${idr_histone}_regulated_peaks.bed"
 
 
-    if (params.NarrowPeak_data) {
+    if (params.narrowPeak_data) {
 
         """
         #!/usr/bin/env Rscript
@@ -1682,6 +1682,10 @@ process find_diff_peaks_R_process {
 
         # finding the up and down regulated counts that pass the threshold
 
+        # all peaks
+        all_peaks = resLFC
+        total_all_peaks = length(all_peaks[,1])
+
         up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
         total_up_reg = length(up_reg[,1])
         #total_up_reg
@@ -1693,10 +1697,17 @@ process find_diff_peaks_R_process {
         total_unchanging_reg = length(unchanging_reg[,1])
         total_unchanging_reg
 
+        # get the percentage of diff peaks
+        up_percentage_reg = round((total_up_reg/total_all_peaks)*100, digits = 1)
+
+        down_percentage_reg = round((total_down_reg/total_all_peaks)*100, 1)
+
+        unchanging_percentage_reg = round((total_unchanging_reg/total_all_peaks)*100, 1)
+
         resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
         ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
-        labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
-        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 25), axis.title.y = element_text(size = 25), legend.text = element_text(size = 25))+
+        labs(caption = paste("Up reg (red +1 LFC & padj <0.05) = ", total_up_reg, "; percentage: ", up_percentage_reg , "\n", "Down reg (red -1 LFC & padj < 0.05) = ", total_down_reg, "; percentage: ", down_percentage_reg, "\nNow the Unchanging total and percentage ", total_unchanging_reg , "; percentage: " , unchanging_percentage_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
+        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 35), axis.title.y = element_text(size = 35), legend.text = element_text(size = 25), title = element_text(size = 25), plot.subtitle = element_text(size = 15))+
         scale_colour_manual(values=c("red", "darkgrey", "pink"))+
         scale_x_continuous(trans='log10')+
         ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
@@ -1705,12 +1716,12 @@ process find_diff_peaks_R_process {
         print(ma_plot_labeled)
 
 
-        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 18, height = 12)
 
         print(ma_plot_labeled)
         dev.off()
 
-        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
 
         print(ma_plot_labeled)
         dev.off()
@@ -1726,11 +1737,11 @@ process find_diff_peaks_R_process {
 
         print(volcano_plot_removed_reps)
 
-        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
         print(volcano_plot_removed_reps)
         dev.off()
 
-        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
         print(volcano_plot_removed_reps)
         dev.off()
         
@@ -1885,6 +1896,67 @@ process find_diff_peaks_R_process {
         }, error = function(x) {
         
         message("some of the peak files had no lenght so plotting is pointless")
+        })
+
+
+        tryCatch({
+        # now for the annotated peaks, if an error occurs, don't do anything
+        # lets get the annotated peaks
+
+        library(ChIPseeker)
+
+        library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+        txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+        # now to read in the peak files
+        peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
+        up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
+
+
+        unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
+        unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+        up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+        # I would have to plot this pie chart as many times as there are peak files, but not yet.
+        #plotAnnoPie(up_annotated_peaks)
+
+        down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
+        down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+        # not plotting this right now
+        #plotAnnoPie(down_annotated_peaks)
+
+
+        # not plotting this right now also
+        #plotDistToTSS(down_annotated_peaks,
+        #            title="Distribution of H3K27me3 peaks relative to TSS")
+
+
+        annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+
+
+        # now get the number of total annotated peaks
+        down_annotated_df <- as.data.frame(down_annotated_peaks)
+        #num_down_annotated_peaks = count(down_annotated_df)[[1]]
+        num_down_annotated_peaks = length(down_annotated_df[,1])
+
+        up_annotated_df <- as.data.frame(up_annotated_peaks)
+        #num_up_annotated_peaks = count(up_annotated_df)[[1]]
+        num_up_annotated_peaks = length(up_annotated_df[,1])
+
+        unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
+        #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
+        num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
+
+        # then plot with bar because it uses a ggplot object
+        plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
+
+        ggsave("annotation_bar_graph_${idr_histone}_peaks.png", plot = last_plot())
+
+        }, error = function(x) {
+        
+        message("for making annotated peaks, some of the files might have no differential peaks")
         })
 
         """
@@ -2148,6 +2220,10 @@ process find_diff_peaks_R_process {
 
         # finding the up and down regulated counts that pass the threshold
 
+        # all peaks
+        all_peaks = resLFC
+        total_all_peaks = length(all_peaks[,1])
+
         up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
         total_up_reg = length(up_reg[,1])
         #total_up_reg
@@ -2159,10 +2235,17 @@ process find_diff_peaks_R_process {
         total_unchanging_reg = length(unchanging_reg[,1])
         total_unchanging_reg
 
+        # get the percentage of diff peaks
+        up_percentage_reg = round((total_up_reg/total_all_peaks)*100, digits = 1)
+
+        down_percentage_reg = round((total_down_reg/total_all_peaks)*100, 1)
+
+        unchanging_percentage_reg = round((total_unchanging_reg/total_all_peaks)*100, 1)
+
         resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
         ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
-        labs(caption = paste("Up reg (green +1 LFC & padj <0.05) = ", total_up_reg, "\n", "Down reg (green -1 LFC & padj < 0.05) = ", total_down_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
-        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 25), axis.title.y = element_text(size = 25), legend.text = element_text(size = 25))+
+        labs(caption = paste("Up reg (red +1 LFC & padj <0.05) = ", total_up_reg, "; percentage: ", up_percentage_reg , "\n", "Down reg (red -1 LFC & padj < 0.05) = ", total_down_reg, "; percentage: ", down_percentage_reg, "\nNow the Unchanging total and percentage ", total_unchanging_reg , "; percentage: " , unchanging_percentage_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
+        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 35), axis.title.y = element_text(size = 35), legend.text = element_text(size = 25), title = element_text(size = 25), plot.subtitle = element_text(size = 15))+
         scale_colour_manual(values=c("red", "darkgrey", "pink"))+
         scale_x_continuous(trans='log10')+
         ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
@@ -2171,12 +2254,12 @@ process find_diff_peaks_R_process {
         print(ma_plot_labeled)
 
 
-        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 18, height = 12)
 
         print(ma_plot_labeled)
         dev.off()
 
-        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
 
         print(ma_plot_labeled)
         dev.off()
@@ -2192,11 +2275,11 @@ process find_diff_peaks_R_process {
 
         print(volcano_plot_removed_reps)
 
-        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 900, height = 900, antialias = "subpixel")
+        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
         print(volcano_plot_removed_reps)
         dev.off()
 
-        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 12, height = 12)
+        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
         print(volcano_plot_removed_reps)
         dev.off()
         
@@ -2351,6 +2434,68 @@ process find_diff_peaks_R_process {
         }, error = function(x) {
         
         message("some of the peak files had no lenght so plotting is pointless")
+        })
+
+
+        tryCatch({
+        # now for the annotated peaks, if an error occurs, don't do anything
+
+        # lets get the annotated peaks
+
+        library(ChIPseeker)
+
+        library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+        txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+        # now to read in the peak files
+        peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
+        up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
+
+
+        unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
+        unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+        up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+        # I would have to plot this pie chart as many times as there are peak files, but not yet.
+        #plotAnnoPie(up_annotated_peaks)
+
+        down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
+        down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+        # not plotting this right now
+        #plotAnnoPie(down_annotated_peaks)
+
+
+        # not plotting this right now also
+        #plotDistToTSS(down_annotated_peaks,
+        #            title="Distribution of H3K27me3 peaks relative to TSS")
+
+
+        annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+
+
+        # now get the number of total annotated peaks
+        down_annotated_df <- as.data.frame(down_annotated_peaks)
+        #num_down_annotated_peaks = count(down_annotated_df)[[1]]
+        num_down_annotated_peaks = length(down_annotated_df[,1])
+
+        up_annotated_df <- as.data.frame(up_annotated_peaks)
+        #num_up_annotated_peaks = count(up_annotated_df)[[1]]
+        num_up_annotated_peaks = length(up_annotated_df[,1])
+
+        unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
+        #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
+        num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
+
+        # then plot with bar because it uses a ggplot object
+        plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
+
+        ggsave("annotation_bar_graph_${idr_histone}_peaks.png", plot = last_plot())
+
+        }, error = function(x) {
+        
+        message("for making annotated peaks, some of the files might have no differential peaks")
         })
 
         """
@@ -3298,8 +3443,21 @@ process plot_at_up_down_peaks_process {
 
     # SO THE CpG island bigwigs are NO LONGER THERE SO DOING THIS WITHOUT THAT
 
+    # for the k27me3 peaks only plot over the down peaks not up peaks because of low signal
+    #computeMatrix reference-point -S \${bw_names.join(' ')} \
+    -R "\${up_peaks_nozero}" "\${down_peaks_nozero}" "\${master_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 50000 \
+    --afterRegionStartLength 50000 \
+    --skipZeros \
+    --missingDataAsZero \
+    --quiet \
+    --binSize 1000 \
+    --numberOfProcessors "max" \
+    -o "\${out_matrix_scores_both}"
+
     computeMatrix reference-point -S ${bw_names.join(' ')} \
-    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${master_peaks_nozero}" \
+    -R "${down_peaks_nozero}" "${master_peaks_nozero}" \
     --referencePoint center \
     --beforeRegionStartLength 50000 \
     --afterRegionStartLength 50000 \
@@ -3479,9 +3637,20 @@ process atac_signal_over_peaks_process {
     awk  '\$2!=\$3 {print \$0}' "${down_peaks}" > "${down_peaks_nozero}"
     awk  '\$2!=\$3 {print \$0}' "${unchanging_peaks}" > "${unchanging_peaks_nozero}"
 
+    # need to remove up peaks and cpg_islands from this plot of k27me3 peaks
+    #computeMatrix reference-point -S \${control_atac_bigwig} \${treatment_atac_bigwig} \
+    -R "\${up_peaks_nozero}" "\${down_peaks_nozero}" "\${unchanging_peaks_nozero}" "\${cpg_island_unmasked_regions}" \
+    --referencePoint center \
+    --beforeRegionStartLength 5000 \
+    --afterRegionStartLength 5000 \
+    --skipZeros \
+    --quiet \
+    --binSize 200 \
+    --numberOfProcessors "max" \
+    -o "\${out_matrix_scores_3}"
 
     computeMatrix reference-point -S ${control_atac_bigwig} ${treatment_atac_bigwig} \
-    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${unchanging_peaks_nozero}" "${cpg_island_unmasked_regions}" \
+    -R  "${down_peaks_nozero}" "${unchanging_peaks_nozero}"  \
     --referencePoint center \
     --beforeRegionStartLength 5000 \
     --afterRegionStartLength 5000 \
@@ -4544,6 +4713,7 @@ process atac_enrich_counts_process {
         //println("${pipeline_peaks_filename[i]}".readLines().size())
         //true_basename = "${pipeline_peaks_names[i]}".replaceFirst(/r{1,2,3}.*/, '')
         basename_split = "${pipeline_peaks_filename[i]}".split('_')
+        // basename_split = "${pipeline_peaks_filename}".split('_')
 
 
         condition = basename_split[2]
@@ -4554,6 +4724,7 @@ process atac_enrich_counts_process {
         name_list << true_basename
 
         file_list << pipeline_peaks_filename[i]
+        // file_list << pipeline_peaks_filename
 
         // try this
         //matcher = "${pipeline_peaks_names[i]}" =~ / (\d+)\_(\d+)\./
@@ -4626,7 +4797,7 @@ process atac_enrich_counts_process {
 
     plotEnrichment \
     --perSample \
-    --bamfiles ${bam_files[1]} \
+    --bamfiles *bam \
     --BED \${broadPeak_files[@]} \
     --variableScales \
     --outRawCounts ${out_broad_enrich_counts} \
@@ -4641,7 +4812,7 @@ process atac_enrich_counts_process {
 
     plotEnrichment \
     --perSample \
-    --bamfiles ${bam_files[1]} \
+    --bamfiles *bam \
     --BED \${narrowPeak_files[@]} \
     --variableScales \
     --outRawCounts ${out_narrow_enrich_counts} \
@@ -4654,7 +4825,7 @@ process atac_enrich_counts_process {
 
     plotEnrichment \
     --perSample \
-    --bamfiles ${bam_files[1]} \
+    --bamfiles *bam \
     --BED \${pipelinePeak_files[@]} \
     --variableScales \
     --outRawCounts ${out_pipeline_enrich_counts} \
@@ -4832,6 +5003,7 @@ process atac_enrich_counts_2nd_version_process {
     file_list = []
 
     num_files = pipeline_peaks_names.size()
+    // println("these are the number of files in the atac 2nd version process: ${num_files}")
     
     for (int i = 0; i < num_files; i++) {
 
@@ -4841,6 +5013,7 @@ process atac_enrich_counts_2nd_version_process {
         //true_basename = "${pipeline_peaks_names[i]}".replaceFirst(/r{1,2,3}.*/, '')
         basename_split = "${pipeline_peaks_filename[i]}".split('_')
 
+        // println("the basename split string: ${basename_split}")
 
         condition = basename_split[0]
         exper_type = basename_split[1]
@@ -4878,6 +5051,8 @@ process atac_enrich_counts_2nd_version_process {
     
 
     pipeline_list=(${file_list.join(' ')})
+
+    echo "this is in the script section showing the list of hopefully peak names: \${pipeline_list}"
 
     for file in \${pipeline_list[@]}; do
 
@@ -4931,11 +5106,20 @@ process r_atac_enrich_plot_process {
 
     condition_one = filename[0]
 
+    first_split = condition_one.split('_')
+    first_name_combo = "${first_split[0]}_${first_split[1]}" // this works because it will let me know in the file name if its h1low_vs_scr, or scr_vs_h1low
+
     condition_two = filename[1]
 
+    second_split = condition_two.split('_')
+    second_name_combo = "${second_split[0]}_${second_split[1]}"
+
     // i need to automate the out file names
-    atac_enrich_png_v1 = "atac_enrichment_in_${peak_type}_histones_v1.png"
-    atac_enrich_png_v2 = "atac_enrichment_in_${peak_type}_histones_v2.png"
+    // atac_enrich_png_v1 = "${first_name_combo}_enrichment_in_${peak_type}_histones_v1.png"
+    // atac_enrich_png_v2 = "${second_name_combo}_enrichment_in_${peak_type}_histones_v2.png"
+
+    atac_enrich_png_v1 = "${first_name_combo}_${second_name_combo}_enrichment_in_${peak_type}_histones_v1.png"
+    atac_enrich_png_v2 = "${first_name_combo}_${second_name_combo}_enrichment_in_${peak_type}_histones_v2.png"
     
 
     """
@@ -4989,7 +5173,7 @@ process r_atac_enrich_plot_process {
         scale_fill_manual(values=c( "up" = "green", "down" = "gray"))+
         theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
-        labs(title = paste0('ATAC-seq ', "${peak_type} ", 'log2FC ', condition_one\$file[1], '_vs_', condition_two\$file[1]), caption = "This is k562 ChIP-seq narrow peak data from roadmap. \nDeeptools was used to generate counts from ATAC-seq H1low and scrambled bam files,\n to get the number of reads that align in each of the roadmap narrow peaks. The percentage of \nreads in peaks vs total reads is the column I use to get the accessibility enrichment score.\n I take log2 of the percentage of H1low reads divided by the percentage of Scrm reads ratio,\n which gives the log fold enrichment of accessibility")+
+        labs(title = paste0( "${peak_type} ", 'log2FC ', condition_one\$file[1], '_vs_', condition_two\$file[1]))+
         scale_y_continuous(labels = scales::label_number())
 
     ggsave("${atac_enrich_png_v1}", plot=last_plot(), width = 12, height = 8, units = "in", dpi = 300)
@@ -5002,7 +5186,7 @@ process r_atac_enrich_plot_process {
         scale_fill_manual(values=c( "up" = "green", "down" = "gray"))+
         theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
-        labs(title = paste0('ATAC-seq ', "${peak_type} ", 'log2FC ', condition_two\$file[1], '_vs_',condition_one\$file[1]), caption = "This is k562 ChIP-seq narrow peak data from roadmap. \nDeeptools was used to generate counts from ATAC-seq H1low and scrambled bam files,\n to get the number of reads that align in each of the roadmap narrow peaks. The percentage of \nreads in peaks vs total reads is the column I use to get the accessibility enrichment score.\n I take log2 of the percentage of H1low reads divided by the percentage of Scrm reads ratio,\n which gives the log fold enrichment of accessibility")+
+        labs(title = paste0("${peak_type} ", 'log2FC ', condition_two\$file[1], '_vs_',condition_one\$file[1]))+
         scale_y_continuous(labels = scales::label_number())
 
     ggsave("${atac_enrich_png_v2}", plot=last_plot(), width = 12, height = 8, units = "in", dpi = 300)

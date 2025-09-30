@@ -129,6 +129,17 @@ control_histone_bams = Channel.fromFilePairs(params.control_histone_signal)
 params.treatment_histone_signal = '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/H1lo_H3K27me3*{bam,bai}'
 treatment_histone_bams = Channel.fromFilePairs(params.treatment_histone_signal)
 
+// get the proseq bam files from the user if they are running the  ATAC-seq analysis
+// first I will merge the pro-seq bam files and then use the merged files as input here
+params.rna_treatment_bam = file('/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/proseq_merged_bams/H1low_proseq_mergedbams_dedup*{bam.bai,bam}')
+treatment_proseq_bam = Channel.value(params.rna_treatment_bam)
+
+params.rna_control_bam = file('/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/proseq_merged_bams/Scr_proseq_mergedbams_dedup*{bam.bai,bam}')
+control_proseq_bam = Channel.value(params.rna_control_bam)
+
+// control_proseq_bam.view{it -> "this is the input fromFilePairs for the control proseq: $it"}
+
+
 /////////////////// Now for the roadmap bedfiles //////////////////////
 // location:  /lustre/fs4/home/ascortea/store/ascortea/beds/k562
 // params.k27me3_broad= file('/lustre/fs4/home/ascortea/store/ascortea/beds/k562/E123-H3K27me3.broadPeak')
@@ -198,29 +209,29 @@ workflow {
     // now i will put the control bams and wt bams into the peak calling workflow
     // I will also put the reference genome in as the third entry
 
-    mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch, ref_genome_size_ch, dups_log_ch )
+    // mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch, ref_genome_size_ch, dups_log_ch )
 
-    // get a channel with the final concat idr peaks
-    //final_idr_concat_peaks_ch = mk_bw_call_peaks_workflow.out.concat_idr_peaks
+    // // get a channel with the final concat idr peaks
+    // //final_idr_concat_peaks_ch = mk_bw_call_peaks_workflow.out.concat_idr_peaks
     
-    // take the emitted channels from the call peaks workflow
-    control_bw_meta_ch = mk_bw_call_peaks_workflow.out.control_meta_bw_ch
+    // // take the emitted channels from the call peaks workflow
+    // control_bw_meta_ch = mk_bw_call_peaks_workflow.out.control_meta_bw_ch
 
-    wt_bw_meta_ch = mk_bw_call_peaks_workflow.out.wt_meta_bw_ch
+    // wt_bw_meta_ch = mk_bw_call_peaks_workflow.out.wt_meta_bw_ch
 
-    // getting the cpm normalized bigwigs
-    control_meta_cpm_bw = mk_bw_call_peaks_workflow.out.control_meta_cpm_bw_ch
-    wt_meta_cpm_bw = mk_bw_call_peaks_workflow.out.wt_meta_cpm_bw_ch
+    // // getting the cpm normalized bigwigs
+    // control_meta_cpm_bw = mk_bw_call_peaks_workflow.out.control_meta_cpm_bw_ch
+    // wt_meta_cpm_bw = mk_bw_call_peaks_workflow.out.wt_meta_cpm_bw_ch
 
-    // the mk_bw_call_peaks_workflow workflow also emits the broad peaks that were called so I will grab those
-    all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.macspeaks_ch
+    // // the mk_bw_call_peaks_workflow workflow also emits the broad peaks that were called so I will grab those
+    // all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.macspeaks_ch
 
-    master_peak_list_true = mk_bw_call_peaks_workflow.out.master_peaks_list_ch
-    up_peaks_list_true = mk_bw_call_peaks_workflow.out.up_peaks_list_ch
-    down_peaks_list_true = mk_bw_call_peaks_workflow.out.down_peaks_list_ch
-    unchanging_peaks_list_true = mk_bw_call_peaks_workflow.out.unchanging_peaks_list_ch
+    // master_peak_list_true = mk_bw_call_peaks_workflow.out.master_peaks_list_ch
+    // up_peaks_list_true = mk_bw_call_peaks_workflow.out.up_peaks_list_ch
+    // down_peaks_list_true = mk_bw_call_peaks_workflow.out.down_peaks_list_ch
+    // unchanging_peaks_list_true = mk_bw_call_peaks_workflow.out.unchanging_peaks_list_ch
 
-    idr_merged_peaks = mk_bw_call_peaks_workflow.out.group_concat_idr_peaks_ch
+    // idr_merged_peaks = mk_bw_call_peaks_workflow.out.group_concat_idr_peaks_ch
 
     // adding a workflow here to get the differential peaks
 
@@ -257,9 +268,33 @@ workflow {
     // it has this format tuple(condition, histone, replicate, file_name, file)
     //combined_bigwig_meta_2grouped_ch = plot_signal_up_down_peaks_workflow.out.experiment_group_meta_cpm_ch
 
-    // when using narrowPeak_data, lets not do these analyses
+    
 
-    if (params.NarrowPeak_data) {
+    if (params.narrowPeak_data) {
+
+        mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch, ref_genome_size_ch, dups_log_ch )
+
+        // get a channel with the final concat idr peaks
+        //final_idr_concat_peaks_ch = mk_bw_call_peaks_workflow.out.concat_idr_peaks
+        
+        // take the emitted channels from the call peaks workflow
+        control_bw_meta_ch = mk_bw_call_peaks_workflow.out.control_meta_bw_ch
+
+        wt_bw_meta_ch = mk_bw_call_peaks_workflow.out.wt_meta_bw_ch
+
+        // getting the cpm normalized bigwigs
+        control_meta_cpm_bw = mk_bw_call_peaks_workflow.out.control_meta_cpm_bw_ch
+        wt_meta_cpm_bw = mk_bw_call_peaks_workflow.out.wt_meta_cpm_bw_ch
+
+        // the mk_bw_call_peaks_workflow workflow also emits the broad peaks that were called so I will grab those
+        all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.macspeaks_ch
+
+        master_peak_list_true = mk_bw_call_peaks_workflow.out.master_peaks_list_ch
+        up_peaks_list_true = mk_bw_call_peaks_workflow.out.up_peaks_list_ch
+        down_peaks_list_true = mk_bw_call_peaks_workflow.out.down_peaks_list_ch
+        unchanging_peaks_list_true = mk_bw_call_peaks_workflow.out.unchanging_peaks_list_ch
+
+        idr_merged_peaks = mk_bw_call_peaks_workflow.out.group_concat_idr_peaks_ch
 
         // this will be to find the atac-seq peaks that are near the proseq genes
 
@@ -269,6 +304,34 @@ workflow {
 
     }
     else { 
+
+        
+        mk_bw_call_peaks_workflow(control_bams_index_tuple_ch, wt_bams_index_tuple_ch, ref_genome_ch, ref_genome_size_ch, dups_log_ch )
+
+        // get a channel with the final concat idr peaks
+        //final_idr_concat_peaks_ch = mk_bw_call_peaks_workflow.out.concat_idr_peaks
+        
+        // take the emitted channels from the call peaks workflow
+        control_bw_meta_ch = mk_bw_call_peaks_workflow.out.control_meta_bw_ch
+
+        wt_bw_meta_ch = mk_bw_call_peaks_workflow.out.wt_meta_bw_ch
+
+        // getting the cpm normalized bigwigs
+        control_meta_cpm_bw = mk_bw_call_peaks_workflow.out.control_meta_cpm_bw_ch
+        wt_meta_cpm_bw = mk_bw_call_peaks_workflow.out.wt_meta_cpm_bw_ch
+
+        // the mk_bw_call_peaks_workflow workflow also emits the broad peaks that were called so I will grab those
+        all_broadpeaks_ch = mk_bw_call_peaks_workflow.out.macspeaks_ch
+
+        master_peak_list_true = mk_bw_call_peaks_workflow.out.master_peaks_list_ch
+        up_peaks_list_true = mk_bw_call_peaks_workflow.out.up_peaks_list_ch
+        down_peaks_list_true = mk_bw_call_peaks_workflow.out.down_peaks_list_ch
+        unchanging_peaks_list_true = mk_bw_call_peaks_workflow.out.unchanging_peaks_list_ch
+
+        idr_merged_peaks = mk_bw_call_peaks_workflow.out.group_concat_idr_peaks_ch
+
+        // when using narrowPeak_data, lets not do these analyses
+
         /////////////////////////////////////// For when creating master peaks generated in this pipeline /////////////
         // this is replicating the process that uses peaks so i can use the peaks that were made in the pipeline
         plot_signal_up_down_peaks_workflow(control_meta_cpm_bw, wt_meta_cpm_bw, up_peaks_list_true, down_peaks_list_true, bisulfate_bigwig_ch, master_peak_list_true, unchanging_peaks_list_true, cpg_island_unmasked_ch)
@@ -319,7 +382,7 @@ workflow {
 
         //get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, control_atac_bigwig_ch, treatment_atac_bigwig_ch)
         
-        get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch)
+        get_roadmap_histone_enrichment_workflow(roadmap_broad_histones, roadmap_narrow_histones, idr_merged_peaks, control_atac_bam_ch, treatment_atac_bam_ch, control_proseq_bam, treatment_proseq_bam, up_peaks_list_true, down_peaks_list_true)
 
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////

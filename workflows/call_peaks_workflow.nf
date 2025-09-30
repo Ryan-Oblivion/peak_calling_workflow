@@ -27,6 +27,7 @@ include {
     get_CpG_islands_in_peaks_process;
     plot_over_diff_cpg_regions_process;
     atac_enrich_counts_process;
+    atac_enrich_counts_process as proseq_enrich_counts_process;
     r_atac_enrich_plot_process;
     get_atacPeaks_in_roadmapPeaks_process;
     get_atacPeaks_in_genetss_process;
@@ -205,7 +206,7 @@ workflow mk_bw_call_peaks_workflow {
 
 
 
-    if (params.NarrowPeak_data) {
+    if (params.narrowPeak_data ) {
 
         macspeaks_ch = macs2_call_peaks_process_both.out.narrow_peaks
 
@@ -1514,14 +1515,23 @@ workflow get_proximal_distal_atac_peaks_workflow {
         .set{all_true_atac_peaks_ch}
     
     // what i need to do is get the peaks and use bedtools intersect to subset for the atac-seq peaks that are in these diff genes
-    get_atacPeaks_in_genetss_process(all_true_atac_peaks_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, ref_genome_size_ch)
+    // get_atacPeaks_in_genetss_process(all_true_atac_peaks_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, ref_genome_size_ch)
 
-    proximal_up_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_up_genes
-    proximal_down_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_down_genes
-    proximal_unchanging_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_unchanging_genes
+    // proximal_up_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_up_genes
+    // proximal_down_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_down_genes
+    // proximal_unchanging_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_unchanging_genes
 
     // I think what I should do now is get the differential proximal ATAC-peaks and see the fold change of H3k27me3 scrambled and H1low signal in them
-    if (params.ATAC_analysis) {
+    if (params.atac_analysis ) {
+
+        get_atacPeaks_in_genetss_process(all_true_atac_peaks_ch, proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, ref_genome_size_ch)
+
+        proximal_up_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_up_genes
+        proximal_up_atac.view{it -> "proximal up atac peaks in genes: $it"}
+
+        proximal_down_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_down_genes
+        proximal_unchanging_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_unchanging_genes
+
         proximal_up_atac
             .concat(proximal_down_atac, proximal_unchanging_atac)
             .toList()
@@ -1601,6 +1611,9 @@ workflow get_proximal_distal_atac_peaks_workflow {
         // now to do the merging of bams channel and get the histone enrichment log2FC
 
         allmerged_bigwigs.view{it -> "these are the all merged bigwigs $it"}
+        
+        // not doing this right now
+
         atac_enrich_counts_2nd_version_process(proximal_atac_peaks_meta_ch, both_all_merge_tuple)
 
         enrich_counts_tab_ch = atac_enrich_counts_2nd_version_process.out.raw_enrichment_counts.collect()
@@ -1628,6 +1641,9 @@ workflow get_proximal_distal_atac_peaks_workflow {
         r_atac_enrich_plot_2nd_version_process(enrich_counts_tab_meta_ch)
 
     }
+    else {
+
+    }
 
     //emit:
 }
@@ -1640,8 +1656,12 @@ workflow get_roadmap_histone_enrichment_workflow {
     roadmap_broad_histones
     roadmap_narrow_histones
     idr_merged_peaks
-    control_atac_bigwig_ch
+    control_atac_bigwig_ch // these are actually bam files not bigwig files 
     treatment_atac_bigwig_ch
+    control_proseq_bam
+    treatment_proseq_bam
+    up_peaks_list_true
+    down_peaks_list_true
 
 
 
@@ -1654,6 +1674,7 @@ workflow get_roadmap_histone_enrichment_workflow {
         
         path
         }
+        .concat(up_peaks_list_true, down_peaks_list_true) // new part to test
         .flatten()
         .toList()
         //.view{path -> "how does flatten then toList look? $path"}
@@ -1665,8 +1686,36 @@ workflow get_roadmap_histone_enrichment_workflow {
         tuple(name, basename, merged_peak_path)
 
         }
-        .view{peak_tuple -> "this is the new peak tuple for the in pipeline peaks: $peak_tuple"}
+        .view{peak_tuple -> "this is the new peak tuple with combined up and down peaks for the in pipeline peaks: $peak_tuple"}
         .set{pipeline_merged_idr_peak_meta_ch}
+
+    // up_peaks_list_true  // .view{it -> "see true up peaks: $it"}
+    //     .combine(down_peaks_list_true)
+    //     .flatten()
+    //     .map { file ->
+
+    //     basename = file.baseName
+
+    //     name = file.name
+
+    //     tokens = basename.tokenize("_")
+
+    //     peak_type = tokens[0]
+
+    //     exper_type = tokens[1]
+
+    //     tuple(name, basename, file)
+
+    //     }
+    //     .view{it -> "true changing peaks meta channel: $it"}
+    //     .set{changing_peaks_meta_ch}
+        
+
+    // now I should combine the master and changing peaks into one channel
+    // pipeline_merged_idr_peak_meta_ch
+    //     .concat(changing_peaks_meta_ch)
+    //     .view{it -> "combining two ch the changing and master peaks: $it"}
+    //     .set{final_pipeline_peaks_meta_ch}
 
     roadmap_broad_histones
         .map {file ->
@@ -1678,7 +1727,7 @@ workflow get_roadmap_histone_enrichment_workflow {
 
 
         }
-        //.view()
+        .view{it -> "this is how the broad roadmap histone channel looks: $it"}
         .set{roadmap_broad_histone_meta_ch}
 
     roadmap_narrow_histones
@@ -1709,14 +1758,33 @@ workflow get_roadmap_histone_enrichment_workflow {
         // replicate_label = tokens[2]
         // tuple(condition_label, experiment_label, replicate_label)
         // }
-        .view()
+        //.view()
         .set{atac_bigwig_cat}
+
+    control_proseq_bam
+        .concat(treatment_proseq_bam)
+
+        .view{it -> "Proseq bams concatenated: $it"}
+        .set{proseq_bams_cat}
+
+    proseq_bams_cat
+        .concat(atac_bigwig_cat) // this is actually the atac bam files
+        .set{bam_files_to_plot}
+
+    bam_files_to_plot.view{it -> "Combined proseq and atac bams: $it"}
+    // now i want to make a channel that will have the two or more different experiments bams but they will go in parrallel for each experiment 
     
     // now make a deeptools process that uses multibigwigsummary to get the counts
 
+    
+
     atac_enrich_counts_process(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch, pipeline_merged_idr_peak_meta_ch, atac_bigwig_cat)
 
+    proseq_enrich_counts_process(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch, pipeline_merged_idr_peak_meta_ch, proseq_bams_cat)
+
     enrich_counts_tab_ch = atac_enrich_counts_process.out.raw_enrichment_counts.collect()
+
+    enrich_proseq_counts_tab_ch = proseq_enrich_counts_process.out.raw_enrichment_counts.collect()
 
     enrich_counts_tab_ch
         .flatten()
@@ -1737,11 +1805,36 @@ workflow get_roadmap_histone_enrichment_workflow {
         .groupTuple(by:0)
         .view(tuple -> "This is the meta channel for enrichment counts tab file grouped by peak type: $tuple")
         .set{enrich_counts_tab_meta_ch}
-        
+
+    enrich_proseq_counts_tab_ch
+        .flatten()
+        .map{ file ->
+        // i need to get the tokens and find which used broad and narrow then group them by that, so i have scrm with h1low broad, and scrm with h1low narrow
+        basename = file.baseName
+
+        filename = file.name
+
+        tokens = basename.tokenize("_")
+
+        condition = tokens[0]
+        peak_type = tokens[4] // this will be broad or narrow peak epigenetic states
+
+        tuple(peak_type, basename, filename, file)
+
+        }
+        .groupTuple(by:0)
+        .view(tuple -> "This is the meta channel for proseq enrichment counts tab file grouped by peak type: $tuple")
+        .set{enrich_proseq_counts_tab_meta_ch}
+
+    // then maybe I can concat both channels now
+    enrich_counts_tab_meta_ch // this is the atac-seq channel
+        .concat(enrich_proseq_counts_tab_meta_ch) // this is the proseq channel
+        .set{final_enrichment_counts_meta_ch}
+
     // now I want to make a process that will take the output tab files from above and make the enrichemnt in R
 
-    r_atac_enrich_plot_process(enrich_counts_tab_meta_ch)
-
+    // r_atac_enrich_plot_process(enrich_counts_tab_meta_ch)
+    r_atac_enrich_plot_process(final_enrichment_counts_meta_ch)
 
     //emit:
 }
