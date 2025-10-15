@@ -57,58 +57,110 @@ process make_alignment_bw_process_control {
     // doing this because it works in the for loop and now if I am given more data, it can handel it
     bam_file_list = bam_file_name.join(" ")
 
+    if (params.PE) {
+
+
+        """
+        #!/usr/bin/env bash
+
+        ###### Deeptools parameters ##########
 
 
 
-    """
-    #!/usr/bin/env bash
 
-    ###### Deeptools parameters ##########
+        #######################################
 
+        echo "will this work in the for loop? ${bam_file_list}"
 
+        # making a bigwig file for each bam file
+        #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
 
-
-    #######################################
-
-    echo "will this work in the for loop? ${bam_file_list}"
-
-    # making a bigwig file for each bam file
-    #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
-
-    # need to find a way for this to just take how ever many bam files are put here
-    # so making a list from the channel
-    for bam in ${bam_file_list}; do
-        
-        # strip the bam file name
-        bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
-        
-        bamCoverage \
-        --bam \$bam \
-        --outFileName \$bigwig_out_name \
-        --outFileFormat "bigwig" \
-        --scaleFactor 1 \
-        --extendReads
+        # need to find a way for this to just take how ever many bam files are put here
+        # so making a list from the channel
+        for bam in ${bam_file_list}; do
+            
+            # strip the bam file name
+            bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --extendReads
 
 
-        # now also making the cpm bigwig
+            # now also making the cpm bigwig
 
-        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_extendreads_normalized.bigwig"
-        
-        bamCoverage \
-        --bam \$bam \
-        --outFileName \$cpm_bigwig_out_name \
-        --outFileFormat "bigwig" \
-        --scaleFactor 1 \
-        --normalizeUsing CPM \
-        --extendReads
+            cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_extendreads_normalized.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$cpm_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing CPM \
+            --extendReads
 
-    done
+        done
 
-    echo "for loop finished"
+        echo "for loop finished"
 
 
 
-    """
+        """
+    }
+    else if (params.SE) {
+
+
+        """
+        #!/usr/bin/env bash
+
+        ###### Deeptools parameters ##########
+
+
+
+
+        #######################################
+
+        echo "will this work in the for loop? ${bam_file_list}"
+
+        # making a bigwig file for each bam file
+        #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
+
+        # need to find a way for this to just take how ever many bam files are put here
+        # so making a list from the channel
+        for bam in ${bam_file_list}; do
+            
+            # strip the bam file name
+            bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 
+
+
+            # now also making the cpm bigwig
+
+            cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_NOextendreads_normalized.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$cpm_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing CPM 
+
+        done
+
+        echo "for loop finished"
+
+
+
+        """
+    }
 }
 
 // exact same process as above but for wt not control
@@ -165,56 +217,108 @@ process make_alignment_bw_process_wt {
     bam_file_list = bam_file_name.join(" ")
 
 
+    if (params.PE) {
 
-    """
-    #!/usr/bin/env bash
+        """
+        #!/usr/bin/env bash
 
-    ###### Deeptools parameters ##########
-
-
-
-
-    #######################################
-
-    echo "will this work in the for loop? ${bam_file_list}"
-
-    # making a bigwig file for each bam file
-    #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
-
-    # need to find a way for this to just take how ever many bam files are put here
-    # so making a list from the channel
-    for bam in ${bam_file_list}; do
-        
-        # strip the bam file name
-        bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
-        
-        bamCoverage \
-        --bam \$bam \
-        --outFileName \$bigwig_out_name \
-        --outFileFormat "bigwig" \
-        --scaleFactor 1 \
-        --extendReads
-
-
-        # now also making the cpm bigwig
-
-        cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_extendreads_normalized.bigwig"
-        
-        bamCoverage \
-        --bam \$bam \
-        --outFileName \$cpm_bigwig_out_name \
-        --outFileFormat "bigwig" \
-        --scaleFactor 1 \
-        --normalizeUsing CPM \
-        --extendReads
-
-    done
+        ###### Deeptools parameters ##########
 
 
 
 
+        #######################################
 
-    """
+        echo "will this work in the for loop? ${bam_file_list}"
+
+        # making a bigwig file for each bam file
+        #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
+
+        # need to find a way for this to just take how ever many bam files are put here
+        # so making a list from the channel
+        for bam in ${bam_file_list}; do
+            
+            # strip the bam file name
+            bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --extendReads
+
+
+            # now also making the cpm bigwig
+
+            cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_extendreads_normalized.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$cpm_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing CPM \
+            --extendReads
+
+        done
+
+
+
+
+
+        """
+    }
+    else if (params.SE) {
+
+        """
+        #!/usr/bin/env bash
+
+        ###### Deeptools parameters ##########
+
+
+
+
+        #######################################
+
+        echo "will this work in the for loop? ${bam_file_list}"
+
+        # making a bigwig file for each bam file
+        #for bam in "\${rep1_file}" "\${rep2_file}" "\${rep3_file}"; do
+
+        # need to find a way for this to just take how ever many bam files are put here
+        # so making a list from the channel
+        for bam in ${bam_file_list}; do
+            
+            # strip the bam file name
+            bigwig_out_name="\$(basename \$bam .bam)_raw.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 
+
+
+            # now also making the cpm bigwig
+
+            cpm_bigwig_out_name="\$(basename \$bam .bam)_cpm_NOextendreads_normalized.bigwig"
+            
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$cpm_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing CPM 
+
+        done
+
+
+
+
+
+        """
+    }
 }
 
 
@@ -806,21 +910,22 @@ process merge_concat_peaks_process {
 
     //list_of_10kb_merged_names =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
     //list_of_10kb_merged_paths =  [output_10kb_merged_first_mPeak, output_10kb_merged_second_mPeak ]
+    bothConditions = "${condition[0]}${condition[1]}"
 
     if (params.narrowPeak_data){
         output_10kb_merged_first_mPeak = first_mPeak.replace(/.narrowPeak/, "_10kb_merged.bed")
         output_10kb_merged_second_mPeak = second_mPeak.replace(/.narrowPeak/, "_10kb_merged.bed")
-        concat_10kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_10kb_merged.bed"
+        concat_10kb_merged_both_mPeak = "concat_master_${bothConditions}_${histone}_10kb_merged.bed"
 
         output_30kb_merged_first_mPeak = first_mPeak.replace(/.narrowPeak/, "_30kb_merged.bed")
         output_30kb_merged_second_mPeak = second_mPeak.replace(/.narrowPeak/, "_30kb_merged.bed")
-        concat_30kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_30kb_merged.bed"
+        concat_30kb_merged_both_mPeak = "concat_master_${bothConditions}_${histone}_30kb_merged.bed"
 
         output_100kb_merged_first_mPeak = first_mPeak.replace(/.narrowPeak/, "_100kb_merged.bed")
         output_100kb_merged_second_mPeak = second_mPeak.replace(/.narrowPeak/, "_100kb_merged.bed")
-        concat_100kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_100kb_merged.bed"
+        concat_100kb_merged_both_mPeak = "concat_master_${bothConditions}_${histone}_100kb_merged.bed"
         
-        atac_combined_peak = "concat_master_bothConditions_${histone}_ATAC.bed"
+        atac_combined_peak = "concat_master_${bothConditions}_${histone}_ATAC.bed"
 
         """
         #!/usr/bin/env bash
@@ -901,15 +1006,15 @@ process merge_concat_peaks_process {
 
         output_10kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
         output_10kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_10kb_merged.bed")
-        concat_10kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_10kb_merged.bed"
+        concat_10kb_merged_both_mPeak = "concat_master_${bothConditions}_${histone}_10kb_merged.bed"
 
         output_30kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
         output_30kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_30kb_merged.bed")
-        concat_30kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_30kb_merged.bed"
+        concat_30kb_merged_both_mPeak = "concat_master_${bothConditions}_${histone}_30kb_merged.bed"
 
         output_100kb_merged_first_mPeak = first_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
         output_100kb_merged_second_mPeak = second_mPeak.replace(/.broadPeak/, "_100kb_merged.bed")
-        concat_100kb_merged_both_mPeak = "concat_master_bothConditions_${histone}_100kb_merged.bed"
+        concat_100kb_merged_both_mPeak = "concat_master_${bothConditions}_${histone}_100kb_merged.bed"
 
     
         """
@@ -1369,1138 +1474,2553 @@ process find_idr_in_replicates_process {
 
 
 
-process find_diff_peaks_R_process {
+// process find_diff_peaks_R_process {
 
-    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/r_language'
+//     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/r_language'
 
-    publishDir "./nextflow_R_script_outputs/${idr_histone}/", mode: 'copy', pattern: '*'
 
-    label 'normal_big_resources'
+//     publishDir "./nextflow_R_script_outputs/${idr_histone}/", mode: 'copy', pattern: '*'
+//     // if (params.narrowPeak_data) {
+//     //     publishDir "./nextflow_R_script_outputs/narrow_Peaks_called/${idr_histone}/", mode: 'copy', pattern: '*'
+//     // }
+//     // else {
+//     //     publishDir "./nextflow_R_script_outputs/broad_Peaks_called/${idr_histone}/", mode: 'copy', pattern: '*'
+//     // }
+    
+//     label 'normal_big_resources'
 
-    //debug true
+//     //debug true
 
-    input:
+//     input:
 
-    tuple val(idr_condition), val(idr_histone), val(merge_dist), val(idr_peak_name), path(idr_peak_path)
+//     tuple val(idr_condition), val(idr_histone), val(merge_dist), val(idr_peak_name), path(idr_peak_path)
 
-    // these are all experiment bams.
-    // i need to use the histone label, and condition label to get the correct bams in this process
-    path(bam_path_list)
+//     // these are all experiment bams.
+//     // i need to use the histone label, and condition label to get the correct bams in this process
+//     path(bam_path_list)
     
 
 
     
-    output:
+//     output:
 
-    path("*.{png,pdf,bed}"), emit: all_r_plots
+//     path("*.{png,pdf,bed}"), emit: all_r_plots
 
-    path("${master_peak_export_out}"), emit: master_peak_emit
+//     path("${master_peak_export_out}"), emit: master_peak_emit
 
-    tuple val("${full_condition}"), val("${idr_histone}"), path("${up_peaks_out}"), path("${down_peaks_out}"), path("${unchanging_peaks_out}"), emit: diff_peaks_ch 
+//     tuple val("${full_condition}"), val("${idr_histone}"), path("${up_peaks_out}"), path("${down_peaks_out}"), path("${unchanging_peaks_out}"), emit: diff_peaks_ch 
 
-    path("${up_peaks_out}"), emit: up_peaks_emit
-    path("${down_peaks_out}"), emit: down_peaks_emit
-    path("${unchanging_peaks_out}"), emit: unchanging_peaks_emit
-
-
-
-    script:
-
-    //full_condition = "${idr_condition[0]}vs${idr_condition[1]}"
-    full_condition = "${idr_condition}"
-
-    //first_idr_peak = idr_peak_name[0]
-    //second_idr_peak = idr_peak_name[1]
-
-    bam_name_list = bam_path_list.collect { "\"${it.getName()}\"" }.join(',')
-
-    //peaks_list = [first_idr_peak, second_idr_peak]
-
-    // need the output file name for masterpeak export
-
-    master_peak_export_out = "masterpeak_${idr_histone}_${merge_dist}_maxgap_${idr_condition}_${idr_histone}.bed"
-
-    up_peaks_out = "up_${idr_histone}_regulated_peaks.bed"
-    down_peaks_out = "down_${idr_histone}_regulated_peaks.bed"
-    unchanging_peaks_out = "unchanging_${idr_histone}_regulated_peaks.bed"
+//     path("${up_peaks_out}"), emit: up_peaks_emit
+//     path("${down_peaks_out}"), emit: down_peaks_emit
+//     path("${unchanging_peaks_out}"), emit: unchanging_peaks_emit
 
 
-    if (params.narrowPeak_data) {
 
-        """
-        #!/usr/bin/env Rscript
+//     script:
 
-        bam_list = c(${bam_name_list})
+//     //full_condition = "${idr_condition[0]}vs${idr_condition[1]}"
+//     full_condition = "${idr_condition}"
 
-        print(bam_list)
+//     //first_idr_peak = idr_peak_name[0]
+//     //second_idr_peak = idr_peak_name[1]
 
-        #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
-        #peaklist = \${peaks_list}
+//     bam_name_list = bam_path_list.collect { "\"${it.getName()}\"" }.join(',')
 
-        #print(peaklist)
+//     //peaks_list = [first_idr_peak, second_idr_peak]
 
-        #best_hlow_idr
-        #best_scrm_idr
+//     // need the output file name for masterpeak export
 
-        library(DESeq2)
-        library(GenomicRanges)
-        library(chromVAR)
-        library(tidyr)
-        library(EnhancedVolcano)
-        library(readr)
+//     master_peak_export_out = "masterpeak_${idr_histone}_${merge_dist}_maxgap_${idr_condition}.bed"
 
-        print(dir())
-        # making the master peak genomic ranges object
-        
-        #mPeak = GRanges()
+//     up_peaks_out = "up_${idr_histone}_${full_condition}_regulated_peaks.bed"
+//     down_peaks_out = "down_${idr_histone}_${full_condition}_regulated_peaks.bed"
+//     unchanging_peaks_out = "unchanging_${idr_histone}_${full_condition}_regulated_peaks.bed"
 
-        #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
-        
-            #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
-        
-            #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
-        
-            #gr_object = rtracklayer::import(peakfile, format = "BED")
+//     if (params.PE) {
 
-            #mPeak = append(mPeak, gr_object)
-        #}
+//         if (params.narrowPeak_data) {
 
-        #peaktable = read.table("\${idr_peak_name}", header = FALSE)
-        #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+//             """
+//             #!/usr/bin/env Rscript
 
-        # might have to let it auto detect the file type when using narrow peaks that arent merged into a strict bed file
-        mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
+//             bam_list = c(${bam_name_list})
 
-        # making sure there are no redundant peaks
-        # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
-        
-        
-        #masterPeak2 = reduce(mPeak)
+//             print(bam_list)
 
-        # using resize to extnd regions
-        extended_master_peak = resize(mPeak, width = width(mPeak)+1, fix = "center")
+//             #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
+//             #peaklist = \${peaks_list}
 
-        # before trimming i need to add the sequence lengths of the correct genome
-        # will have to find a way to automate this step for other genomes
+//             #print(peaklist)
 
-        library(BSgenome.Hsapiens.UCSC.hg38)
-        #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
-        #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
-        #trimmed_master_peak = trim(extended_master_peak)
-        #masterPeak_beta = reduce(trimmed_master_peak)
+//             #best_hlow_idr
+//             #best_scrm_idr
 
-        masterPeak_beta = reduce(extended_master_peak)
-        # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
-        
-        new_peak_size = width(masterPeak_beta)-1
-        masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
-        
-        #print(masterPeak)
+//             library(DESeq2)
+//             library(GenomicRanges)
+//             library(chromVAR)
+//             library(tidyr)
+//             library(EnhancedVolcano)
+//             library(readr)
 
-        # now I want to keep the standard chromosomes
-        #seqnames_to_keep =masterPeak@seqnames@values[1:23]
-
-        #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
-
-        # hoping to export my GRanges object master peaks to a bed file
-        #write_tsv("\${master_peak_export_out}")
-        rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
-
-        
-
-        list_of_mBams = c()
-        
-        for (bam in bam_list) {
-    
-            tokens = strsplit(bam, split = "_")[[1]]
-            #print(tokens)
+//             print(dir())
+//             # making the master peak genomic ranges object
             
-            histone = tokens[2]
-            #print(histone)
+//             #mPeak = GRanges()
 
-            #list_of_mBams = list()
-
-            if ("${idr_histone}" == histone) {
-                #print(bam)
-                list_of_mBams = c(list_of_mBams, bam)
-
-            }
-        }
-
-        print(list_of_mBams)
-    
-        
-        # now doing the next section to make the count matrix and the condition and experiment design
-
-        # making the matrix 
-
-        countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
-
-
-        # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
-        seqnames(masterPeak)
-
-        # i should put the unique ids from the master peak object in the matrix as row names.
-        unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
-
-        rownames(countsMatrix) = unique_masterPeak_ids
-
-        #getting the list of bam base names to add to the matrix column names
-        list_bam_basenames = list()
-
-
-        # for deseq2 i need the condition design. so hlow and scrm
-        # then i will find a way to tally how many of each are there so i can automate the rep count
-        condition_design = list()
-
-        type_design = list()
-
-        for (x in c(1:length(list_of_mBams))) {
-        
-        path_bam = list_of_mBams[[x]]
-        print(path_bam)
-        bam_basename = basename(path_bam)
-        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
-        
-        # labeling the important tokens so it is easier to keep track of
-        condition = bam_tokens[1]
-        histone = bam_tokens[2]
-        replicate = bam_tokens[3]
-        
-        
-        # for later parts I need the condition and to know how many times to repeat them
-        condition_design = append(condition_design, paste(condition,histone,sep="_"))
-        
-        
-        # also get the replicate too for type design
-        type_design = append(type_design, replicate)
-        #type_design = append(type_design, paste(histone,replicate, sep="_"))
-        
-        
-        
-        # using chromVAR getCounts function
-        fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
-        
-        
-        # putting the fragment counts in the column labeled by the bam name
-        countsMatrix[,x] = counts(fragment_counts)[,1]
-        
-        list_bam_basenames = append(list_bam_basenames, bam_basename)
-        
-        }
-
-        colnames(countsMatrix) = list_bam_basenames
-
-        ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
-
-        #first removing the low count fragments. only keeping the rows that are above 5 count in total
-
-        keep_Rows = which(rowSums(countsMatrix) > 5)
-
-        filt_countmatrix = countsMatrix[keep_Rows,]
-
-        # now to get the condition_design
-        condition_counts = table(unlist(condition_design))
-
-        # this gives back the names and the counts give back the counts for each of the names
-        condition_names = names(condition_counts)
-        condition_num = as.numeric(condition_counts)
-
-
-
-
-        # now i can put both lists in to get back the experiment design
-        condition_factor = factor(rep(condition_names, times=condition_num))
-
-
-        # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
-
-        # for treatment I need to make nextflow take the users input so they can relevel this section
-        #treatment = "H1low_H3k27me3"
-        treatment = "${params.treatment_name}_${idr_histone}"
-
-        if (levels(condition_factor)[1] == treatment ) {
-        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
-        }else {
-        condition_factor
-        }
-        print(condition_factor)
-
-        # repeating the above to have another column with type (replicates)
-        type_counts = table(unlist(type_design))
-        type_names = names(type_counts)
-        type_num = as.numeric(type_counts)
-
-        #type_factor = factor(rep(type_names, times=type_counts))
-        type_factor = factor(rep(type_names, times=type_num[1]))
-
-        # I want to get the idr threshold and use that as input for the file names and other things
-
-        #peak_file = basename(peaklist[[1]])
-        peak_file = basename("./${idr_peak_name}")
-
-        idr_used = strsplit(peak_file, split = "_")[[1]][10]
-        idr_used
-
-        # now for deseq2 workflow
-
-
-        # now to do the normal deseq2 workflow
-
-        dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
-                                    colData = DataFrame(condition_factor, type_factor),
-                                    design = ~ condition_factor)
-
-
-        # using the function on our data
-        DDS = DESeq(dds)
-
-        norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
-
-        # adding _norm onto the column names in the normalized matrix
-        colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
-
-
-        # provides independent filtering using the mean of normalized counts
-        res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
-
-
-        # this is looking at the differences between the 3 deseq analyzed options
-        countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
-
-        head(countMatDiff)
-
-
-
-
-        # getting the results name and addding to the coef we want to shrink
-        experiment_design_name = resultsNames(DDS)[2]
-
-        # useful for visualization and ranking of genes or in this case peaks
-        resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
-
-
-        # finding the up and down regulated counts that pass the threshold
-
-        # all peaks
-        all_peaks = resLFC
-        total_all_peaks = length(all_peaks[,1])
-
-        up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
-        total_up_reg = length(up_reg[,1])
-        #total_up_reg
-        down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
-        total_down_reg = length(down_reg[,1])
-        total_down_reg
-
-        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
-        total_unchanging_reg = length(unchanging_reg[,1])
-        total_unchanging_reg
-
-        # get the percentage of diff peaks
-        up_percentage_reg = round((total_up_reg/total_all_peaks)*100, digits = 1)
-
-        down_percentage_reg = round((total_down_reg/total_all_peaks)*100, 1)
-
-        unchanging_percentage_reg = round((total_unchanging_reg/total_all_peaks)*100, 1)
-
-        resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
-        ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
-        labs(caption = paste("Up reg (red +1 LFC & padj <0.05) = ", total_up_reg, "; percentage: ", up_percentage_reg , "\n", "Down reg (red -1 LFC & padj < 0.05) = ", total_down_reg, "; percentage: ", down_percentage_reg, "\nNow the Unchanging total and percentage ", total_unchanging_reg , "; percentage: " , unchanging_percentage_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
-        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 35), axis.title.y = element_text(size = 35), legend.text = element_text(size = 25), title = element_text(size = 25), plot.subtitle = element_text(size = 15))+
-        scale_colour_manual(values=c("red", "darkgrey", "pink"))+
-        scale_x_continuous(trans='log10')+
-        ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
-        geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 3)
-
-        print(ma_plot_labeled)
-
-
-        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 18, height = 12)
-
-        print(ma_plot_labeled)
-        dev.off()
-
-        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
-
-        print(ma_plot_labeled)
-        dev.off()
-
-
-        volcano_plot_removed_reps = EnhancedVolcano(resLFC,
-                        lab = rownames(resLFC),
-                        title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
-                        x = 'log2FoldChange', FCcutoff = 1,
-                        y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
-                        
-                        )
-
-        print(volcano_plot_removed_reps)
-
-        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
-        print(volcano_plot_removed_reps)
-        dev.off()
-
-        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
-        print(volcano_plot_removed_reps)
-        dev.off()
-        
-
-
-
-        # using rlog over vst for transformation
-
-        rld = rlog(DDS, blind=FALSE)
-
-        #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
-        head(assay(rld), 5)
-
-
-        library(ggplot2)
-
-        pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
-        pcaData
-
-        percentVar <- round(100 * attr(pcaData, "percentVar"))
-
-
-        pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-        ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
-        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
-        geom_point(size=3) +
-        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-        coord_fixed()
-        #pca_plot
-        name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
-
-        png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
-        print(pca_plot_rlog)
-        dev.off()
-
-        name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
-
-        pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
-        print(pca_plot_rlog)
-        dev.off()
-
-
-        # testing with vst
-        #vsd_t = vst(DDS, blind = FALSE)
-
-        # for histone mark k36me2 vst fails so i have to use the direct function
-        vsd_t <- tryCatch({
-            vst(DDS, blind = FALSE)
-        }, error = function(e) {
-            message("vst() failed, using varianceStabilizingTransformation() instead.")
-            varianceStabilizingTransformation(DDS, blind = FALSE)
-        })
-
-        head(assay(vsd_t), 5)
-
-        pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
-        pcaData2
-
-        percentVar <- round(100 * attr(pcaData2, "percentVar"))
-        pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-        ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
-        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
-        geom_point(size=3) +
-        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-        coord_fixed()
-
-
-        #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
-
-        pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
-        print(pca_plot_vst)
-        dev.off()
-
-        png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
-        print(pca_plot_vst)
-        dev.off()
-
-        pca_plot_rlog
-
-        pca_plot_vst
-
-
-        rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
-
-        rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
-
-        # now exporting the unchanging peaks
-
-        rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
-
-        # now hoping to get the peak lengths histone
-
-
-        ###### if any errors happen here then dont do anything ######
-        tryCatch({
-        up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
-
-        up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
-        print(max(up_peak_lengths))
-
-        png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-        hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
-        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-        dev.off()
-
-        # just to view it here, not needed in nextflow here.
-        #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
-        #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-
-        down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
-
-        down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
-        print(max(down_peak_lengths))
-
-        png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-        hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
-        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-        dev.off()
-
-
-        unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
-
-        unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
-        print(max(unchanging_peak_lengths))
-
-        png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-        hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
-        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-        dev.off()
-
-        ########## now violin plots for peak lengths ################
-
-        up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
-        down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
-        unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
-
-
-        df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
-
-        #df_all_peak_lengths
-
-        df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
-        
-        all_peak_lengths_violin = df_all_peak_lengths_gg+
-            geom_violin()+
-            scale_y_continuous(labels = scales::label_number())
-        ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.png", plot = all_peak_lengths_violin)
-        
-        
-        }, error = function(x) {
-        
-        message("some of the peak files had no lenght so plotting is pointless")
-        })
-
-
-        tryCatch({
-        # now for the annotated peaks, if an error occurs, don't do anything
-        # lets get the annotated peaks
-
-        library(ChIPseeker)
-
-        library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-
-        txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-        # now to read in the peak files
-        peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
-        up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
-
-
-        unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
-        unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
-
-        up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
-        # I would have to plot this pie chart as many times as there are peak files, but not yet.
-        #plotAnnoPie(up_annotated_peaks)
-
-        down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
-        down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
-
-        # not plotting this right now
-        #plotAnnoPie(down_annotated_peaks)
-
-
-        # not plotting this right now also
-        #plotDistToTSS(down_annotated_peaks,
-        #            title="Distribution of H3K27me3 peaks relative to TSS")
-
-
-        annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
-
-
-        # now get the number of total annotated peaks
-        down_annotated_df <- as.data.frame(down_annotated_peaks)
-        #num_down_annotated_peaks = count(down_annotated_df)[[1]]
-        num_down_annotated_peaks = length(down_annotated_df[,1])
-
-        up_annotated_df <- as.data.frame(up_annotated_peaks)
-        #num_up_annotated_peaks = count(up_annotated_df)[[1]]
-        num_up_annotated_peaks = length(up_annotated_df[,1])
-
-        unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
-        #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
-        num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
-
-        # then plot with bar because it uses a ggplot object
-        plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
-
-        ggsave("annotation_bar_graph_${idr_histone}_peaks.png", plot = last_plot())
-
-        }, error = function(x) {
-        
-        message("for making annotated peaks, some of the files might have no differential peaks")
-        })
-
-        """
-
-
-    }
-    else {
-
-    
-        """
-        #!/usr/bin/env Rscript
-
-        bam_list = c(${bam_name_list})
-
-        print(bam_list)
-
-        #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
-        #peaklist = \${peaks_list}
-
-        #print(peaklist)
-
-        #best_hlow_idr
-        #best_scrm_idr
-
-        library(DESeq2)
-        library(GenomicRanges)
-        library(chromVAR)
-        library(tidyr)
-        library(EnhancedVolcano)
-        library(readr)
-
-        print(dir())
-        # making the master peak genomic ranges object
-        
-        #mPeak = GRanges()
-
-        #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
-        
-            #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
-        
-            #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
-        
-            #gr_object = rtracklayer::import(peakfile, format = "BED")
-
-            #mPeak = append(mPeak, gr_object)
-        #}
-
-        #peaktable = read.table("\${idr_peak_name}", header = FALSE)
-        #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
-
-        mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
-
-        # making sure there are no redundant peaks
-        # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
-        
-        
-        #masterPeak2 = reduce(mPeak)
-
-        # using resize to extnd regions
-        extended_master_peak = resize(mPeak, width = width(mPeak)+100000, fix = "center")
-
-        # before trimming i need to add the sequence lengths of the correct genome
-        # will have to find a way to automate this step for other genomes
-
-        library(BSgenome.Hsapiens.UCSC.hg38)
-        #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
-        #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
-        #trimmed_master_peak = trim(extended_master_peak)
-        #masterPeak_beta = reduce(trimmed_master_peak)
-
-        masterPeak_beta = reduce(extended_master_peak)
-        # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
-        
-        new_peak_size = width(masterPeak_beta)-100000
-        masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
-        
-        #print(masterPeak)
-
-        # now I want to keep the standard chromosomes
-        #seqnames_to_keep =masterPeak@seqnames@values[1:23]
-
-        #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
-
-        # hoping to export my GRanges object master peaks to a bed file
-        #write_tsv("\${master_peak_export_out}")
-        rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
-
-        
-
-        list_of_mBams = c()
-        
-        for (bam in bam_list) {
-    
-            tokens = strsplit(bam, split = "_")[[1]]
-            #print(tokens)
+//             #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
             
-            histone = tokens[2]
-            #print(histone)
+//                 #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+            
+//                 #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+            
+//                 #gr_object = rtracklayer::import(peakfile, format = "BED")
 
-            #list_of_mBams = list()
+//                 #mPeak = append(mPeak, gr_object)
+//             #}
 
-            if ("${idr_histone}" == histone) {
-                #print(bam)
-                list_of_mBams = c(list_of_mBams, bam)
+//             #peaktable = read.table("\${idr_peak_name}", header = FALSE)
+//             #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
 
-            }
-        }
+//             # might have to let it auto detect the file type when using narrow peaks that arent merged into a strict bed file
+//             mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
 
-        print(list_of_mBams)
+//             # making sure there are no redundant peaks
+//             # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
+            
+            
+//             #masterPeak2 = reduce(mPeak)
+
+//             # using resize to extnd regions
+//             extended_master_peak = resize(mPeak, width = width(mPeak)+1, fix = "center")
+
+//             # before trimming i need to add the sequence lengths of the correct genome
+//             # will have to find a way to automate this step for other genomes
+
+//             library(BSgenome.Hsapiens.UCSC.hg38)
+//             #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
+//             #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
+//             #trimmed_master_peak = trim(extended_master_peak)
+//             #masterPeak_beta = reduce(trimmed_master_peak)
+
+//             masterPeak_beta = reduce(extended_master_peak)
+//             # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+            
+//             new_peak_size = width(masterPeak_beta)-1
+//             masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+            
+//             #print(masterPeak)
+
+//             # now I want to keep the standard chromosomes
+//             #seqnames_to_keep =masterPeak@seqnames@values[1:23]
+
+//             #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+
+//             # hoping to export my GRanges object master peaks to a bed file
+//             #write_tsv("\${master_peak_export_out}")
+//             rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
+
+            
+
+//             list_of_mBams = c()
+            
+//             for (bam in bam_list) {
+        
+//                 tokens = strsplit(bam, split = "_")[[1]]
+//                 #print(tokens)
+                
+//                 histone = tokens[2]
+//                 #print(histone)
+
+//                 #list_of_mBams = list()
+
+//                 if ("${idr_histone}" == histone) {
+//                     #print(bam)
+//                     list_of_mBams = c(list_of_mBams, bam)
+
+//                 }
+//             }
+
+//             print(list_of_mBams)
+        
+            
+//             # now doing the next section to make the count matrix and the condition and experiment design
+
+//             # making the matrix 
+
+//             countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+
+
+//             # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+//             seqnames(masterPeak)
+
+//             # i should put the unique ids from the master peak object in the matrix as row names.
+//             unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+
+//             rownames(countsMatrix) = unique_masterPeak_ids
+
+//             ####################### new version ##########################
+//             library(Rsubread)
+
+//             # featureCounts in rsubread needs a dataframe and in the correct format, with a GeneID column first then chr1 column
+//             df_masterPeak = as.data.frame(masterPeak)
+
+//             # now I need to change the second column name to chr
+//             df_masterPeak = df_masterPeak %>% rename(chr = seqnames)
+
+//             # next i need to add the unique ids as the columns in this dataframe
+//             df_masterPeak\$GeneID = unique_masterPeak_ids
+//             ##############################################################
+
+//             #getting the list of bam base names to add to the matrix column names
+//             list_bam_basenames = list()
+
+
+//             # for deseq2 i need the condition design. so hlow and scrm
+//             # then i will find a way to tally how many of each are there so i can automate the rep count
+//             condition_design = list()
+
+//             type_design = list()
+
+//             for (x in c(1:length(list_of_mBams))) {
+            
+//             path_bam = list_of_mBams[[x]]
+//             print(path_bam)
+//             bam_basename = basename(path_bam)
+//             bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+            
+//             # labeling the important tokens so it is easier to keep track of
+//             condition = bam_tokens[1]
+//             histone = bam_tokens[2]
+//             replicate = bam_tokens[3]
+            
+            
+//             # for later parts I need the condition and to know how many times to repeat them
+//             condition_design = append(condition_design, paste(condition,histone,sep="_"))
+            
+            
+//             # also get the replicate too for type design
+//             type_design = append(type_design, replicate)
+//             #type_design = append(type_design, paste(histone,replicate, sep="_"))
+            
+            
+            
+//             # using chromVAR getCounts function
+//             # not using chromVAR anymore, for now
+//             #fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+
+//             fragment_counts <- featureCounts(
+//                 files = path_bam,
+//                 annot.ext = df_masterPeak,
+//                 isPairedEnd = TRUE,      # TRUE if your data were paired-end
+//                 strandSpecific = 0,       # 0 = unstranded, 1/2 if strand-specific
+//                 useMetaFeatures = TRUE
+//             )
+            
+            
+//             # putting the fragment counts in the column labeled by the bam name
+//             countsMatrix[,x] = counts(fragment_counts)[,1]
+            
+//             list_bam_basenames = append(list_bam_basenames, bam_basename)
+            
+//             }
+
+//             colnames(countsMatrix) = list_bam_basenames
+
+//             ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
+
+//             #first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+//             keep_Rows = which(rowSums(countsMatrix) > 5)
+
+//             filt_countmatrix = countsMatrix[keep_Rows,]
+
+//             # now to get the condition_design
+//             condition_counts = table(unlist(condition_design))
+
+//             # this gives back the names and the counts give back the counts for each of the names
+//             condition_names = names(condition_counts)
+//             condition_num = as.numeric(condition_counts)
+
+
+
+
+//             # now i can put both lists in to get back the experiment design
+//             condition_factor = factor(rep(condition_names, times=condition_num))
+
+
+//             # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
+
+//             # for treatment I need to make nextflow take the users input so they can relevel this section
+//             #treatment = "H1low_H3k27me3"
+//             treatment = "${params.treatment_name}_${idr_histone}"
+
+//             if (levels(condition_factor)[1] == treatment ) {
+//             condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+//             }else {
+//             condition_factor
+//             }
+//             print(condition_factor)
+
+//             # repeating the above to have another column with type (replicates)
+//             type_counts = table(unlist(type_design))
+//             type_names = names(type_counts)
+//             type_num = as.numeric(type_counts)
+
+//             #type_factor = factor(rep(type_names, times=type_counts))
+//             type_factor = factor(rep(type_names, times=type_num[1]))
+
+//             # I want to get the idr threshold and use that as input for the file names and other things
+
+//             #peak_file = basename(peaklist[[1]])
+//             peak_file = basename("./${idr_peak_name}")
+
+//             idr_used = strsplit(peak_file, split = "_")[[1]][10]
+//             idr_used
+
+//             # now for deseq2 workflow
+
+
+//             # now to do the normal deseq2 workflow
+
+//             dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+//                                         colData = DataFrame(condition_factor, type_factor),
+//                                         design = ~ condition_factor)
+
+
+//             # using the function on our data
+//             DDS = DESeq(dds)
+
+//             norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+
+//             # adding _norm onto the column names in the normalized matrix
+//             colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+
+
+//             # provides independent filtering using the mean of normalized counts
+//             res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+
+//             # this is looking at the differences between the 3 deseq analyzed options
+//             countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+
+//             head(countMatDiff)
+
+
+
+
+//             # getting the results name and addding to the coef we want to shrink
+//             experiment_design_name = resultsNames(DDS)[2]
+
+//             # useful for visualization and ranking of genes or in this case peaks
+//             resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+
+
+//             # finding the up and down regulated counts that pass the threshold
+            
+
+            
+
+//             up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
+            
+            
+//             down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
+            
+
+//             unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+
+//             others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
+
+//             # testing the chat gpt code to make the plot look publication ready
     
+//             # Relabel categories (for peaks, not genes)
+//             resLFC\$Label <- ifelse(resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj < 0.05, "Upregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj < 0.05, "Downregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj > 0.05, "Not significant",
+//                                         "padj < 0.05 only")))))
+
+//             # Counts & percentages
+//             total <- nrow(resLFC)
+//             #up_count <- sum(resLFCLabel == "Upregulated peaks")
+//             #down_count <- sum(resLFCLabel == "Downregulated peaks")
+//             #ns_count <- sum(resLFCLabel == "Not significant")
+//             #padj_only_count <- sum(resLFCLabel == "padj < 0.05 only")
+
+//             up_pct <- round(100 * nrow(up_reg) / total, 1)
+//             down_pct <- round(100 * nrow(down_reg) / total, 1)
+//             ns_pct <- round(100 * nrow(others_reg) / total, 1)
+//             padj_only_pct <- round(100 * nrow(unchanging_reg) / total, 1)
+
+//             # Annotation text
+//             annotation_text <- paste0(
+//             "Upregulated peaks: ", nrow(up_reg), " (", up_pct, "%)\n",
+//             "Downregulated peaks: ", nrow(down_reg), " (", down_pct, "%)\n",
+//             "padj < 0.05 only: ", nrow(unchanging_reg), " (", padj_only_pct, "%)\n",
+//             "Not significant: ", nrow(others_reg), " (", ns_pct, "%)"
+//             )
+
+//             # Plot
+//             ma_plot_labeled <- ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color = Label)) +
+//             geom_point(alpha = 0.7, size = 0.5) +
+//             geom_hline(yintercept = 0, linetype = "solid", color = "black") +
+//             geom_hline(yintercept = c(-1, 1), linetype = "dashed", color = "black") +
+//             scale_x_continuous(trans = "log10", 
+//                                 breaks = scales::trans_breaks("log10", function(x) 10^x),
+//                                 labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+//             scale_colour_manual(values = c("Upregulated peaks" = "red",
+//                                             "Downregulated peaks" = "red",
+//                                             "padj < 0.05 only" = "lightpink",
+//                                             "Not significant" = "grey70"),
+//                                 breaks = c("Upregulated peaks", "Downregulated peaks", "padj < 0.05 only", "Not significant")) +
+//             labs(title = experiment_design_name,
+//                 subtitle = paste("IDR threshold for masterPeaks:", "${params.return_idr}"),
+//                 x = "Mean peak signal (log10 scale)",
+//                 y = expression(Log[2]~Fold~Change),
+//                 color = "Peak status") +
+//             theme_classic(base_size = 4) +
+//             theme(legend.position = "top",
+//                     legend.title = element_text(size = 4),
+//                     legend.text = element_text(size = 5),
+//                     plot.title = element_text(size = 6, face = "bold"),
+//                     plot.subtitle = element_text(size = 6),
+//                     axis.title = element_text(size = 6),
+//                     axis.text = element_text(size = 6)) +
+//             annotate("text", x = min(resLFC\$baseMean, na.rm = TRUE), 
+//                     y = max(resLFC\$log2FoldChange, na.rm = TRUE), 
+//                     hjust = -3, vjust = 1, 
+//                     label = annotation_text, 
+//                     size = 1.5)
+
+
+
+//             print(ma_plot_labeled)
+
+
+//             pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 4, height = 4)
+
+//             print(ma_plot_labeled)
+//             dev.off()
+
+//             png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 4.3, height = 4, antialias = "subpixel", units = "in", res = 2000)
+
+//             print(ma_plot_labeled)
+//             dev.off()
+
+
+//             volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+//                             lab = rownames(resLFC),
+//                             title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
+//                             x = 'log2FoldChange', FCcutoff = 1,
+//                             y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
+                            
+//                             )
+
+//             print(volcano_plot_removed_reps)
+
+//             png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
+//             print(volcano_plot_removed_reps)
+//             dev.off()
+
+//             pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
+//             print(volcano_plot_removed_reps)
+//             dev.off()
+            
+
+
+
+//             # using rlog over vst for transformation
+
+//             rld = rlog(DDS, blind=FALSE)
+
+//             #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+//             head(assay(rld), 5)
+
+
+//             library(ggplot2)
+
+//             pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData
+
+//             percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+//             pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
+//             #pca_plot
+//             name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
+
+//             png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
+//             print(pca_plot_rlog)
+//             dev.off()
+
+//             name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
+
+//             pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+//             print(pca_plot_rlog)
+//             dev.off()
+
+
+//             # testing with vst
+//             #vsd_t = vst(DDS, blind = FALSE)
+
+//             # for histone mark k36me2 vst fails so i have to use the direct function
+//             vsd_t <- tryCatch({
+//                 vst(DDS, blind = FALSE)
+//             }, error = function(e) {
+//                 message("vst() failed, using varianceStabilizingTransformation() instead.")
+//                 varianceStabilizingTransformation(DDS, blind = FALSE)
+//             })
+
+//             head(assay(vsd_t), 5)
+
+//             pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData2
+
+//             percentVar <- round(100 * attr(pcaData2, "percentVar"))
+//             pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
+
+
+//             #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
+
+//             pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+//             print(pca_plot_vst)
+//             dev.off()
+
+//             png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
+//             print(pca_plot_vst)
+//             dev.off()
+
+//             pca_plot_rlog
+
+//             pca_plot_vst
+
+
+//             rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+
+//             rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+
+//             # now exporting the unchanging peaks
+
+//             rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+//             # now hoping to get the peak lengths histone
+
+
+//             ###### if any errors happen here then dont do anything ######
+//             tryCatch({
+//             up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
+
+//             up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
+//             print(max(up_peak_lengths))
+
+//             png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_up_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             # just to view it here, not needed in nextflow here.
+//             #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+
+//             down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
+
+//             down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
+//             print(max(down_peak_lengths))
+
+//             png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_down_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+
+//             unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
+
+//             unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
+//             print(max(unchanging_peak_lengths))
+
+//             png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_unchanging_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             ########## now violin plots for peak lengths ################
+
+//             up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
+//             down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
+//             unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
+
+
+//             df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
+
+//             #df_all_peak_lengths
+
+//             df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
+            
+//             all_peak_lengths_violin = df_all_peak_lengths_gg+
+//                 geom_violin()+
+//                 scale_y_continuous(labels = scales::label_number())
+//             ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.pdf", plot = all_peak_lengths_violin)
+            
+            
+//             }, error = function(x) {
+            
+//             message("some of the peak files had no lenght so plotting is pointless")
+//             })
+
+
+//             tryCatch({
+//             # now for the annotated peaks, if an error occurs, don't do anything
+//             # lets get the annotated peaks
+
+//             library(ChIPseeker)
+
+//             library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+//             txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+//             # now to read in the peak files
+//             peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
+//             up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
+
+
+//             unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
+//             unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+//             # I would have to plot this pie chart as many times as there are peak files, but not yet.
+//             #plotAnnoPie(up_annotated_peaks)
+
+//             down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
+//             down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             # not plotting this right now
+//             #plotAnnoPie(down_annotated_peaks)
+
+
+//             # not plotting this right now also
+//             #plotDistToTSS(down_annotated_peaks,
+//             #            title="Distribution of H3K27me3 peaks relative to TSS")
+
+
+//             annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+
+
+//             # now get the number of total annotated peaks
+//             down_annotated_df <- as.data.frame(down_annotated_peaks)
+//             #num_down_annotated_peaks = count(down_annotated_df)[[1]]
+//             num_down_annotated_peaks = length(down_annotated_df[,1])
+
+//             up_annotated_df <- as.data.frame(up_annotated_peaks)
+//             #num_up_annotated_peaks = count(up_annotated_df)[[1]]
+//             num_up_annotated_peaks = length(up_annotated_df[,1])
+
+//             unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
+//             #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
+//             num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
+
+//             # then plot with bar because it uses a ggplot object
+//             plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
+
+//             ggsave("annotation_bar_graph_${idr_condition}_${idr_histone}_peaks.pdf", plot = last_plot())
+
+//             }, error = function(x) {
+            
+//             message("for making annotated peaks, some of the files might have no differential peaks")
+//             })
+
+//             """
+
+
+//         }
+//         else {
+
         
-        # now doing the next section to make the count matrix and the condition and experiment design
+//             """
+//             #!/usr/bin/env Rscript
 
-        # making the matrix 
+//             bam_list = c(${bam_name_list})
 
-        countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+//             print(bam_list)
 
+//             #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
+//             #peaklist = \${peaks_list}
 
-        # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
-        seqnames(masterPeak)
+//             #print(peaklist)
 
-        # i should put the unique ids from the master peak object in the matrix as row names.
-        unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+//             #best_hlow_idr
+//             #best_scrm_idr
 
-        rownames(countsMatrix) = unique_masterPeak_ids
+//             library(DESeq2)
+//             library(GenomicRanges)
+//             library(chromVAR)
+//             library(tidyr)
+//             library(EnhancedVolcano)
+//             library(readr)
 
-        #getting the list of bam base names to add to the matrix column names
-        list_bam_basenames = list()
+//             print(dir())
+//             # making the master peak genomic ranges object
+            
+//             #mPeak = GRanges()
 
+//             #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
+            
+//                 #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+            
+//                 #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+            
+//                 #gr_object = rtracklayer::import(peakfile, format = "BED")
 
-        # for deseq2 i need the condition design. so hlow and scrm
-        # then i will find a way to tally how many of each are there so i can automate the rep count
-        condition_design = list()
+//                 #mPeak = append(mPeak, gr_object)
+//             #}
 
-        type_design = list()
+//             #peaktable = read.table("\${idr_peak_name}", header = FALSE)
+//             #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
 
-        for (x in c(1:length(list_of_mBams))) {
+//             mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
+
+//             # making sure there are no redundant peaks
+//             # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
+            
+            
+//             #masterPeak2 = reduce(mPeak)
+
+//             # using resize to extnd regions
+//             extended_master_peak = resize(mPeak, width = width(mPeak)+100000, fix = "center")
+
+//             # before trimming i need to add the sequence lengths of the correct genome
+//             # will have to find a way to automate this step for other genomes
+
+//             library(BSgenome.Hsapiens.UCSC.hg38)
+//             #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
+//             #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
+//             #trimmed_master_peak = trim(extended_master_peak)
+//             #masterPeak_beta = reduce(trimmed_master_peak)
+
+//             masterPeak_beta = reduce(extended_master_peak)
+//             # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+            
+//             new_peak_size = width(masterPeak_beta)-100000
+//             masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+            
+//             #print(masterPeak)
+
+//             # now I want to keep the standard chromosomes
+//             #seqnames_to_keep =masterPeak@seqnames@values[1:23]
+
+//             #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+
+//             # hoping to export my GRanges object master peaks to a bed file
+//             #write_tsv("\${master_peak_export_out}")
+//             rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
+
+            
+
+//             list_of_mBams = c()
+            
+//             for (bam in bam_list) {
         
-        path_bam = list_of_mBams[[x]]
-        print(path_bam)
-        bam_basename = basename(path_bam)
-        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+//                 tokens = strsplit(bam, split = "_")[[1]]
+//                 #print(tokens)
+                
+//                 histone = tokens[2]
+//                 #print(histone)
+
+//                 #list_of_mBams = list()
+
+//                 if ("${idr_histone}" == histone) {
+//                     #print(bam)
+//                     list_of_mBams = c(list_of_mBams, bam)
+
+//                 }
+//             }
+
+//             print(list_of_mBams)
         
-        # labeling the important tokens so it is easier to keep track of
-        condition = bam_tokens[1]
-        histone = bam_tokens[2]
-        replicate = bam_tokens[3]
+            
+//             # now doing the next section to make the count matrix and the condition and experiment design
+
+//             # making the matrix 
+
+//             countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+
+
+//             # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+//             seqnames(masterPeak)
+
+//             # i should put the unique ids from the master peak object in the matrix as row names.
+//             unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+
+//             rownames(countsMatrix) = unique_masterPeak_ids
+
+//             ####################### new version ##########################
+//             library(Rsubread)
+
+//             # featureCounts in rsubread needs a dataframe and in the correct format, with a GeneID column first then chr1 column
+//             df_masterPeak = as.data.frame(masterPeak)
+
+//             # now I need to change the second column name to chr
+//             df_masterPeak = df_masterPeak %>% rename(chr = seqnames)
+
+//             # next i need to add the unique ids as the columns in this dataframe
+//             df_masterPeak\$GeneID = unique_masterPeak_ids
+//             ##############################################################
+
+//             #getting the list of bam base names to add to the matrix column names
+//             list_bam_basenames = list()
+
+
+//             # for deseq2 i need the condition design. so hlow and scrm
+//             # then i will find a way to tally how many of each are there so i can automate the rep count
+//             condition_design = list()
+
+//             type_design = list()
+
+//             for (x in c(1:length(list_of_mBams))) {
+            
+//             path_bam = list_of_mBams[[x]]
+//             print(path_bam)
+//             bam_basename = basename(path_bam)
+//             bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+            
+//             # labeling the important tokens so it is easier to keep track of
+//             condition = bam_tokens[1]
+//             histone = bam_tokens[2]
+//             replicate = bam_tokens[3]
+            
+            
+//             # for later parts I need the condition and to know how many times to repeat them
+//             condition_design = append(condition_design, paste(condition,histone,sep="_"))
+            
+            
+//             # also get the replicate too for type design
+//             type_design = append(type_design, replicate)
+//             #type_design = append(type_design, paste(histone,replicate, sep="_"))
+            
+            
+            
+//             # using chromVAR getCounts function
+//             # not using chromVAR anymore, for now
+//             #fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+
+//             fragment_counts <- featureCounts(
+//                 files = path_bam,
+//                 annot.ext = df_masterPeak,
+//                 isPairedEnd = TRUE,      # TRUE if your data were paired-end
+//                 strandSpecific = 0,       # 0 = unstranded, 1/2 if strand-specific
+//                 useMetaFeatures = TRUE
+//             )
+            
+//             # putting the fragment counts in the column labeled by the bam name
+//             countsMatrix[,x] = counts(fragment_counts)[,1]
+            
+//             list_bam_basenames = append(list_bam_basenames, bam_basename)
+            
+//             }
+
+//             colnames(countsMatrix) = list_bam_basenames
+
+//             ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
+
+//             #first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+//             keep_Rows = which(rowSums(countsMatrix) > 5)
+
+//             filt_countmatrix = countsMatrix[keep_Rows,]
+
+//             # now to get the condition_design
+//             condition_counts = table(unlist(condition_design))
+
+//             # this gives back the names and the counts give back the counts for each of the names
+//             condition_names = names(condition_counts)
+//             condition_num = as.numeric(condition_counts)
+
+
+
+
+//             # now i can put both lists in to get back the experiment design
+//             condition_factor = factor(rep(condition_names, times=condition_num))
+
+
+//             # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
+
+//             # for treatment I need to make nextflow take the users input so they can relevel this section
+//             #treatment = "H1low_H3k27me3"
+//             treatment = "${params.treatment_name}_${idr_histone}"
+
+//             if (levels(condition_factor)[1] == treatment ) {
+//             condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+//             }else {
+//             condition_factor
+//             }
+//             print(condition_factor)
+
+//             # repeating the above to have another column with type (replicates)
+//             type_counts = table(unlist(type_design))
+//             type_names = names(type_counts)
+//             type_num = as.numeric(type_counts)
+
+//             #type_factor = factor(rep(type_names, times=type_counts))
+//             type_factor = factor(rep(type_names, times=type_num[1]))
+
+//             # I want to get the idr threshold and use that as input for the file names and other things
+
+//             #peak_file = basename(peaklist[[1]])
+//             peak_file = basename("./${idr_peak_name}")
+
+//             idr_used = strsplit(peak_file, split = "_")[[1]][10]
+//             idr_used
+
+//             # now for deseq2 workflow
+
+
+//             # now to do the normal deseq2 workflow
+
+//             dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+//                                         colData = DataFrame(condition_factor, type_factor),
+//                                         design = ~ condition_factor)
+
+
+//             # using the function on our data
+//             DDS = DESeq(dds)
+
+//             norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+
+//             # adding _norm onto the column names in the normalized matrix
+//             colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+
+
+//             # provides independent filtering using the mean of normalized counts
+//             res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+
+//             # this is looking at the differences between the 3 deseq analyzed options
+//             countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+
+//             head(countMatDiff)
+
+
+
+
+//             # getting the results name and addding to the coef we want to shrink
+//             experiment_design_name = resultsNames(DDS)[2]
+
+//             # useful for visualization and ranking of genes or in this case peaks
+//             resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+
+
+//             # finding the up and down regulated counts that pass the threshold
+
+            
+
+//             up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
+            
+            
+//             down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
+            
+
+//             unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+
+//             others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
+
+//             # testing the chat gpt code to make the plot look publication ready
+    
+//             # Relabel categories (for peaks, not genes)
+//             resLFC\$Label <- ifelse(resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj < 0.05, "Upregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj < 0.05, "Downregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj > 0.05, "Not significant",
+//                                         "padj < 0.05 only")))))
+
+//             # Counts & percentages
+//             total <- nrow(resLFC)
+//             #up_count <- sum(resLFCLabel == "Upregulated peaks")
+//             #down_count <- sum(resLFCLabel == "Downregulated peaks")
+//             #ns_count <- sum(resLFCLabel == "Not significant")
+//             #padj_only_count <- sum(resLFCLabel == "padj < 0.05 only")
+
+//             up_pct <- round(100 * nrow(up_reg) / total, 1)
+//             down_pct <- round(100 * nrow(down_reg) / total, 1)
+//             ns_pct <- round(100 * nrow(others_reg) / total, 1)
+//             padj_only_pct <- round(100 * nrow(unchanging_reg) / total, 1)
+
+//             # Annotation text
+//             annotation_text <- paste0(
+//             "Upregulated peaks: ", nrow(up_reg), " (", up_pct, "%)\n",
+//             "Downregulated peaks: ", nrow(down_reg), " (", down_pct, "%)\n",
+//             "padj < 0.05 only: ", nrow(unchanging_reg), " (", padj_only_pct, "%)\n",
+//             "Not significant: ", nrow(others_reg), " (", ns_pct, "%)"
+//             )
+
+//             # Plot
+//             ma_plot_labeled <- ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color = Label)) +
+//             geom_point(alpha = 0.7, size = 0.5) +
+//             geom_hline(yintercept = 0, linetype = "solid", color = "black") +
+//             geom_hline(yintercept = c(-1, 1), linetype = "dashed", color = "black") +
+//             scale_x_continuous(trans = "log10", 
+//                                 breaks = scales::trans_breaks("log10", function(x) 10^x),
+//                                 labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+//             scale_colour_manual(values = c("Upregulated peaks" = "red",
+//                                             "Downregulated peaks" = "red",
+//                                             "padj < 0.05 only" = "lightpink",
+//                                             "Not significant" = "grey70"),
+//                                 breaks = c("Upregulated peaks", "Downregulated peaks", "padj < 0.05 only", "Not significant")) +
+//             labs(title = experiment_design_name,
+//                 subtitle = paste("IDR threshold for masterPeaks:", "${params.return_idr}"),
+//                 x = "Mean peak signal (log10 scale)",
+//                 y = expression(Log[2]~Fold~Change),
+//                 color = "Peak status") +
+//             theme_classic(base_size = 4) +
+//             theme(legend.position = "top",
+//                     legend.title = element_text(size = 4),
+//                     legend.text = element_text(size = 5),
+//                     plot.title = element_text(size = 6, face = "bold"),
+//                     plot.subtitle = element_text(size = 6),
+//                     axis.title = element_text(size = 6),
+//                     axis.text = element_text(size = 6)) +
+//             annotate("text", x = min(resLFC\$baseMean, na.rm = TRUE), 
+//                     y = max(resLFC\$log2FoldChange, na.rm = TRUE), 
+//                     hjust = -3, vjust = 1, 
+//                     label = annotation_text, 
+//                     size = 1.5)
+
+
+
+//             print(ma_plot_labeled)
+
+
+//             pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 4, height = 4)
+
+//             print(ma_plot_labeled)
+//             dev.off()
+
+//             png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 4.3, height = 4, antialias = "subpixel", units = "in", res = 2000)
+
+//             print(ma_plot_labeled)
+//             dev.off()
+
+
+//             volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+//                             lab = rownames(resLFC),
+//                             title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
+//                             x = 'log2FoldChange', FCcutoff = 1,
+//                             y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
+                            
+//                             )
+
+//             print(volcano_plot_removed_reps)
+
+//             png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
+//             print(volcano_plot_removed_reps)
+//             dev.off()
+
+//             pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
+//             print(volcano_plot_removed_reps)
+//             dev.off()
+            
+
+
+
+//             # using rlog over vst for transformation
+
+//             rld = rlog(DDS, blind=FALSE)
+
+//             #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+//             head(assay(rld), 5)
+
+
+//             library(ggplot2)
+
+//             pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData
+
+//             percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+//             pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
+//             #pca_plot
+//             name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
+
+//             png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
+//             print(pca_plot_rlog)
+//             dev.off()
+
+//             name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
+
+//             pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+//             print(pca_plot_rlog)
+//             dev.off()
+
+
+//             # testing with vst
+//             #vsd_t = vst(DDS, blind = FALSE)
+
+//             # for histone mark k36me2 vst fails so i have to use the direct function
+//             vsd_t <- tryCatch({
+//                 vst(DDS, blind = FALSE)
+//             }, error = function(e) {
+//                 message("vst() failed, using varianceStabilizingTransformation() instead.")
+//                 varianceStabilizingTransformation(DDS, blind = FALSE)
+//             })
+
+//             head(assay(vsd_t), 5)
+
+//             pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData2
+
+//             percentVar <- round(100 * attr(pcaData2, "percentVar"))
+//             pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
+
+
+//             #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
+
+//             pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+//             print(pca_plot_vst)
+//             dev.off()
+
+//             png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
+//             print(pca_plot_vst)
+//             dev.off()
+
+//             pca_plot_rlog
+
+//             pca_plot_vst
+
+
+//             rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+
+//             rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+
+//             # now exporting the unchanging peaks
+
+//             rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+//             # now hoping to get the peak lengths histone
+
+
+//             ###### if any errors happen here then dont do anything ######
+//             tryCatch({
+//             up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
+
+//             up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
+//             print(max(up_peak_lengths))
+
+//             png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_up_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             # just to view it here, not needed in nextflow here.
+//             #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+
+//             down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
+
+//             down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
+//             print(max(down_peak_lengths))
+
+//             png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_down_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+
+//             unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
+
+//             unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
+//             print(max(unchanging_peak_lengths))
+
+//             png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_unchanging_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             ########## now violin plots for peak lengths ################
+
+//             up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
+//             down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
+//             unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
+
+
+//             df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
+
+//             #df_all_peak_lengths
+
+//             df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
+            
+//             all_peak_lengths_violin = df_all_peak_lengths_gg+
+//                 geom_violin()+
+//                 scale_y_continuous(labels = scales::label_number())
+//             ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.pdf", plot = all_peak_lengths_violin)
+            
+            
+//             }, error = function(x) {
+            
+//             message("some of the peak files had no lenght so plotting is pointless")
+//             })
+
+
+//             tryCatch({
+//             # now for the annotated peaks, if an error occurs, don't do anything
+
+//             # lets get the annotated peaks
+
+//             library(ChIPseeker)
+
+//             library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+//             txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+//             # now to read in the peak files
+//             peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
+//             up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
+
+
+//             unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
+//             unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+//             # I would have to plot this pie chart as many times as there are peak files, but not yet.
+//             #plotAnnoPie(up_annotated_peaks)
+
+//             down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
+//             down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             # not plotting this right now
+//             #plotAnnoPie(down_annotated_peaks)
+
+
+//             # not plotting this right now also
+//             #plotDistToTSS(down_annotated_peaks,
+//             #            title="Distribution of H3K27me3 peaks relative to TSS")
+
+
+//             annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+
+
+//             # now get the number of total annotated peaks
+//             down_annotated_df <- as.data.frame(down_annotated_peaks)
+//             #num_down_annotated_peaks = count(down_annotated_df)[[1]]
+//             num_down_annotated_peaks = length(down_annotated_df[,1])
+
+//             up_annotated_df <- as.data.frame(up_annotated_peaks)
+//             #num_up_annotated_peaks = count(up_annotated_df)[[1]]
+//             num_up_annotated_peaks = length(up_annotated_df[,1])
+
+//             unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
+//             #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
+//             num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
+
+//             # then plot with bar because it uses a ggplot object
+//             plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
+
+//             ggsave("annotation_bar_graph_${idr_condition}_${idr_histone}_peaks.pdf", plot = last_plot())
+
+//             }, error = function(x) {
+            
+//             message("for making annotated peaks, some of the files might have no differential peaks")
+//             })
+
+//             """
+//         }
+//     }
+//     if (params.SE) {
+
+//         if (params.narrowPeak_data) {
+
+//             """
+//             #!/usr/bin/env Rscript
+
+//             bam_list = c(${bam_name_list})
+
+//             print(bam_list)
+
+//             #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
+//             #peaklist = \${peaks_list}
+
+//             #print(peaklist)
+
+//             #best_hlow_idr
+//             #best_scrm_idr
+
+//             library(DESeq2)
+//             library(GenomicRanges)
+//             library(chromVAR)
+//             library(tidyr)
+//             library(EnhancedVolcano)
+//             library(readr)
+
+//             print(dir())
+//             # making the master peak genomic ranges object
+            
+//             #mPeak = GRanges()
+
+//             #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
+            
+//                 #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+            
+//                 #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+            
+//                 #gr_object = rtracklayer::import(peakfile, format = "BED")
+
+//                 #mPeak = append(mPeak, gr_object)
+//             #}
+
+//             #peaktable = read.table("\${idr_peak_name}", header = FALSE)
+//             #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+
+//             # might have to let it auto detect the file type when using narrow peaks that arent merged into a strict bed file
+//             mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
+
+//             # making sure there are no redundant peaks
+//             # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
+            
+            
+//             #masterPeak2 = reduce(mPeak)
+
+//             # using resize to extnd regions
+//             extended_master_peak = resize(mPeak, width = width(mPeak)+1, fix = "center")
+
+//             # before trimming i need to add the sequence lengths of the correct genome
+//             # will have to find a way to automate this step for other genomes
+
+//             library(BSgenome.Hsapiens.UCSC.hg38)
+//             #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
+//             #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
+//             #trimmed_master_peak = trim(extended_master_peak)
+//             #masterPeak_beta = reduce(trimmed_master_peak)
+
+//             masterPeak_beta = reduce(extended_master_peak)
+//             # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+            
+//             new_peak_size = width(masterPeak_beta)-1
+//             masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+            
+//             #print(masterPeak)
+
+//             # now I want to keep the standard chromosomes
+//             #seqnames_to_keep =masterPeak@seqnames@values[1:23]
+
+//             #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+
+//             # hoping to export my GRanges object master peaks to a bed file
+//             #write_tsv("\${master_peak_export_out}")
+//             rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
+
+            
+
+//             list_of_mBams = c()
+            
+//             for (bam in bam_list) {
         
+//                 tokens = strsplit(bam, split = "_")[[1]]
+//                 #print(tokens)
+                
+//                 histone = tokens[2]
+//                 #print(histone)
+
+//                 #list_of_mBams = list()
+
+//                 if ("${idr_histone}" == histone) {
+//                     #print(bam)
+//                     list_of_mBams = c(list_of_mBams, bam)
+
+//                 }
+//             }
+
+//             print(list_of_mBams)
         
-        # for later parts I need the condition and to know how many times to repeat them
-        condition_design = append(condition_design, paste(condition,histone,sep="_"))
+            
+//             # now doing the next section to make the count matrix and the condition and experiment design
+
+//             # making the matrix 
+
+//             countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
+
+
+//             # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+//             seqnames(masterPeak)
+
+//             # i should put the unique ids from the master peak object in the matrix as row names.
+//             unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
+
+//             rownames(countsMatrix) = unique_masterPeak_ids
+
+//             ####################### new version ##########################
+//             library(Rsubread)
+
+//             # featureCounts in rsubread needs a dataframe and in the correct format, with a GeneID column first then chr1 column
+//             df_masterPeak = as.data.frame(masterPeak)
+
+//             # now I need to change the second column name to chr
+//             df_masterPeak = df_masterPeak %>% rename(chr = seqnames)
+
+//             # next i need to add the unique ids as the columns in this dataframe
+//             df_masterPeak\$GeneID = unique_masterPeak_ids
+//             ##############################################################
+
+//             #getting the list of bam base names to add to the matrix column names
+//             list_bam_basenames = list()
+
+
+//             # for deseq2 i need the condition design. so hlow and scrm
+//             # then i will find a way to tally how many of each are there so i can automate the rep count
+//             condition_design = list()
+
+//             type_design = list()
+
+//             for (x in c(1:length(list_of_mBams))) {
+            
+//             path_bam = list_of_mBams[[x]]
+//             print(path_bam)
+//             bam_basename = basename(path_bam)
+//             bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+            
+//             # labeling the important tokens so it is easier to keep track of
+//             condition = bam_tokens[1]
+//             histone = bam_tokens[2]
+//             replicate = bam_tokens[3]
+            
+            
+//             # for later parts I need the condition and to know how many times to repeat them
+//             condition_design = append(condition_design, paste(condition,histone,sep="_"))
+            
+            
+//             # also get the replicate too for type design
+//             type_design = append(type_design, replicate)
+//             #type_design = append(type_design, paste(histone,replicate, sep="_"))
+            
+            
+            
+//             # using chromVAR getCounts function
+//             # not using chromVAR anymore, for now
+//             #fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
+
+//             fragment_counts <- featureCounts(
+//                 files = path_bam,
+//                 annot.ext = df_masterPeak,
+//                 isPairedEnd = FALSE,      # TRUE if your data were paired-end
+//                 strandSpecific = 0,       # 0 = unstranded, 1/2 if strand-specific
+//                 useMetaFeatures = TRUE
+//             )
+            
+            
+//             # putting the fragment counts in the column labeled by the bam name
+//             countsMatrix[,x] = counts(fragment_counts)[,1]
+            
+//             list_bam_basenames = append(list_bam_basenames, bam_basename)
+            
+//             }
+
+//             colnames(countsMatrix) = list_bam_basenames
+
+//             ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
+
+//             #first removing the low count fragments. only keeping the rows that are above 5 count in total
+
+//             keep_Rows = which(rowSums(countsMatrix) > 5)
+
+//             filt_countmatrix = countsMatrix[keep_Rows,]
+
+//             # now to get the condition_design
+//             condition_counts = table(unlist(condition_design))
+
+//             # this gives back the names and the counts give back the counts for each of the names
+//             condition_names = names(condition_counts)
+//             condition_num = as.numeric(condition_counts)
+
+
+
+
+//             # now i can put both lists in to get back the experiment design
+//             condition_factor = factor(rep(condition_names, times=condition_num))
+
+
+//             # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
+
+//             # for treatment I need to make nextflow take the users input so they can relevel this section
+//             #treatment = "H1low_H3k27me3"
+//             treatment = "${params.treatment_name}_${idr_histone}"
+
+//             if (levels(condition_factor)[1] == treatment ) {
+//             condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+//             }else {
+//             condition_factor
+//             }
+//             print(condition_factor)
+
+//             # repeating the above to have another column with type (replicates)
+//             type_counts = table(unlist(type_design))
+//             type_names = names(type_counts)
+//             type_num = as.numeric(type_counts)
+
+//             #type_factor = factor(rep(type_names, times=type_counts))
+//             type_factor = factor(rep(type_names, times=type_num[1]))
+
+//             # I want to get the idr threshold and use that as input for the file names and other things
+
+//             #peak_file = basename(peaklist[[1]])
+//             peak_file = basename("./${idr_peak_name}")
+
+//             idr_used = strsplit(peak_file, split = "_")[[1]][10]
+//             idr_used
+
+//             # now for deseq2 workflow
+
+
+//             # now to do the normal deseq2 workflow
+
+//             dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+//                                         colData = DataFrame(condition_factor, type_factor),
+//                                         design = ~ condition_factor)
+
+
+//             # using the function on our data
+//             DDS = DESeq(dds)
+
+//             norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+
+//             # adding _norm onto the column names in the normalized matrix
+//             colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
+
+
+//             # provides independent filtering using the mean of normalized counts
+//             res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+
+//             # this is looking at the differences between the 3 deseq analyzed options
+//             countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+
+//             head(countMatDiff)
+
+
+
+
+//             # getting the results name and addding to the coef we want to shrink
+//             experiment_design_name = resultsNames(DDS)[2]
+
+//             # useful for visualization and ranking of genes or in this case peaks
+//             resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
+
+
+//             # finding the up and down regulated counts that pass the threshold
+            
+
+            
+
+//             up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
+            
+            
+//             down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
+            
+
+//             unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+
+//             others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
+
+//             # testing the chat gpt code to make the plot look publication ready
+
+//             # Relabel categories (for peaks, not genes)
+//             resLFC\$Label <- ifelse(resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj < 0.05, "Upregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj < 0.05, "Downregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj > 0.05, "Not significant",
+//                                         "padj < 0.05 only")))))
+
+//             # Counts & percentages
+//             total <- nrow(resLFC)
+//             #up_count <- sum(resLFCLabel == "Upregulated peaks")
+//             #down_count <- sum(resLFCLabel == "Downregulated peaks")
+//             #ns_count <- sum(resLFCLabel == "Not significant")
+//             #padj_only_count <- sum(resLFCLabel == "padj < 0.05 only")
+
+//             up_pct <- round(100 * nrow(up_reg) / total, 1)
+//             down_pct <- round(100 * nrow(down_reg) / total, 1)
+//             ns_pct <- round(100 * nrow(others_reg) / total, 1)
+//             padj_only_pct <- round(100 * nrow(unchanging_reg) / total, 1)
+
+//             # Annotation text
+//             annotation_text <- paste0(
+//             "Upregulated peaks: ", nrow(up_reg), " (", up_pct, "%)\n",
+//             "Downregulated peaks: ", nrow(down_reg), " (", down_pct, "%)\n",
+//             "padj < 0.05 only: ", nrow(unchanging_reg), " (", padj_only_pct, "%)\n",
+//             "Not significant: ", nrow(others_reg), " (", ns_pct, "%)"
+//             )
+
+//             # Plot
+//             ma_plot_labeled <- ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color = Label)) +
+//             geom_point(alpha = 0.7, size = 0.5) +
+//             geom_hline(yintercept = 0, linetype = "solid", color = "black") +
+//             geom_hline(yintercept = c(-1, 1), linetype = "dashed", color = "black") +
+//             scale_x_continuous(trans = "log10", 
+//                                 breaks = scales::trans_breaks("log10", function(x) 10^x),
+//                                 labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+//             scale_colour_manual(values = c("Upregulated peaks" = "red",
+//                                             "Downregulated peaks" = "red",
+//                                             "padj < 0.05 only" = "lightpink",
+//                                             "Not significant" = "grey70"),
+//                                 breaks = c("Upregulated peaks", "Downregulated peaks", "padj < 0.05 only", "Not significant")) +
+//             labs(title = experiment_design_name,
+//                 subtitle = paste("IDR threshold for masterPeaks:", "${params.return_idr}"),
+//                 x = "Mean peak signal (log10 scale)",
+//                 y = expression(Log[2]~Fold~Change),
+//                 color = "Peak status") +
+//             theme_classic(base_size = 4) +
+//             theme(legend.position = "top",
+//                     legend.title = element_text(size = 4),
+//                     legend.text = element_text(size = 5),
+//                     plot.title = element_text(size = 6, face = "bold"),
+//                     plot.subtitle = element_text(size = 6),
+//                     axis.title = element_text(size = 6),
+//                     axis.text = element_text(size = 6)) +
+//             annotate("text", x = min(resLFC\$baseMean, na.rm = TRUE), 
+//                     y = max(resLFC\$log2FoldChange, na.rm = TRUE), 
+//                     hjust = -3, vjust = 1, 
+//                     label = annotation_text, 
+//                     size = 1.5)
+
+
+
+//             print(ma_plot_labeled)
+
+
+//             pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 4, height = 4)
+
+//             print(ma_plot_labeled)
+//             dev.off()
+
+//             png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 4.3, height = 4, antialias = "subpixel", units = "in", res = 2000)
+
+//             print(ma_plot_labeled)
+//             dev.off()
+
+
+//             volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+//                             lab = rownames(resLFC),
+//                             title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
+//                             x = 'log2FoldChange', FCcutoff = 1,
+//                             y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
+                            
+//                             )
+
+//             print(volcano_plot_removed_reps)
+
+//             png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
+//             print(volcano_plot_removed_reps)
+//             dev.off()
+
+//             pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
+//             print(volcano_plot_removed_reps)
+//             dev.off()
+            
+
+
+
+//             # using rlog over vst for transformation
+
+//             rld = rlog(DDS, blind=FALSE)
+
+//             #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+//             head(assay(rld), 5)
+
+
+//             library(ggplot2)
+
+//             pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData
+
+//             percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+//             pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
+//             #pca_plot
+//             name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
+
+//             png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
+//             print(pca_plot_rlog)
+//             dev.off()
+
+//             name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
+
+//             pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+//             print(pca_plot_rlog)
+//             dev.off()
+
+
+//             # testing with vst
+//             #vsd_t = vst(DDS, blind = FALSE)
+
+//             # for histone mark k36me2 vst fails so i have to use the direct function
+//             vsd_t <- tryCatch({
+//                 vst(DDS, blind = FALSE)
+//             }, error = function(e) {
+//                 message("vst() failed, using varianceStabilizingTransformation() instead.")
+//                 varianceStabilizingTransformation(DDS, blind = FALSE)
+//             })
+
+//             head(assay(vsd_t), 5)
+
+//             pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData2
+
+//             percentVar <- round(100 * attr(pcaData2, "percentVar"))
+//             pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
+
+
+//             #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
+
+//             pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+//             print(pca_plot_vst)
+//             dev.off()
+
+//             png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
+//             print(pca_plot_vst)
+//             dev.off()
+
+//             pca_plot_rlog
+
+//             pca_plot_vst
+
+
+//             rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+
+//             rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+
+//             # now exporting the unchanging peaks
+
+//             rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+//             # now hoping to get the peak lengths histone
+
+
+//             ###### if any errors happen here then dont do anything ######
+//             tryCatch({
+//             up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
+
+//             up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
+//             print(max(up_peak_lengths))
+
+//             png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_up_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             # just to view it here, not needed in nextflow here.
+//             #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+
+//             down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
+
+//             down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
+//             print(max(down_peak_lengths))
+
+//             png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_down_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+
+//             unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
+
+//             unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
+//             print(max(unchanging_peak_lengths))
+
+//             png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             pdf(file = "hist_unchanging_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
+
+//             ########## now violin plots for peak lengths ################
+
+//             up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
+//             down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
+//             unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
+
+
+//             df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
+
+//             #df_all_peak_lengths
+
+//             df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
+            
+//             all_peak_lengths_violin = df_all_peak_lengths_gg+
+//                 geom_violin()+
+//                 scale_y_continuous(labels = scales::label_number())
+//             ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.pdf", plot = all_peak_lengths_violin)
+            
+            
+//             }, error = function(x) {
+            
+//             message("some of the peak files had no lenght so plotting is pointless")
+//             })
+
+
+//             tryCatch({
+//             # now for the annotated peaks, if an error occurs, don't do anything
+//             # lets get the annotated peaks
+
+//             library(ChIPseeker)
+
+//             library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+//             txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+//             # now to read in the peak files
+//             peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
+//             up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
+
+
+//             unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
+//             unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+//             # I would have to plot this pie chart as many times as there are peak files, but not yet.
+//             #plotAnnoPie(up_annotated_peaks)
+
+//             down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
+//             down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             # not plotting this right now
+//             #plotAnnoPie(down_annotated_peaks)
+
+
+//             # not plotting this right now also
+//             #plotDistToTSS(down_annotated_peaks,
+//             #            title="Distribution of H3K27me3 peaks relative to TSS")
+
+
+//             annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+
+
+//             # now get the number of total annotated peaks
+//             down_annotated_df <- as.data.frame(down_annotated_peaks)
+//             #num_down_annotated_peaks = count(down_annotated_df)[[1]]
+//             num_down_annotated_peaks = length(down_annotated_df[,1])
+
+//             up_annotated_df <- as.data.frame(up_annotated_peaks)
+//             #num_up_annotated_peaks = count(up_annotated_df)[[1]]
+//             num_up_annotated_peaks = length(up_annotated_df[,1])
+
+//             unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
+//             #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
+//             num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
+
+//             # then plot with bar because it uses a ggplot object
+//             plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
+
+//             ggsave("annotation_bar_graph_${idr_condition}_${idr_histone}_peaks.pdf", plot = last_plot())
+
+//             }, error = function(x) {
+            
+//             message("for making annotated peaks, some of the files might have no differential peaks")
+//             })
+
+//             """
+
+
+//         }
+//         else {
+
         
+//             """
+//             #!/usr/bin/env Rscript
+
+//             bam_list = c(${bam_name_list})
+
+//             print(bam_list)
+
+//             #peaklist = list("\${first_idr_peak}", "\${second_idr_peak}")
+//             #peaklist = \${peaks_list}
+
+//             #print(peaklist)
+
+//             #best_hlow_idr
+//             #best_scrm_idr
+
+//             library(DESeq2)
+//             library(GenomicRanges)
+//             library(chromVAR)
+//             library(tidyr)
+//             library(EnhancedVolcano)
+//             library(readr)
+
+//             print(dir())
+//             # making the master peak genomic ranges object
+            
+//             #mPeak = GRanges()
+
+//             #for (peakfile in c("./\${first_idr_peak}", "./\${second_idr_peak}")) {
+            
+//                 #peaktable = read.table(peakfile, header = FALSE, sep = "\t")
+            
+//                 #gr_object = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+            
+//                 #gr_object = rtracklayer::import(peakfile, format = "BED")
+
+//                 #mPeak = append(mPeak, gr_object)
+//             #}
+
+//             #peaktable = read.table("\${idr_peak_name}", header = FALSE)
+//             #mPeak = GRanges(seqnames = peaktable\$V1, IRanges(start = peaktable\$V2, end = peaktable\$V3), strand = "*" )
+
+//             mPeak = rtracklayer::import("${idr_peak_name}", format = "BED")
+
+//             # making sure there are no redundant peaks
+//             # this will allow me to resizd all of the regions by 50kb on each side, so any regions that are less than 100kb away from eachother will be merged by reduce because they overlap
+            
+            
+//             #masterPeak2 = reduce(mPeak)
+
+//             # using resize to extnd regions
+//             extended_master_peak = resize(mPeak, width = width(mPeak)+100000, fix = "center")
+
+//             # before trimming i need to add the sequence lengths of the correct genome
+//             # will have to find a way to automate this step for other genomes
+
+//             library(BSgenome.Hsapiens.UCSC.hg38)
+//             #seq_lengths <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
+//             #seqlengths(extended_master_peak) <- seq_lengths[seqlevels(extended_master_peak)]
+//             #trimmed_master_peak = trim(extended_master_peak)
+//             #masterPeak_beta = reduce(trimmed_master_peak)
+
+//             masterPeak_beta = reduce(extended_master_peak)
+//             # now to resize again to remove the artificial 50kb from the start and end of the newly reduced peak
+            
+//             new_peak_size = width(masterPeak_beta)-100000
+//             masterPeak = resize(masterPeak_beta,  width = new_peak_size , fix = "center")
+            
+//             #print(masterPeak)
+
+//             # now I want to keep the standard chromosomes
+//             #seqnames_to_keep =masterPeak@seqnames@values[1:23]
+
+//             #masterPeak = masterPeak[seqnames(masterPeak) %in% seqnames_to_keep]
+
+//             # hoping to export my GRanges object master peaks to a bed file
+//             #write_tsv("\${master_peak_export_out}")
+//             rtracklayer::export.bed(masterPeak, con = "${master_peak_export_out}")
+
+            
+
+//             list_of_mBams = c()
+            
+//             for (bam in bam_list) {
         
-        # also get the replicate too for type design
-        type_design = append(type_design, replicate)
-        #type_design = append(type_design, paste(histone,replicate, sep="_"))
+//                 tokens = strsplit(bam, split = "_")[[1]]
+//                 #print(tokens)
+                
+//                 histone = tokens[2]
+//                 #print(histone)
+
+//                 #list_of_mBams = list()
+
+//                 if ("${idr_histone}" == histone) {
+//                     #print(bam)
+//                     list_of_mBams = c(list_of_mBams, bam)
+
+//                 }
+//             }
+
+//             print(list_of_mBams)
         
-        
-        
-        # using chromVAR getCounts function
-        fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
-        
-        
-        # putting the fragment counts in the column labeled by the bam name
-        countsMatrix[,x] = counts(fragment_counts)[,1]
-        
-        list_bam_basenames = append(list_bam_basenames, bam_basename)
-        
-        }
+            
+//             # now doing the next section to make the count matrix and the condition and experiment design
 
-        colnames(countsMatrix) = list_bam_basenames
+//             # making the matrix 
 
-        ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
+//             countsMatrix = matrix(data = NA, length(masterPeak), length(list_of_mBams) )
 
-        #first removing the low count fragments. only keeping the rows that are above 5 count in total
 
-        keep_Rows = which(rowSums(countsMatrix) > 5)
+//             # I want to get the chr start end of the peaks and put them in the matrix as column names so I know which peaks I am looking at from the deseq2 results in the differential peaks.
+//             seqnames(masterPeak)
 
-        filt_countmatrix = countsMatrix[keep_Rows,]
+//             # i should put the unique ids from the master peak object in the matrix as row names.
+//             unique_masterPeak_ids = paste0(as.character(seqnames(masterPeak)), ":" ,start(masterPeak), "-", end(masterPeak))
 
-        # now to get the condition_design
-        condition_counts = table(unlist(condition_design))
+//             rownames(countsMatrix) = unique_masterPeak_ids
 
-        # this gives back the names and the counts give back the counts for each of the names
-        condition_names = names(condition_counts)
-        condition_num = as.numeric(condition_counts)
+//             ####################### new version ##########################
+//             library(Rsubread)
 
+//             # featureCounts in rsubread needs a dataframe and in the correct format, with a GeneID column first then chr1 column
+//             df_masterPeak = as.data.frame(masterPeak)
 
+//             # now I need to change the second column name to chr
+//             df_masterPeak = df_masterPeak %>% rename(chr = seqnames)
 
+//             # next i need to add the unique ids as the columns in this dataframe
+//             df_masterPeak\$GeneID = unique_masterPeak_ids
+//             ##############################################################
 
-        # now i can put both lists in to get back the experiment design
-        condition_factor = factor(rep(condition_names, times=condition_num))
+//             #getting the list of bam base names to add to the matrix column names
+//             list_bam_basenames = list()
 
 
-        # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
+//             # for deseq2 i need the condition design. so hlow and scrm
+//             # then i will find a way to tally how many of each are there so i can automate the rep count
+//             condition_design = list()
 
-        # for treatment I need to make nextflow take the users input so they can relevel this section
-        #treatment = "H1low_H3k27me3"
-        treatment = "${params.treatment_name}_${idr_histone}"
+//             type_design = list()
 
-        if (levels(condition_factor)[1] == treatment ) {
-        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
-        }else {
-        condition_factor
-        }
-        print(condition_factor)
+//             for (x in c(1:length(list_of_mBams))) {
+            
+//             path_bam = list_of_mBams[[x]]
+//             print(path_bam)
+//             bam_basename = basename(path_bam)
+//             bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+            
+//             # labeling the important tokens so it is easier to keep track of
+//             condition = bam_tokens[1]
+//             histone = bam_tokens[2]
+//             replicate = bam_tokens[3]
+            
+            
+//             # for later parts I need the condition and to know how many times to repeat them
+//             condition_design = append(condition_design, paste(condition,histone,sep="_"))
+            
+            
+//             # also get the replicate too for type design
+//             type_design = append(type_design, replicate)
+//             #type_design = append(type_design, paste(histone,replicate, sep="_"))
+            
+            
+            
+//             # using chromVAR getCounts function
+//             # not using chromVAR anymore, for now
+//             #fragment_counts = getCounts(path_bam, masterPeak, paired= TRUE, by_rg = FALSE, format = "bam")
 
-        # repeating the above to have another column with type (replicates)
-        type_counts = table(unlist(type_design))
-        type_names = names(type_counts)
-        type_num = as.numeric(type_counts)
+//             fragment_counts <- featureCounts(
+//                 files = path_bam,
+//                 annot.ext = df_masterPeak,
+//                 isPairedEnd = FALSE,      # TRUE if your data were paired-end
+//                 strandSpecific = 0,       # 0 = unstranded, 1/2 if strand-specific
+//                 useMetaFeatures = TRUE
+//             )
+            
+//             # putting the fragment counts in the column labeled by the bam name
+//             countsMatrix[,x] = counts(fragment_counts)[,1]
+            
+//             list_bam_basenames = append(list_bam_basenames, bam_basename)
+            
+//             }
 
-        #type_factor = factor(rep(type_names, times=type_counts))
-        type_factor = factor(rep(type_names, times=type_num[1]))
+//             colnames(countsMatrix) = list_bam_basenames
 
-        # I want to get the idr threshold and use that as input for the file names and other things
+//             ## this part i would have to tell the use to name their conditions as control and treatment so it can make the design treatment vs control
 
-        #peak_file = basename(peaklist[[1]])
-        peak_file = basename("./${idr_peak_name}")
+//             #first removing the low count fragments. only keeping the rows that are above 5 count in total
 
-        idr_used = strsplit(peak_file, split = "_")[[1]][10]
-        idr_used
+//             keep_Rows = which(rowSums(countsMatrix) > 5)
 
-        # now for deseq2 workflow
+//             filt_countmatrix = countsMatrix[keep_Rows,]
 
+//             # now to get the condition_design
+//             condition_counts = table(unlist(condition_design))
 
-        # now to do the normal deseq2 workflow
+//             # this gives back the names and the counts give back the counts for each of the names
+//             condition_names = names(condition_counts)
+//             condition_num = as.numeric(condition_counts)
 
-        dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
-                                    colData = DataFrame(condition_factor, type_factor),
-                                    design = ~ condition_factor)
 
 
-        # using the function on our data
-        DDS = DESeq(dds)
 
-        norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
+//             # now i can put both lists in to get back the experiment design
+//             condition_factor = factor(rep(condition_names, times=condition_num))
 
-        # adding _norm onto the column names in the normalized matrix
-        colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
 
+//             # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
 
-        # provides independent filtering using the mean of normalized counts
-        res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+//             # for treatment I need to make nextflow take the users input so they can relevel this section
+//             #treatment = "H1low_H3k27me3"
+//             treatment = "${params.treatment_name}_${idr_histone}"
 
+//             if (levels(condition_factor)[1] == treatment ) {
+//             condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+//             }else {
+//             condition_factor
+//             }
+//             print(condition_factor)
 
-        # this is looking at the differences between the 3 deseq analyzed options
-        countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
+//             # repeating the above to have another column with type (replicates)
+//             type_counts = table(unlist(type_design))
+//             type_names = names(type_counts)
+//             type_num = as.numeric(type_counts)
 
-        head(countMatDiff)
+//             #type_factor = factor(rep(type_names, times=type_counts))
+//             type_factor = factor(rep(type_names, times=type_num[1]))
 
+//             # I want to get the idr threshold and use that as input for the file names and other things
 
+//             #peak_file = basename(peaklist[[1]])
+//             peak_file = basename("./${idr_peak_name}")
 
+//             idr_used = strsplit(peak_file, split = "_")[[1]][10]
+//             idr_used
 
-        # getting the results name and addding to the coef we want to shrink
-        experiment_design_name = resultsNames(DDS)[2]
+//             # now for deseq2 workflow
 
-        # useful for visualization and ranking of genes or in this case peaks
-        resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
 
+//             # now to do the normal deseq2 workflow
 
-        # finding the up and down regulated counts that pass the threshold
+//             dds = DESeqDataSetFromMatrix(countData = filt_countmatrix,
+//                                         colData = DataFrame(condition_factor, type_factor),
+//                                         design = ~ condition_factor)
 
-        # all peaks
-        all_peaks = resLFC
-        total_all_peaks = length(all_peaks[,1])
 
-        up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
-        total_up_reg = length(up_reg[,1])
-        #total_up_reg
-        down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
-        total_down_reg = length(down_reg[,1])
-        total_down_reg
+//             # using the function on our data
+//             DDS = DESeq(dds)
 
-        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
-        total_unchanging_reg = length(unchanging_reg[,1])
-        total_unchanging_reg
+//             norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
 
-        # get the percentage of diff peaks
-        up_percentage_reg = round((total_up_reg/total_all_peaks)*100, digits = 1)
+//             # adding _norm onto the column names in the normalized matrix
+//             colnames(norm_DDS) = paste0(colnames(norm_DDS), "_norm")
 
-        down_percentage_reg = round((total_down_reg/total_all_peaks)*100, 1)
 
-        unchanging_percentage_reg = round((total_unchanging_reg/total_all_peaks)*100, 1)
+//             # provides independent filtering using the mean of normalized counts
+//             res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
 
-        resLFC\$Label = ifelse(resLFC\$padj > 0.05, "not significant", ifelse(abs(resLFC\$log2FoldChange) >=1, "|LFC| > 1 & padj < 0.05", "padj < 0.05" ))
-        ma_plot_labeled = ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color=Label))+
-        labs(caption = paste("Up reg (red +1 LFC & padj <0.05) = ", total_up_reg, "; percentage: ", up_percentage_reg , "\n", "Down reg (red -1 LFC & padj < 0.05) = ", total_down_reg, "; percentage: ", down_percentage_reg, "\nNow the Unchanging total and percentage ", total_unchanging_reg , "; percentage: " , unchanging_percentage_reg), title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "))+
-        theme(plot.caption = element_text(size = 25, face = "bold"), axis.text.x = element_text(size = 25), axis.text.y = element_text(size = 25), axis.title.x = element_text(size = 35), axis.title.y = element_text(size = 35), legend.text = element_text(size = 25), title = element_text(size = 25), plot.subtitle = element_text(size = 15))+
-        scale_colour_manual(values=c("red", "darkgrey", "pink"))+
-        scale_x_continuous(trans='log10')+
-        ylim(c(min(-max(resLFC\$log2FoldChange),min(resLFC\$log2FoldChange)), max(max(resLFC\$log2FoldChange),-min(resLFC\$log2FoldChange))))+
-        geom_point(data = resLFC, aes(x = baseMean, y = log2FoldChange), size = 3)
 
-        print(ma_plot_labeled)
+//             # this is looking at the differences between the 3 deseq analyzed options
+//             countMatDiff = cbind(filt_countmatrix, norm_DDS, res)
 
+//             head(countMatDiff)
 
-        pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 18, height = 12)
 
-        print(ma_plot_labeled)
-        dev.off()
 
-        png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
 
-        print(ma_plot_labeled)
-        dev.off()
+//             # getting the results name and addding to the coef we want to shrink
+//             experiment_design_name = resultsNames(DDS)[2]
 
+//             # useful for visualization and ranking of genes or in this case peaks
+//             resLFC = lfcShrink(DDS, coef= resultsNames(DDS)[2], type = "apeglm")
 
-        volcano_plot_removed_reps = EnhancedVolcano(resLFC,
-                        lab = rownames(resLFC),
-                        title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
-                        x = 'log2FoldChange', FCcutoff = 1,
-                        y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
-                        
-                        )
 
-        print(volcano_plot_removed_reps)
+//             # finding the up and down regulated counts that pass the threshold
 
-        png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
-        print(volcano_plot_removed_reps)
-        dev.off()
+            
 
-        pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
-        print(volcano_plot_removed_reps)
-        dev.off()
-        
+//             up_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange >= 1) ,]
+            
+            
+//             down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
+            
 
+//             unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
 
+//             others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
 
-        # using rlog over vst for transformation
+//             # testing the chat gpt code to make the plot look publication ready
 
-        rld = rlog(DDS, blind=FALSE)
+//             # Relabel categories (for peaks, not genes)
+//             resLFC\$Label <- ifelse(resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj < 0.05, "Upregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj < 0.05, "Downregulated peaks",
+//                                 ifelse(resLFC\$log2FoldChange >= 1 & resLFC\$padj > 0.05, "Not significant",
+//                                 ifelse(resLFC\$log2FoldChange <= -1 & resLFC\$padj > 0.05, "Not significant",
+//                                         "padj < 0.05 only")))))
 
-        #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
-        head(assay(rld), 5)
+//             # Counts & percentages
+//             total <- nrow(resLFC)
+//             #up_count <- sum(resLFCLabel == "Upregulated peaks")
+//             #down_count <- sum(resLFCLabel == "Downregulated peaks")
+//             #ns_count <- sum(resLFCLabel == "Not significant")
+//             #padj_only_count <- sum(resLFCLabel == "padj < 0.05 only")
 
+//             up_pct <- round(100 * nrow(up_reg) / total, 1)
+//             down_pct <- round(100 * nrow(down_reg) / total, 1)
+//             ns_pct <- round(100 * nrow(others_reg) / total, 1)
+//             padj_only_pct <- round(100 * nrow(unchanging_reg) / total, 1)
 
-        library(ggplot2)
+//             # Annotation text
+//             annotation_text <- paste0(
+//             "Upregulated peaks: ", nrow(up_reg), " (", up_pct, "%)\n",
+//             "Downregulated peaks: ", nrow(down_reg), " (", down_pct, "%)\n",
+//             "padj < 0.05 only: ", nrow(unchanging_reg), " (", padj_only_pct, "%)\n",
+//             "Not significant: ", nrow(others_reg), " (", ns_pct, "%)"
+//             )
 
-        pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
-        pcaData
+//             # Plot
+//             ma_plot_labeled <- ggplot(resLFC, aes(x = baseMean, y = log2FoldChange, color = Label)) +
+//             geom_point(alpha = 0.7, size = 0.5) +
+//             geom_hline(yintercept = 0, linetype = "solid", color = "black") +
+//             geom_hline(yintercept = c(-1, 1), linetype = "dashed", color = "black") +
+//             scale_x_continuous(trans = "log10", 
+//                                 breaks = scales::trans_breaks("log10", function(x) 10^x),
+//                                 labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+//             scale_colour_manual(values = c("Upregulated peaks" = "red",
+//                                             "Downregulated peaks" = "red",
+//                                             "padj < 0.05 only" = "lightpink",
+//                                             "Not significant" = "grey70"),
+//                                 breaks = c("Upregulated peaks", "Downregulated peaks", "padj < 0.05 only", "Not significant")) +
+//             labs(title = experiment_design_name,
+//                 subtitle = paste("IDR threshold for masterPeaks:", "${params.return_idr}"),
+//                 x = "Mean peak signal (log10 scale)",
+//                 y = expression(Log[2]~Fold~Change),
+//                 color = "Peak status") +
+//             theme_classic(base_size = 4) +
+//             theme(legend.position = "top",
+//                     legend.title = element_text(size = 4),
+//                     legend.text = element_text(size = 5),
+//                     plot.title = element_text(size = 6, face = "bold"),
+//                     plot.subtitle = element_text(size = 6),
+//                     axis.title = element_text(size = 6),
+//                     axis.text = element_text(size = 6)) +
+//             annotate("text", x = min(resLFC\$baseMean, na.rm = TRUE), 
+//                     y = max(resLFC\$log2FoldChange, na.rm = TRUE), 
+//                     hjust = -3, vjust = 1, 
+//                     label = annotation_text, 
+//                     size = 1.5)
 
-        percentVar <- round(100 * attr(pcaData, "percentVar"))
 
 
-        pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-        ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
-        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
-        geom_point(size=3) +
-        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-        coord_fixed()
-        #pca_plot
-        name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
+//             print(ma_plot_labeled)
 
-        png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
-        print(pca_plot_rlog)
-        dev.off()
 
-        name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
+//             pdf(file = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.pdf", sep = "_"), width = 4, height = 4)
 
-        pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
-        print(pca_plot_rlog)
-        dev.off()
+//             print(ma_plot_labeled)
+//             dev.off()
 
+//             png(filename = paste(experiment_design_name,"IDR", idr_used,"MA_plot_our_data_counts.png", sep = "_"), width = 4.3, height = 4, antialias = "subpixel", units = "in", res = 2000)
 
-        # testing with vst
-        #vsd_t = vst(DDS, blind = FALSE)
+//             print(ma_plot_labeled)
+//             dev.off()
 
-        # for histone mark k36me2 vst fails so i have to use the direct function
-        vsd_t <- tryCatch({
-            vst(DDS, blind = FALSE)
-        }, error = function(e) {
-            message("vst() failed, using varianceStabilizingTransformation() instead.")
-            varianceStabilizingTransformation(DDS, blind = FALSE)
-        })
 
-        head(assay(vsd_t), 5)
+//             volcano_plot_removed_reps = EnhancedVolcano(resLFC,
+//                             lab = rownames(resLFC),
+//                             title = experiment_design_name, subtitle = paste("This means the first condition has these points more than in the second condition. The idr threshold for masterPeaks is",idr_used, sep = " "),
+//                             x = 'log2FoldChange', FCcutoff = 1,
+//                             y = 'padj', pCutoff = 0.05, labSize = 0 # making this 0 so it doesn't show the region names in the volcano plot 
+                            
+//                             )
 
-        pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
-        pcaData2
+//             print(volcano_plot_removed_reps)
 
-        percentVar <- round(100 * attr(pcaData2, "percentVar"))
-        pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
-        ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
-        theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
-        geom_point(size=3) +
-        xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-        ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-        coord_fixed()
+//             png(filename = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.png", sep = "_"), width = 1200, height = 900, antialias = "subpixel")
+//             print(volcano_plot_removed_reps)
+//             dev.off()
 
+//             pdf(file = paste(experiment_design_name,"IDR",idr_used,"volcano_plot_our_data_counts.pdf", sep = "_"), width = 16, height = 12)
+//             print(volcano_plot_removed_reps)
+//             dev.off()
+            
 
-        #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
 
-        pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
-        print(pca_plot_vst)
-        dev.off()
 
-        png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
-        print(pca_plot_vst)
-        dev.off()
+//             # using rlog over vst for transformation
 
-        pca_plot_rlog
+//             rld = rlog(DDS, blind=FALSE)
 
-        pca_plot_vst
+//             #it is clear that the rlog transformation inherently accounts for differences in sequencing depth *
+//             head(assay(rld), 5)
 
 
-        rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+//             library(ggplot2)
 
-        rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+//             pcaData = plotPCA(rld, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData
 
-        # now exporting the unchanging peaks
+//             percentVar <- round(100 * attr(pcaData, "percentVar"))
 
-        rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
 
-        # now hoping to get the peak lengths histone
+//             pca_plot_rlog = ggplot(pcaData, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using Rlog transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
+//             #pca_plot
+//             name_for_rlog_png_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.png", sep = "_")
 
+//             png(filename = name_for_rlog_png_file, width = 900, height = 900, antialias = "subpixel")
+//             print(pca_plot_rlog)
+//             dev.off()
 
-        ###### if any errors happen here then dont do anything ######
-        tryCatch({
-        up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
+//             name_for_rlog_pdf_file =paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used, "rlog.pdf", sep = "_")
 
-        up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
-        print(max(up_peak_lengths))
+//             pdf(file = name_for_rlog_pdf_file, width = 10, height = 10)
+//             print(pca_plot_rlog)
+//             dev.off()
 
-        png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-        hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
-        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-        dev.off()
 
-        # just to view it here, not needed in nextflow here.
-        #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
-        #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             # testing with vst
+//             #vsd_t = vst(DDS, blind = FALSE)
 
-        down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
+//             # for histone mark k36me2 vst fails so i have to use the direct function
+//             vsd_t <- tryCatch({
+//                 vst(DDS, blind = FALSE)
+//             }, error = function(e) {
+//                 message("vst() failed, using varianceStabilizingTransformation() instead.")
+//                 varianceStabilizingTransformation(DDS, blind = FALSE)
+//             })
 
-        down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
-        print(max(down_peak_lengths))
+//             head(assay(vsd_t), 5)
 
-        png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-        hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
-        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-        dev.off()
+//             pcaData2 = plotPCA(vsd_t, intgroup=c("condition_factor","type_factor"), returnData = TRUE )
+//             pcaData2
 
+//             percentVar <- round(100 * attr(pcaData2, "percentVar"))
+//             pca_plot_vst = ggplot(pcaData2, aes(PC1, PC2, color=condition_factor, shape=type_factor)) +
+//             ggtitle(paste("PCA plot using VST transform IDR", idr_used, sep = " ")) +
+//             theme(plot.caption = element_text(size = 30, face = "bold"), axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15), legend.text = element_text(size = 15))+
+//             geom_point(size=3) +
+//             xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+//             ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+//             coord_fixed()
 
-        unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
 
-        unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
-        print(max(unchanging_peak_lengths))
+//             #name_for_vst_png_file =paste(experiment_design_name,"PCA_plot_IDR", idr_used, "vst.png", sep = "_")
 
-        png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
-        hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
-        axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
-        dev.off()
+//             pdf(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts",idr_used,"vst_all_reps.pdf", sep = "_"), width = 10, height = 10)
+//             print(pca_plot_vst)
+//             dev.off()
 
-        ########## now violin plots for peak lengths ################
+//             png(file = paste(experiment_design_name,"PCA_plot_IDR_our_data_counts", idr_used,"vst_all_reps.png", sep = "_"), width = 900, height = 900)
+//             print(pca_plot_vst)
+//             dev.off()
 
-        up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
-        down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
-        unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
+//             pca_plot_rlog
 
+//             pca_plot_vst
 
-        df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
 
-        #df_all_peak_lengths
+//             rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
 
-        df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
-        
-        all_peak_lengths_violin = df_all_peak_lengths_gg+
-            geom_violin()+
-            scale_y_continuous(labels = scales::label_number())
-        ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.png", plot = all_peak_lengths_violin)
-        
-        
-        }, error = function(x) {
-        
-        message("some of the peak files had no lenght so plotting is pointless")
-        })
+//             rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
 
+//             # now exporting the unchanging peaks
 
-        tryCatch({
-        # now for the annotated peaks, if an error occurs, don't do anything
+//             rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
 
-        # lets get the annotated peaks
+//             # now hoping to get the peak lengths histone
 
-        library(ChIPseeker)
 
-        library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+//             ###### if any errors happen here then dont do anything ######
+//             tryCatch({
+//             up_peaks = read.table(file = './${up_peaks_out}', header = FALSE, sep = "\t")
 
-        txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+//             up_peak_lengths = up_peaks\$V3 - up_peaks\$V2
+//             print(max(up_peak_lengths))
 
-        # now to read in the peak files
-        peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
-        up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
+//             png(filename = "hist_up_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
 
+//             pdf(file = "hist_up_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
 
-        unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
-        unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+//             # just to view it here, not needed in nextflow here.
+//             #hist.default(up_peak_lengths, xaxt = "n", breaks = 1e2)
+//             #axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
 
-        up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
-        # I would have to plot this pie chart as many times as there are peak files, but not yet.
-        #plotAnnoPie(up_annotated_peaks)
+//             down_peaks = read.table(file = './${down_peaks_out}', header = FALSE, sep = "\t")
 
-        down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
-        down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+//             down_peak_lengths = down_peaks\$V3 - down_peaks\$V2
+//             print(max(down_peak_lengths))
 
-        # not plotting this right now
-        #plotAnnoPie(down_annotated_peaks)
+//             png(filename = "hist_down_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
 
+//             pdf(file = "hist_down_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(down_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
 
-        # not plotting this right now also
-        #plotDistToTSS(down_annotated_peaks,
-        #            title="Distribution of H3K27me3 peaks relative to TSS")
 
+//             unchanging_peaks = read.table(file = './${unchanging_peaks_out}', header = FALSE, sep = "\t")
 
-        annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+//             unchanging_peak_lengths = unchanging_peaks\$V3 - unchanging_peaks\$V2
+//             print(max(unchanging_peak_lengths))
 
+//             png(filename = "hist_unchanging_regulated_${idr_histone}_peak_lengths.png", height = 1000, width = 1000)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
 
-        # now get the number of total annotated peaks
-        down_annotated_df <- as.data.frame(down_annotated_peaks)
-        #num_down_annotated_peaks = count(down_annotated_df)[[1]]
-        num_down_annotated_peaks = length(down_annotated_df[,1])
+//             pdf(file = "hist_unchanging_regulated_${idr_histone}_peak_lengths.pdf", height = 8, width = 8)
+//             hist.default(unchanging_peak_lengths, xaxt = "n", breaks = 1e2)
+//             axis(1, at = axTicks(1), labels = format(axTicks(1), scientific = FALSE, big.mark = ","))
+//             dev.off()
 
-        up_annotated_df <- as.data.frame(up_annotated_peaks)
-        #num_up_annotated_peaks = count(up_annotated_df)[[1]]
-        num_up_annotated_peaks = length(up_annotated_df[,1])
+//             ########## now violin plots for peak lengths ################
 
-        unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
-        #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
-        num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
+//             up_peak_df = DataFrame(peak_lengths_${idr_histone} = up_peak_lengths, category = "up_peaks_lengths")
+//             down_peak_df = DataFrame(peak_lengths_${idr_histone} = down_peak_lengths, category = "down_peaks_lengths")
+//             unchanging_peak_df = DataFrame(peak_lengths_${idr_histone} = unchanging_peak_lengths, category = "unchanging_peaks_lengths")
 
-        # then plot with bar because it uses a ggplot object
-        plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
 
-        ggsave("annotation_bar_graph_${idr_histone}_peaks.png", plot = last_plot())
+//             df_all_peak_lengths = rbind(up_peak_df, down_peak_df, unchanging_peak_df)
 
-        }, error = function(x) {
-        
-        message("for making annotated peaks, some of the files might have no differential peaks")
-        })
+//             #df_all_peak_lengths
 
-        """
-    }
-}
+//             df_all_peak_lengths_gg =  ggplot(df_all_peak_lengths, aes( category, peak_lengths_${idr_histone}))
+            
+//             all_peak_lengths_violin = df_all_peak_lengths_gg+
+//                 geom_violin()+
+//                 scale_y_continuous(labels = scales::label_number())
+//             ggsave("${idr_histone}_up_down_unchanging_peak_length_violin_plot.pdf", plot = all_peak_lengths_violin)
+            
+            
+//             }, error = function(x) {
+            
+//             message("some of the peak files had no lenght so plotting is pointless")
+//             })
+
+
+//             tryCatch({
+//             # now for the annotated peaks, if an error occurs, don't do anything
+
+//             # lets get the annotated peaks
+
+//             library(ChIPseeker)
+
+//             library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+//             txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+//             # now to read in the peak files
+//             peak_files = c(up_peaks = './${up_peaks_out}', down_peaks = './${down_peaks_out}', unchanging_peaks = './${unchanging_peaks_out}')
+//             up_peak_file = readPeakFile(peakfile = './${up_peaks_out}')
+
+
+//             unchanging_peak_file = readPeakFile(peakfile = './${unchanging_peaks_out}')
+//             unchanging_annotated_peaks = annotatePeak(peak= unchanging_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             up_annotated_peaks = annotatePeak(peak= up_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+//             # I would have to plot this pie chart as many times as there are peak files, but not yet.
+//             #plotAnnoPie(up_annotated_peaks)
+
+//             down_peak_file = readPeakFile(peakfile = './${down_peaks_out}')
+//             down_annotated_peaks = annotatePeak(peak= down_peak_file, tssRegion = c(-5000, 5000), TxDb = txdb)
+
+//             # not plotting this right now
+//             #plotAnnoPie(down_annotated_peaks)
+
+
+//             # not plotting this right now also
+//             #plotDistToTSS(down_annotated_peaks,
+//             #            title="Distribution of H3K27me3 peaks relative to TSS")
+
+
+//             annotated_peaks_list = lapply(peak_files, annotatePeak, tssRegion = c(-5000, 5000), TxDb = txdb) 
+
+
+//             # now get the number of total annotated peaks
+//             down_annotated_df <- as.data.frame(down_annotated_peaks)
+//             #num_down_annotated_peaks = count(down_annotated_df)[[1]]
+//             num_down_annotated_peaks = length(down_annotated_df[,1])
+
+//             up_annotated_df <- as.data.frame(up_annotated_peaks)
+//             #num_up_annotated_peaks = count(up_annotated_df)[[1]]
+//             num_up_annotated_peaks = length(up_annotated_df[,1])
+
+//             unchanging_annotated_df <- as.data.frame(unchanging_annotated_peaks)
+//             #num_unchanging_annotated_peaks = count(unchanging_annotated_df)[[1]]
+//             num_unchanging_annotated_peaks = length(unchanging_annotated_df[,1])
+
+//             # then plot with bar because it uses a ggplot object
+//             plotAnnoBar(annotated_peaks_list) + ggtitle("Percentage of ${idr_histone} peaks in Genomic Regions", subtitle = paste("Number of down ${idr_histone} peaks annotated ", num_down_annotated_peaks, "\nNumber of up ${idr_histone} peaks annotated ",num_up_annotated_peaks, "\nNumber of unchanging ${idr_histone} peaks annotated ", num_unchanging_annotated_peaks ) )
+
+//             ggsave("annotation_bar_graph_${idr_condition}_${idr_histone}_peaks.pdf", plot = last_plot())
+
+//             }, error = function(x) {
+            
+//             message("for making annotated peaks, some of the files might have no differential peaks")
+//             })
+
+//             """
+//         }
+//     }
+// }
 
 
 /*
@@ -3085,10 +4605,10 @@ process plot_histones_at_peaks_process {
 
     out_matrix_name = "matrix_${grouping_key}.mat.gz"
 
-    heatmap_out_name = "${grouping_key}_bigwig_signal_over_${grouping_key}_peaks_heatmap.png"
+    heatmap_out_name = "${grouping_key}_bigwig_signal_over_${grouping_key}_peaks_heatmap.pdf"
 
 
-    profile_out_name = "${grouping_key}_bigwig_signal_over_${grouping_key}_peaks_profile.png"
+    profile_out_name = "${grouping_key}_bigwig_signal_over_${grouping_key}_peaks_profile.pdf"
 
     
     true_bw_name = "${bigwig_file_name}".replaceFirst(/\..*/, '')
@@ -3210,7 +4730,7 @@ process plot_at_up_down_peaks_process {
     path("${png_heatmap_both}"), emit: both_histone_heatmap
     //path("${png_wt_heatmap}"), emit: gene_histone_heatmap_wt
 
-    path("*.png"), emit: all_png_files
+    path("*.pdf"), emit: all_png_files
     path("*.svg"), emit: all_svg_files
 
 
@@ -3241,6 +4761,7 @@ process plot_at_up_down_peaks_process {
 
     }
 
+    condition_type = "${condition_label[0]}_${condition_label[1]}"
     //newName = bw_names.replaceFirst(/\..*/, '')
     //list_control_bw_names = "${control_bw_names.toList()}"
 
@@ -3249,19 +4770,34 @@ process plot_at_up_down_peaks_process {
 
     // out_matrix_scores_down_peaks = "matrix_peaks_${histone_label}_down_peaks.mat.gz"
 
-    out_matrix_scores_both = "matrix_peaks_${histone_label}_up_and_down_peaks.mat.gz"
+    out_matrix_scores_three = "matrix_peaks_${histone_label}_up_and_down_master_peaks.mat.gz"
 
     // png_heatmap_uppeaks = "${histone_label}_${replicate_label}_histone_features_at_up_peaks.png"
     // png_profile_up_peaks = "${histone_label}_${replicate_label}_histone_features_at_up_peaks_profile.png"
     // png_heatmap_down_peaks = "${histone_label}_${replicate_label}_histone_features_at_down_peaks.png"
     // png_profile_down_peaks = "${histone_label}_${replicate_label}_histone_features_at_down_peaks_profile.png"
-    png_heatmap_both = "${histone_label}_${replicate_label}_histone_features_at_up_down_and_master_peaks_cpg_islands.png"
-    png_profile_both_peaks = "${histone_label}_${replicate_label}_histone_features_at_up_down_and_master_peaks_cpg_islands_profile.png" 
+    png_heatmap_three = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_down_and_master_peaks_cpg_islands.pdf"
+    png_profile_three_peaks = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_down_and_master_peaks_cpg_islands_profile.pdf" 
 
     // exporting to svg to edit text size manually
 
-    svg_heatmap_both = "${histone_label}_${replicate_label}_histone_features_at_up_down_and_master_peaks_cpg_islands.svg"
-    svg_profile_both_peaks = "${histone_label}_${replicate_label}_histone_features_at_up_down_and_master_peaks_cpg_islands_profile.svg" 
+    svg_heatmap_three = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_down_and_master_peaks_cpg_islands.svg"
+    svg_profile_both_three = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_down_and_master_peaks_cpg_islands_profile.svg" 
+
+
+    out_matrix_scores_both = "matrix_peaks_${histone_label}_down_and_master_peaks.mat.gz"
+
+    // png_heatmap_uppeaks = "${histone_label}_${replicate_label}_histone_features_at_up_peaks.png"
+    // png_profile_up_peaks = "${histone_label}_${replicate_label}_histone_features_at_up_peaks_profile.png"
+    // png_heatmap_down_peaks = "${histone_label}_${replicate_label}_histone_features_at_down_peaks.png"
+    // png_profile_down_peaks = "${histone_label}_${replicate_label}_histone_features_at_down_peaks_profile.png"
+    png_heatmap_both = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_down_and_master_peaks_cpg_islands.pdf"
+    png_profile_both_peaks = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_down_and_master_peaks_cpg_islands_profile.pdf" 
+
+    // exporting to svg to edit text size manually
+
+    svg_heatmap_both = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_down_and_master_peaks_cpg_islands.svg"
+    svg_profile_both_peaks = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_down_and_master_peaks_cpg_islands_profile.svg" 
 
 
     //png_wt_heatmap = "${wt_histone_label}_histone_features_at_lowup_genebody.png"
@@ -3459,12 +4995,12 @@ process plot_at_up_down_peaks_process {
     computeMatrix reference-point -S ${bw_names.join(' ')} \
     -R "${down_peaks_nozero}" "${master_peaks_nozero}" \
     --referencePoint center \
-    --beforeRegionStartLength 50000 \
-    --afterRegionStartLength 50000 \
+    --beforeRegionStartLength 8000 \
+    --afterRegionStartLength 8000 \
     --skipZeros \
     --missingDataAsZero \
     --quiet \
-    --binSize 1000 \
+    --binSize 100 \
     --numberOfProcessors "max" \
     -o "${out_matrix_scores_both}"
 
@@ -3480,7 +5016,7 @@ process plot_at_up_down_peaks_process {
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal Up and Down Peaks"
+    #--plotTitle "Bigwig Signal Down and master Peaks"
 
     plotProfile -m "${out_matrix_scores_both}" \
     -out "${png_profile_both_peaks}" \
@@ -3505,7 +5041,7 @@ process plot_at_up_down_peaks_process {
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal Over Up and Down Peaks"
+    #--plotTitle "Bigwig Signal Over Down and master Peaks"
 
     plotProfile -m "${out_matrix_scores_both}" \
     -out "${svg_profile_both_peaks}" \
@@ -3515,6 +5051,68 @@ process plot_at_up_down_peaks_process {
     --dpi 300 \
     --samplesLabel ${name_list.join(' ')} \
     --plotTitle "Bigwig Signal over both peaks"
+
+
+    # this is for all three peaks up, down and master peaks
+    computeMatrix reference-point -S ${bw_names.join(' ')} \
+    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${master_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 8000 \
+    --afterRegionStartLength 8000 \
+    --skipZeros \
+    --missingDataAsZero \
+    --quiet \
+    --binSize 100 \
+    --numberOfProcessors "max" \
+    -o "${out_matrix_scores_three}"
+
+    plotHeatmap -m "${out_matrix_scores_three}" \
+    -out "${png_heatmap_three}" \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax 3 \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 8 \
+    --heatmapHeight 20 \
+    --dpi 300 
+    #--plotTitle "Bigwig Signal up, Down and master Peaks"
+
+    plotProfile -m "${out_matrix_scores_three}" \
+    -out "${png_profile_three_peaks}" \
+    --plotHeight 20 \
+    --plotWidth 20 \
+    --perGroup \
+    --dpi 300 \
+    --samplesLabel ${name_list.join(' ')}  \
+    --plotTitle "Bigwig Signal  over both peaks"
+
+    // svg
+
+    plotHeatmap -m "${out_matrix_scores_three}" \
+    -out "${svg_heatmap_three}" \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax 3 \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 8 \
+    --heatmapHeight 20 \
+    --dpi 300 
+    #--plotTitle "Bigwig Signal Over Down and master Peaks"
+
+    plotProfile -m "${out_matrix_scores_three}" \
+    -out "${svg_profile_both_peaks}" \
+    --plotHeight 20 \
+    --plotWidth 20 \
+    --perGroup \
+    --dpi 300 \
+    --samplesLabel ${name_list.join(' ')} \
+    --plotTitle "Bigwig Signal over up, down and master peaks"
 
 
 
@@ -3565,7 +5163,7 @@ process atac_signal_over_peaks_process {
 
     output:
 
-    path("*.{png,svg}"), emit: atac_png_plots
+    path("*.{pdf,svg}"), emit: atac_png_plots
 
 
     script:
@@ -3575,11 +5173,13 @@ process atac_signal_over_peaks_process {
     unchanging_peaks = peak_filepath[2]
     master_peaks = peak_filepath[3]
 
+    condition_type = "${condition_label[0]}_${condition_label[1]}"
+
     out_matrix_scores_3 = "matrix_atac_bw_signal_over_${histone_label}_peaks.mat.gz"
 
-    png_heatmap_3 = "atac_bigwig_signal_features_at_all_${histone_label}_peaks_cpg_regions_heatmap.png"
-    svg_heatmap_3 = "atac_bigwig_signal_features_at_all_${histone_label}_peaks_cpg_regions_heatmap.svg"
-    png_profile_3 = "atac_bigwig_signal_features_at_all_${histone_label}_peaks_cpg_regions_profile.png" 
+    png_heatmap_3 = "atac_bigwig_signal_features_at_all_${histone_label}_${condition_type}_peaks_cpg_regions_heatmap.pdf"
+    svg_heatmap_3 = "atac_bigwig_signal_features_at_all_${histone_label}_${condition_type}_peaks_cpg_regions_heatmap.svg"
+    png_profile_3 = "atac_bigwig_signal_features_at_all_${histone_label}_${condition_type}_peaks_cpg_regions_profile.pdf" 
 
 
     // fixing the names over the plots and adding it for unchanging also
@@ -3656,7 +5256,7 @@ process atac_signal_over_peaks_process {
     --afterRegionStartLength 5000 \
     --skipZeros \
     --quiet \
-    --binSize 200 \
+    --binSize 100 \
     --numberOfProcessors "max" \
     -o "${out_matrix_scores_3}"
 
@@ -3709,7 +5309,7 @@ process atac_signal_over_peaks_process {
     --afterRegionStartLength 10000 \
     --skipZeros \
     --quiet \
-    --binSize 200 \
+    --binSize 100 \
     --numberOfProcessors "max" \
     -o "${out_matrix_scores_atac_peaks}"
 
@@ -3753,7 +5353,7 @@ process atac_signal_over_peaks_process {
     --afterRegionStartLength 10000 \
     --skipZeros \
     --quiet \
-    --binSize 200 \
+    --binSize 100 \
     --numberOfProcessors "max" \
     -o "${out_matrix_scores_expr_signal_atac_peaks}"
 
@@ -3933,19 +5533,33 @@ process signal_over_gene_tss_process {
 
     }
 
+    condition_type = "${condition_label[0]}_${condition_label[1]}"
+
     //concat_diff_peaks = "diff_peaks.bed"
 
     //up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
     //down_peaks_nozero = "${down_peaks.baseName}_noZerolength.bed"
 
-    up_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_up_gene_tss.mat.gz"
-    down_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_down_gene_tss.mat.gz"
+    // up_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_up_gene_tss.mat.gz"
+    // down_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_down_gene_tss.mat.gz"
 
     both_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_both_gene_tss.mat.gz"
-    both_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_signal_at_both_gene_tss_20kb.png"
-    both_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_signal_at_both_gene_tss_20kb.svg"
+    both_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_${condition_type}_signal_at_both_gene_tss_20kb.pdf"
+    both_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_${condition_type}_signal_at_both_gene_tss_20kb.svg"
 
-    heatmap_only_pdf = "${histone_label}_${replicate_label}_signal_at_both_gene_tss_20kb_heatmap_only.pdf"
+    minus_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_minus_gene_tss.mat.gz"
+    minus_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_${condition_type}_signal_at_minus_gene_tss_20kb.pdf"
+    minus_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_${condition_type}_signal_at_minus_gene_tss_20kb.svg"
+
+    plus_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_plus_gene_tss.mat.gz"
+    plus_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_${condition_type}_signal_at_plus_gene_tss_20kb.pdf"
+    plus_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_${condition_type}_signal_at_plus_gene_tss_20kb.svg"
+
+    minus_heatmap_only_pdf = "${histone_label}_${replicate_label}_${condition_type}_signal_at_minus_gene_tss_20kb_heatmap_only.pdf"
+
+    plus_heatmap_only_pdf = "${histone_label}_${replicate_label}_${condition_type}_signal_at_plus_gene_tss_20kb_heatmap_only.pdf"
+
+    heatmap_only_pdf = "${histone_label}_${replicate_label}_${condition_type}_signal_at_both_gene_tss_20kb_heatmap_only.pdf"
 
 
     """
@@ -3962,16 +5576,30 @@ process signal_over_gene_tss_process {
 
     #cat \${up_peaks_nozero} \${down_peaks_nozero} > \${concat_diff_peaks}
 
+
+    # now get the plus and minus strands for each up down and unchanging
+    awk '\$6=="-"' ${up_proseq_genes} > up_proseq_minusStrand.tsv
+    awk '\$6=="+"' ${up_proseq_genes} > up_proseq_plusStrand.tsv
+
+    awk '\$6=="-"' ${down_proseq_genes} > down_proseq_minusStrand.tsv
+    awk '\$6=="+"' ${down_proseq_genes} > down_proseq_plusStrand.tsv
+
+    awk '\$6=="-"' ${unchanging_proseq_genes} > unchanging_proseq_minusStrand.tsv
+    awk '\$6=="+"' ${unchanging_proseq_genes} > unchanging_proseq_plusStrand.tsv
+
+    
+
     # now plotting 
     # because I put the TSS out 20kb, I will make the region around that new tss 20kb so I dont get anything in the gene body
 
+    # not using 20kb anymore because it looks weird so will use 8kb instead
     computeMatrix reference-point \
     -S ${bw_names.join(" ")} \
     -R ${up_proseq_genes} ${down_proseq_genes} ${unchanging_proseq_genes} \
     --referencePoint "TSS" \
-    --beforeRegionStartLength 20000 \
-    --afterRegionStartLength 20000 \
-    --binSize 200 \
+    --beforeRegionStartLength 1000 \
+    --afterRegionStartLength 1000 \
+    --binSize 100 \
     --numberOfProcessors "max" \
     --outFileName ${both_genes_tss_out_matrix_scores}
     
@@ -4023,6 +5651,120 @@ process signal_over_gene_tss_process {
 
 
 
+    ############
+
+    computeMatrix reference-point \
+    -S ${bw_names.join(" ")} \
+    -R up_proseq_minusStrand.tsv down_proseq_minusStrand.tsv unchanging_proseq_minusStrand.tsv \
+    --referencePoint "TSS" \
+    --beforeRegionStartLength 1000 \
+    --afterRegionStartLength 1000 \
+    --binSize 100 \
+    --numberOfProcessors "max" \
+    --outFileName ${minus_genes_tss_out_matrix_scores}
+
+
+    plotHeatmap \
+    --matrixFile ${minus_genes_tss_out_matrix_scores} \
+    --outFileName ${minus_genes_tss_out_heatmap} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    # making the svg version
+    plotHeatmap \
+    --matrixFile ${minus_genes_tss_out_matrix_scores} \
+    --outFileName ${minus_genes_tss_out_heatmap_svg} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    # plotting the heatmap only
+    plotHeatmap \
+    --matrixFile ${minus_genes_tss_out_matrix_scores} \
+    --outFileName ${minus_heatmap_only_pdf} \
+    --colorMap 'Reds' \
+    --whatToShow 'heatmap and colorbar' \
+    --zMin 0 \
+    --zMax "auto" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+
+    computeMatrix reference-point \
+    -S ${bw_names.join(" ")} \
+    -R up_proseq_plusStrand.tsv down_proseq_plusStrand.tsv unchanging_proseq_plusStrand.tsv \
+    --referencePoint "TSS" \
+    --beforeRegionStartLength 1000 \
+    --afterRegionStartLength 1000 \
+    --binSize 100 \
+    --numberOfProcessors "max" \
+    --outFileName ${plus_genes_tss_out_matrix_scores}
+
+
+    plotHeatmap \
+    --matrixFile ${plus_genes_tss_out_matrix_scores} \
+    --outFileName ${plus_genes_tss_out_heatmap} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    # making the svg version
+    plotHeatmap \
+    --matrixFile ${plus_genes_tss_out_matrix_scores} \
+    --outFileName ${plus_genes_tss_out_heatmap_svg} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    # plotting the heatmap only
+    plotHeatmap \
+    --matrixFile ${plus_genes_tss_out_matrix_scores} \
+    --outFileName ${plus_heatmap_only_pdf} \
+    --colorMap 'Reds' \
+    --whatToShow 'heatmap and colorbar' \
+    --zMin 0 \
+    --zMax "auto" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
 
 
 
@@ -4591,14 +6333,15 @@ process plot_over_diff_cpg_regions_process {
 
     output:
 
-    path("*.{png,svg}"), emit: cpg_peak_heatmaps
+    path("*.{pdf,svg}"), emit: cpg_peak_heatmaps
 
     script:
 
+    condition_type = "${condition_label[0]}_${condition_label[1]}"
     out_matrix_scores_expr_signal_cpg_in_peaks = "matrix_${histone_label}_signal_over_cpg_in_peaks.mat.gz"
 
-    svg_heatmap_expr_signal_over_cpg_in_peaks = "${histone_label}_${replicate_label}_bigwig_signal_features_at_cpg_peaks_heatmap.svg"
-    png_heatmap_expr_signal_over_cpg_in_peaks = "${histone_label}_${replicate_label}_bigwig_signal_features_at_cpg_peaks_heatmap.png"
+    svg_heatmap_expr_signal_over_cpg_in_peaks = "${histone_label}_${replicate_label}_${condition_type}_bigwig_signal_features_at_cpg_peaks_heatmap.svg"
+    png_heatmap_expr_signal_over_cpg_in_peaks = "${histone_label}_${replicate_label}_${condition_type}_bigwig_signal_features_at_cpg_peaks_heatmap.pdf"
 
 
     name_list = []
@@ -4627,7 +6370,7 @@ process plot_over_diff_cpg_regions_process {
     --afterRegionStartLength 10000 \
     --skipZeros \
     --quiet \
-    --binSize 200 \
+    --binSize 100 \
     --numberOfProcessors "max" \
     -o "${out_matrix_scores_expr_signal_cpg_in_peaks}"
 
@@ -4678,14 +6421,21 @@ process atac_enrich_counts_process {
 
     input:
 
+    // for this process to work, the atac-seq bam files must only have one field in its name. scrm-allmerge.bam as an example
+    // while the other bam files must be in the normal format.
+
     // these are the broad histones
     tuple val(roadmap_histones_filename), val(roadmap_histones_names), path(roadmap_histones_path)
 
     // these are the narrow histones
     tuple val(roadmap_narrowhistones_filename), val(roadmap_narrowhistones_names), path(roadmap_narrowhistones_path)
 
+
     // these are our own peak files to find which peaks are enriched in regions that go up in accessibility
     tuple val(pipeline_peaks_filename), val(pipeline_peaks_names), path(pipeline_peaks_path)
+
+    // these are the all peak files together
+    //tuple val(roadmap_allpeaks_filename), val(roadmap_allpeaks_names), path(roadmap_allpeaks_path)
 
     //path(atac_bigwig)
     path(bam_files)
@@ -4746,6 +6496,11 @@ process atac_enrich_counts_process {
 
     out_pipeline_enrich_plot = "${bam_files[1].baseName}_pipeline_enrichment_plot.png"
     out_pipeline_enrich_counts = "${bam_files[1].baseName}_pipeline_enrichment_counts.tab"
+
+    out_allpeaks_enrich_plot = "${bam_files[1].baseName}_allpeaks_enrichment_plot.png"
+    out_allpeaks_enrich_counts = "${bam_files[1].baseName}_allpeaks_enrichment_counts.tab"
+
+
 
     """
     #!/usr/bin/env bash
@@ -4830,6 +6585,20 @@ process atac_enrich_counts_process {
     --variableScales \
     --outRawCounts ${out_pipeline_enrich_counts} \
     --plotFile ${out_pipeline_enrich_plot}
+
+
+
+    # now plotting all the peaks in the same plot
+
+    allpeaks_files=\$(ls *new_sorted*)
+
+    plotEnrichment \
+    --perSample \
+    --bamfiles *bam \
+    --BED \${allpeaks_files[@]} \
+    --variableScales \
+    --outRawCounts ${out_allpeaks_enrich_counts} \
+    --plotFile ${out_allpeaks_enrich_plot}
 
 
 
@@ -4931,41 +6700,80 @@ process get_merged_bigwig_process {
     // treatment_bigwig_name = "${treatment_bam.baseName}.bigwig"
     bigwig_name = "${bam.baseName}.bigwig"
 
-    """
-    #!/usr/bin/env bash
+    if (params.PE) {
 
-    bamCoverage \
-    --bam ${bam} \
-    --outFileName "${bigwig_name}" \
-    --outFileFormat "bigwig" \
-    --extendReads \
-    --scaleFactor 1 \
-    --normalizeUsing CPM 
+        """
+        #!/usr/bin/env bash
 
-    #bamCoverage \
-    --bam \${control_bam} \
-    --outFileName "\${control_bigwig_name}" \
-    --outFileFormat "bigwig" \
-    --extendReads \
-    --scaleFactor 1 \
-    --normalizeUsing CPM 
+        bamCoverage \
+        --bam ${bam} \
+        --outFileName "${bigwig_name}" \
+        --outFileFormat "bigwig" \
+        --extendReads \
+        --scaleFactor 1 \
+        --normalizeUsing CPM 
 
-    #bamCoverage \
-    --bam \${treatment_bam} \
-    --outFileName "\${treatment_bigwig_name}" \
-    --outFileFormat "bigwig" \
-    --extendReads \
-    --scaleFactor 1 \
-    --normalizeUsing CPM 
+        #bamCoverage \
+        --bam \${control_bam} \
+        --outFileName "\${control_bigwig_name}" \
+        --outFileFormat "bigwig" \
+        --extendReads \
+        --scaleFactor 1 \
+        --normalizeUsing CPM 
 
-
-
-
+        #bamCoverage \
+        --bam \${treatment_bam} \
+        --outFileName "\${treatment_bigwig_name}" \
+        --outFileFormat "bigwig" \
+        --extendReads \
+        --scaleFactor 1 \
+        --normalizeUsing CPM 
 
 
 
 
-    """
+
+
+
+
+        """
+    }
+    else if (params.SE) {
+
+        """
+        #!/usr/bin/env bash
+
+        bamCoverage \
+        --bam ${bam} \
+        --outFileName "${bigwig_name}" \
+        --outFileFormat "bigwig" \
+        --scaleFactor 1 \
+        --normalizeUsing CPM 
+
+        #bamCoverage \
+        --bam \${control_bam} \
+        --outFileName "\${control_bigwig_name}" \
+        --outFileFormat "bigwig" \
+        --scaleFactor 1 \
+        --normalizeUsing CPM 
+
+        #bamCoverage \
+        --bam \${treatment_bam} \
+        --outFileName "\${treatment_bigwig_name}" \
+        --outFileFormat "bigwig" \
+        --scaleFactor 1 \
+        --normalizeUsing CPM 
+
+
+
+
+
+
+
+
+        """
+
+    }
 }
 
 // repeating this process but only with the pipeline peaks part
@@ -5099,7 +6907,7 @@ process r_atac_enrich_plot_process {
 
     output:
 
-    path("*.png"), emit: atac_enrichment_plots
+    path("*.pdf"), emit: atac_enrichment_plots
 
 
     script:
@@ -5118,8 +6926,8 @@ process r_atac_enrich_plot_process {
     // atac_enrich_png_v1 = "${first_name_combo}_enrichment_in_${peak_type}_histones_v1.png"
     // atac_enrich_png_v2 = "${second_name_combo}_enrichment_in_${peak_type}_histones_v2.png"
 
-    atac_enrich_png_v1 = "${first_name_combo}_${second_name_combo}_enrichment_in_${peak_type}_histones_v1.png"
-    atac_enrich_png_v2 = "${first_name_combo}_${second_name_combo}_enrichment_in_${peak_type}_histones_v2.png"
+    atac_enrich_png_v1 = "${first_name_combo}_${second_name_combo}_enrichment_in_${peak_type}_histones_v1.pdf"
+    atac_enrich_png_v2 = "${first_name_combo}_${second_name_combo}_enrichment_in_${peak_type}_histones_v2.pdf"
     
 
     """
@@ -5214,7 +7022,7 @@ process r_atac_enrich_plot_2nd_version_process {
 
     output:
 
-    path("*.png"), emit: atac_enrichment_plots
+    path("*.pdf"), emit: atac_enrichment_plots
 
 
     script:
@@ -5224,8 +7032,8 @@ process r_atac_enrich_plot_2nd_version_process {
     condition_two = filename[1]
 
     // i need to automate the out file names
-    atac_enrich_png_v1 = "${peak_type}_histones_in_atac_peaks_in_v1.png"
-    atac_enrich_png_v2 = "${peak_type}_histones_in_atac_peaks_in_v2.png"
+    atac_enrich_png_v1 = "${peak_type}_histones_in_atac_peaks_in_v1.pdf"
+    atac_enrich_png_v2 = "${peak_type}_histones_in_atac_peaks_in_v2.pdf"
     
 
     """

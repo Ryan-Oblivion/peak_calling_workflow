@@ -17,7 +17,7 @@ include {
     mk_bed_for_sicer2_process;
     get_pval_bedgraph;
     kenttools_get_bigwig;
-    find_diff_peaks_R_process;
+    // find_diff_peaks_R_process;
     plot_at_up_down_peaks_process;
     signal_over_gene_tss_process;
     bedtools_stranded_create_process;
@@ -39,6 +39,11 @@ include {
     
 
 }from '../modules/peak_analysis_modules.nf'
+
+include {
+    find_diff_peaks_R_process;
+    find_diff_peaks_R_process_SE
+}from '../modules/r_differential_analysis_module.nf'
 
 
 
@@ -323,20 +328,44 @@ workflow mk_bw_call_peaks_workflow {
             .collect()
             .set{all_bams_paths}
 
-        find_diff_peaks_R_process(group_concat_meta_peaks_ch, all_bams_paths)
+        if (params.PE) {
+            find_diff_peaks_R_process(group_concat_meta_peaks_ch, all_bams_paths)
 
+            diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+            //diff_peaks_tuple.view()
+
+            // try keeping the peaks in separate channels
+            // then when I put this into a process or workflow, just check to see if the histones match
+            master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+            up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+            down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+        }
+        if (params.SE) {
+            find_diff_peaks_R_process_SE(group_concat_meta_peaks_ch, all_bams_paths)
+
+            diff_peaks_tuple = find_diff_peaks_R_process_SE.out.diff_peaks_ch
+            //diff_peaks_tuple.view()
+
+            // try keeping the peaks in separate channels
+            // then when I put this into a process or workflow, just check to see if the histones match
+            master_peaks_list_ch = find_diff_peaks_R_process_SE.out.master_peak_emit.collect()
+            up_peaks_list_ch = find_diff_peaks_R_process_SE.out.up_peaks_emit.collect()
+            down_peaks_list_ch = find_diff_peaks_R_process_SE.out.down_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+        }
         // using the 10kb merged idr peaks
         //find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
 
-        diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
-        //diff_peaks_tuple.view()
+        // diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+        // //diff_peaks_tuple.view()
 
-        // try keeping the peaks in separate channels
-        // then when I put this into a process or workflow, just check to see if the histones match
-        master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
-        up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
-        down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
-        unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+        // // try keeping the peaks in separate channels
+        // // then when I put this into a process or workflow, just check to see if the histones match
+        // master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+        // up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+        // down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+        // unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
 
     }
     else {
@@ -584,20 +613,47 @@ workflow mk_bw_call_peaks_workflow {
 
     
 
-        find_diff_peaks_R_process(group_concat_idr_peaks_ch, all_bams_paths)
+        // find_diff_peaks_R_process(group_concat_idr_peaks_ch, all_bams_paths)
+
+        if (params.PE) {
+            find_diff_peaks_R_process(group_concat_idr_peaks_ch, all_bams_paths)
+
+            diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+            //diff_peaks_tuple.view()
+
+            // try keeping the peaks in separate channels
+            // then when I put this into a process or workflow, just check to see if the histones match
+            master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+            up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+            down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+        }
+        if (params.SE) {
+            find_diff_peaks_R_process_SE(group_concat_idr_peaks_ch, all_bams_paths)
+
+            diff_peaks_tuple = find_diff_peaks_R_process_SE.out.diff_peaks_ch
+            //diff_peaks_tuple.view()
+
+            // try keeping the peaks in separate channels
+            // then when I put this into a process or workflow, just check to see if the histones match
+            master_peaks_list_ch = find_diff_peaks_R_process_SE.out.master_peak_emit.collect()
+            up_peaks_list_ch = find_diff_peaks_R_process_SE.out.up_peaks_emit.collect()
+            down_peaks_list_ch = find_diff_peaks_R_process_SE.out.down_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+        }
 
         // using the 10kb merged idr peaks
         //find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
 
-        diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
-        //diff_peaks_tuple.view()
+        // diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+        // //diff_peaks_tuple.view()
 
-        // try keeping the peaks in separate channels
-        // then when I put this into a process or workflow, just check to see if the histones match
-        master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
-        up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
-        down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
-        unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+        // // try keeping the peaks in separate channels
+        // // then when I put this into a process or workflow, just check to see if the histones match
+        // master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+        // up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+        // down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+        // unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
 
         //up_peaks_list_ch
             //.collect()
@@ -1744,6 +1800,11 @@ workflow get_roadmap_histone_enrichment_workflow {
         .set{roadmap_narrowhistone_meta_ch}
     // now i should combine the two atac bigwig files then flatten them so they are run in parallel
 
+    // let's just concate all the meta peaks into one channel and use that
+    pipeline_merged_idr_peak_meta_ch
+        .concat(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch)
+        .set{ all_peaks_roadmap_pipeline_meta_ch}
+
     control_atac_bigwig_ch
         .concat(treatment_atac_bigwig_ch)
         //.flatten()
@@ -1777,7 +1838,8 @@ workflow get_roadmap_histone_enrichment_workflow {
     // now make a deeptools process that uses multibigwigsummary to get the counts
 
     
-
+    // for this process to work, the atac-seq bam files must only have one field in its name. scrm-allmerge.bam as an example
+    // while the other bam files must be in the normal format.
     atac_enrich_counts_process(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch, pipeline_merged_idr_peak_meta_ch, atac_bigwig_cat)
 
     proseq_enrich_counts_process(roadmap_broad_histone_meta_ch, roadmap_narrowhistone_meta_ch, pipeline_merged_idr_peak_meta_ch, proseq_bams_cat)
