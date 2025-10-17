@@ -4799,6 +4799,18 @@ process plot_at_up_down_peaks_process {
     svg_heatmap_both = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_down_and_master_peaks_cpg_islands.svg"
     svg_profile_both_peaks = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_down_and_master_peaks_cpg_islands_profile.svg" 
 
+    // up_master
+
+    out_matrix_scores_up_master = "matrix_peaks_${histone_label}_up_and_master_peaks.mat.gz"
+
+    png_heatmap_up_master = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_and_master_peaks_cpg_islands.pdf"
+    png_profile_up_master = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_and_master_peaks_cpg_islands_profile.pdf" 
+
+    // exporting to svg to edit text size manually
+
+    svg_heatmap_up_master = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_and_master_peaks_cpg_islands.svg"
+    svg_profile_up_master = "${histone_label}_${replicate_label}_${condition_type}_histone_features_at_up_and_master_peaks_cpg_islands_profile.svg" 
+
 
     //png_wt_heatmap = "${wt_histone_label}_histone_features_at_lowup_genebody.png"
 
@@ -5116,6 +5128,68 @@ process plot_at_up_down_peaks_process {
 
 
 
+    computeMatrix reference-point -S ${bw_names.join(' ')} \
+    -R "${up_peaks_nozero}" "${master_peaks_nozero}" \
+    --referencePoint center \
+    --beforeRegionStartLength 8000 \
+    --afterRegionStartLength 8000 \
+    --skipZeros \
+    --missingDataAsZero \
+    --quiet \
+    --binSize 100 \
+    --numberOfProcessors "max" \
+    -o "${out_matrix_scores_up_master}"
+
+    plotHeatmap -m "${out_matrix_scores_up_master}" \
+    -out "${png_heatmap_up_master}" \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax 3 \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 8 \
+    --heatmapHeight 20 \
+    --dpi 300 
+    #--plotTitle "Bigwig Signal Down and master Peaks"
+
+    plotProfile -m "${out_matrix_scores_up_master}" \
+    -out "${png_profile_up_master}" \
+    --plotHeight 20 \
+    --plotWidth 20 \
+    --perGroup \
+    --dpi 300 \
+    --samplesLabel ${name_list.join(' ')}  \
+    --plotTitle "Bigwig Signal  over both peaks"
+
+    // svg
+
+    plotHeatmap -m "${out_matrix_scores_up_master}" \
+    -out "${svg_heatmap_up_master}" \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax 3 \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --sortUsing sum \
+    --perGroup \
+    --heatmapWidth 8 \
+    --heatmapHeight 20 \
+    --dpi 300 
+    #--plotTitle "Bigwig Signal Over Down and master Peaks"
+
+    plotProfile -m "${out_matrix_scores_up_master}" \
+    -out "${svg_profile_up_master}" \
+    --plotHeight 20 \
+    --plotWidth 20 \
+    --perGroup \
+    --dpi 300 \
+    --samplesLabel ${name_list.join(' ')} \
+    --plotTitle "Bigwig Signal over both peaks"
+
+
+
     """
 
 
@@ -5211,10 +5285,10 @@ process atac_signal_over_peaks_process {
     out_matrix_scores_atac_peaks = "matrix_atac_bw_signal_over_atac_peaks.mat.gz"
     out_matrix_scores_expr_signal_atac_peaks = "matrix_expr_bw_signal_over_atac_peaks.mat.gz"
 
-    svg_heatmap_atac_signal_over_atac_peaks = "atac_bigwig_signal_features_at_atac_peaks_heatmap.svg"
+    svg_heatmap_atac_signal_over_atac_peaks = "atac_bigwig_signal_features_at_atac_peaks_heatmap.pdf"
     png_heatmap_atac_signal_over_atac_peaks = "atac_bigwig_signal_features_at_atac_peaks_heatmap.png"
     
-    svg_heatmap_expr_signal_over_atac_peaks = "${histone_label}_${replicate_label}_bigwig_signal_features_at_atac_peaks_heatmap.svg" 
+    svg_heatmap_expr_signal_over_atac_peaks = "${histone_label}_${replicate_label}_bigwig_signal_features_at_atac_peaks_heatmap.pdf" 
     png_heatmap_expr_signal_over_atac_peaks = "${histone_label}_${replicate_label}_bigwig_signal_features_at_atac_peaks_heatmap.png" 
 
     
@@ -5250,7 +5324,7 @@ process atac_signal_over_peaks_process {
     -o "\${out_matrix_scores_3}"
 
     computeMatrix reference-point -S ${control_atac_bigwig} ${treatment_atac_bigwig} \
-    -R  "${down_peaks_nozero}" "${unchanging_peaks_nozero}"  \
+    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${unchanging_peaks_nozero}"  \
     --referencePoint center \
     --beforeRegionStartLength 5000 \
     --afterRegionStartLength 5000 \

@@ -341,7 +341,7 @@ workflow mk_bw_call_peaks_workflow {
             down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
             unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
         }
-        if (params.SE) {
+        else if (params.SE) {
             find_diff_peaks_R_process_SE(group_concat_meta_peaks_ch, all_bams_paths)
 
             diff_peaks_tuple = find_diff_peaks_R_process_SE.out.diff_peaks_ch
@@ -353,6 +353,11 @@ workflow mk_bw_call_peaks_workflow {
             up_peaks_list_ch = find_diff_peaks_R_process_SE.out.up_peaks_emit.collect()
             down_peaks_list_ch = find_diff_peaks_R_process_SE.out.down_peaks_emit.collect()
             unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+        }
+        else {
+
+            onError:
+            throw new IllegalArgumentException("User Parameter Error: Please use the parameter --PE or --SE, if you have pair end reads or single end reads respectively!")
         }
         // using the 10kb merged idr peaks
         //find_diff_peaks_R_process(group_10kb_concat_idr_peaks_ch, all_bams_paths)
@@ -628,7 +633,7 @@ workflow mk_bw_call_peaks_workflow {
             down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
             unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
         }
-        if (params.SE) {
+        else if (params.SE) {
             find_diff_peaks_R_process_SE(group_concat_idr_peaks_ch, all_bams_paths)
 
             diff_peaks_tuple = find_diff_peaks_R_process_SE.out.diff_peaks_ch
@@ -640,6 +645,11 @@ workflow mk_bw_call_peaks_workflow {
             up_peaks_list_ch = find_diff_peaks_R_process_SE.out.up_peaks_emit.collect()
             down_peaks_list_ch = find_diff_peaks_R_process_SE.out.down_peaks_emit.collect()
             unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+        }
+        else {
+
+            onError:
+            throw new IllegalArgumentException("User Parameter Error: Please use the parameter --PE or --SE, if you have pair end reads or single end reads respectively!")
         }
 
         // using the 10kb merged idr peaks
