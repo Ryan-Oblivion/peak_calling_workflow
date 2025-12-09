@@ -38,6 +38,7 @@ process find_diff_peaks_R_process {
     path("${up_peaks_out}"), emit: up_peaks_emit
     path("${down_peaks_out}"), emit: down_peaks_emit
     path("${unchanging_peaks_out}"), emit: unchanging_peaks_emit
+    path("${other_peaks_out}"), emit: other_peaks_emit
 
 
 
@@ -60,6 +61,7 @@ process find_diff_peaks_R_process {
     up_peaks_out = "up_${idr_histone}_${full_condition}_regulated_peaks.bed"
     down_peaks_out = "down_${idr_histone}_${full_condition}_regulated_peaks.bed"
     unchanging_peaks_out = "unchanging_${idr_histone}_${full_condition}_regulated_peaks.bed"
+    other_peaks_out = "others_${idr_histone}_${full_condition}_regulated_peaks.bed"
 
     // masterPeak100kb = false
     // masterPeak10kb = false
@@ -80,7 +82,7 @@ process find_diff_peaks_R_process {
     //     resize_num = 1
     // }
 
-    if (params.narrowPeak_data) {
+    if (params.narrowPeak_data || params.sicer2) {
 
 
 
@@ -231,8 +233,8 @@ process find_diff_peaks_R_process {
         
         path_bam = list_of_mBams[[x]]
         print(path_bam)
-        bam_basename = basename(path_bam)
-        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+        bam_basename = basename(as.character(path_bam))
+        bam_tokens = strsplit(basename(as.character(path_bam)), split = "_")[[1]]
         
         # labeling the important tokens so it is easier to keep track of
         condition = bam_tokens[1]
@@ -291,8 +293,10 @@ process find_diff_peaks_R_process {
 
 
         # now i can put both lists in to get back the experiment design
-        condition_factor = factor(rep(condition_names, times=condition_num))
+        #condition_factor = factor(rep(condition_names, times=condition_num))
 
+        # Build condition factor in column order
+        condition_factor <- factor(unlist(condition_design))
 
         # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
 
@@ -300,20 +304,35 @@ process find_diff_peaks_R_process {
         #treatment = "H1low_H3k27me3"
         treatment = "${params.treatment_name}_${idr_histone}"
 
-        if (levels(condition_factor)[1] == treatment ) {
-        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
-        }else {
-        condition_factor
-        }
+        # this doesnt work because you need to put ref = levels(condition_factor)[2] to assign the actual relevel
+        #if (levels(condition_factor)[1] == treatment ) {
+        #condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+        #}else {
+        #condition_factor
+        #}
+
+        # have to do this instead to make the treatment always the baseline
+        #condition_factor <- relevel(condition_factor, ref = treatment)
+
+        levels_now <- levels(condition_factor)
+        control <- levels_now[ levels_now != treatment ]  # the other level
+
+        # Set control as reference → LFC = treatment / control
+        condition_factor <- relevel(condition_factor, ref = control)
+
+
         print(condition_factor)
 
         # repeating the above to have another column with type (replicates)
-        type_counts = table(unlist(type_design))
-        type_names = names(type_counts)
-        type_num = as.numeric(type_counts)
+        #type_counts = table(unlist(type_design))
+        #type_names = names(type_counts)
+        #type_num = as.numeric(type_counts)
 
         #type_factor = factor(rep(type_names, times=type_counts))
-        type_factor = factor(rep(type_names, times=type_num[1]))
+        #type_factor = factor(rep(type_names, times=type_num[1]))
+
+        # Build type factor in column order
+        type_factor <- factor(unlist(type_design))
 
         # I want to get the idr threshold and use that as input for the file names and other things
 
@@ -372,9 +391,11 @@ process find_diff_peaks_R_process {
         down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
         
 
-        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        #unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        unchanging_reg = resLFC[which(resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
 
-        others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
+        #others_reg = resLFC[which(resLFC\$padj > 0.05), ] 
+        others_reg = resLFC[which(resLFC\$padj > 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1), ]        
 
         # testing the chat gpt code to make the plot look publication ready
 
@@ -560,6 +581,9 @@ process find_diff_peaks_R_process {
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+        # export the other peaks that are greater than 0.05 and less than |1|
+        rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
 
         # now hoping to get the peak lengths histone
 
@@ -853,8 +877,8 @@ process find_diff_peaks_R_process {
         
         path_bam = list_of_mBams[[x]]
         print(path_bam)
-        bam_basename = basename(path_bam)
-        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+        bam_basename = basename(as.character(path_bam))
+        bam_tokens = strsplit(basename(as.character(path_bam)), split = "_")[[1]]
         
         # labeling the important tokens so it is easier to keep track of
         condition = bam_tokens[1]
@@ -912,8 +936,10 @@ process find_diff_peaks_R_process {
 
 
         # now i can put both lists in to get back the experiment design
-        condition_factor = factor(rep(condition_names, times=condition_num))
+        #condition_factor = factor(rep(condition_names, times=condition_num))
 
+        # Build condition factor in column order
+        condition_factor <- factor(unlist(condition_design))
 
         # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
 
@@ -921,20 +947,35 @@ process find_diff_peaks_R_process {
         #treatment = "H1low_H3k27me3"
         treatment = "${params.treatment_name}_${idr_histone}"
 
-        if (levels(condition_factor)[1] == treatment ) {
-        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
-        }else {
-        condition_factor
-        }
+        # this doesnt work because you need to put ref = levels(condition_factor)[2] to assign the actual relevel
+        #if (levels(condition_factor)[1] == treatment ) {
+        #condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+        #}else {
+        #condition_factor
+        #}
+
+        # have to do this instead to make the treatment always the baseline
+        #condition_factor <- relevel(condition_factor, ref = treatment)
+
+        levels_now <- levels(condition_factor)
+        control <- levels_now[ levels_now != treatment ]  # the other level
+
+        # Set control as reference → LFC = treatment / control
+        condition_factor <- relevel(condition_factor, ref = control)
+
+
         print(condition_factor)
 
         # repeating the above to have another column with type (replicates)
-        type_counts = table(unlist(type_design))
-        type_names = names(type_counts)
-        type_num = as.numeric(type_counts)
+        #type_counts = table(unlist(type_design))
+        #type_names = names(type_counts)
+        #type_num = as.numeric(type_counts)
 
         #type_factor = factor(rep(type_names, times=type_counts))
-        type_factor = factor(rep(type_names, times=type_num[1]))
+        #type_factor = factor(rep(type_names, times=type_num[1]))
+
+        # Build type factor in column order
+        type_factor <- factor(unlist(type_design))
 
         # I want to get the idr threshold and use that as input for the file names and other things
 
@@ -992,9 +1033,11 @@ process find_diff_peaks_R_process {
         down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
         
 
-        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        #unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        unchanging_reg = resLFC[which(resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
 
-        others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
+        #others_reg = resLFC[which(resLFC\$padj > 0.05), ] 
+        others_reg = resLFC[which(resLFC\$padj > 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1), ]        
 
         # testing the chat gpt code to make the plot look publication ready
 
@@ -1180,6 +1223,9 @@ process find_diff_peaks_R_process {
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+        # export the other peaks that are greater than 0.05 and less than |1|
+        rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
 
         # now hoping to get the peak lengths histone
 
@@ -1367,6 +1413,7 @@ process find_diff_peaks_R_process_SE {
     path("${up_peaks_out}"), emit: up_peaks_emit
     path("${down_peaks_out}"), emit: down_peaks_emit
     path("${unchanging_peaks_out}"), emit: unchanging_peaks_emit
+    path("${other_peaks_out}"), emit: other_peaks_emit
 
 
 
@@ -1389,6 +1436,7 @@ process find_diff_peaks_R_process_SE {
     up_peaks_out = "up_${idr_histone}_${full_condition}_regulated_peaks.bed"
     down_peaks_out = "down_${idr_histone}_${full_condition}_regulated_peaks.bed"
     unchanging_peaks_out = "unchanging_${idr_histone}_${full_condition}_regulated_peaks.bed"
+    other_peaks_out = "others_${idr_histone}_${full_condition}_regulated_peaks.bed"
 
     resize_num = params.masterPeak100kb ? 100000 : (params.masterPeak10kb ? 10000 : (params.masterPeak30kb ? 30000 : 1))
 
@@ -1405,7 +1453,7 @@ process find_diff_peaks_R_process_SE {
     //     resize_num = 1
     // }
 
-    if (params.narrowPeak_data) {
+    if (params.narrowPeak_data || params.sicer2) {
 
         """
         #!/usr/bin/env Rscript
@@ -1554,8 +1602,8 @@ process find_diff_peaks_R_process_SE {
         
         path_bam = list_of_mBams[[x]]
         print(path_bam)
-        bam_basename = basename(path_bam)
-        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+        bam_basename = basename(as.character(path_bam))
+        bam_tokens = strsplit(basename(as.character(path_bam)), split = "_")[[1]]
         
         # labeling the important tokens so it is easier to keep track of
         condition = bam_tokens[1]
@@ -1614,8 +1662,10 @@ process find_diff_peaks_R_process_SE {
 
 
         # now i can put both lists in to get back the experiment design
-        condition_factor = factor(rep(condition_names, times=condition_num))
+        #condition_factor = factor(rep(condition_names, times=condition_num))
 
+        # Build condition factor in column order
+        condition_factor <- factor(unlist(condition_design))
 
         # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
 
@@ -1623,20 +1673,35 @@ process find_diff_peaks_R_process_SE {
         #treatment = "H1low_H3k27me3"
         treatment = "${params.treatment_name}_${idr_histone}"
 
-        if (levels(condition_factor)[1] == treatment ) {
-        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
-        }else {
-        condition_factor
-        }
+        # this doesnt work because you need to put ref = levels(condition_factor)[2] to assign the actual relevel
+        #if (levels(condition_factor)[1] == treatment ) {
+        #condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+        #}else {
+        #condition_factor
+        #}
+
+        # have to do this instead to make the treatment always the baseline
+        #condition_factor <- relevel(condition_factor, ref = treatment)
+
+        levels_now <- levels(condition_factor)
+        control <- levels_now[ levels_now != treatment ]  # the other level
+
+        # Set control as reference → LFC = treatment / control
+        condition_factor <- relevel(condition_factor, ref = control)
+
+
         print(condition_factor)
 
         # repeating the above to have another column with type (replicates)
-        type_counts = table(unlist(type_design))
-        type_names = names(type_counts)
-        type_num = as.numeric(type_counts)
+        #type_counts = table(unlist(type_design))
+        #type_names = names(type_counts)
+        #type_num = as.numeric(type_counts)
 
         #type_factor = factor(rep(type_names, times=type_counts))
-        type_factor = factor(rep(type_names, times=type_num[1]))
+        #type_factor = factor(rep(type_names, times=type_num[1]))
+
+        # Build type factor in column order
+        type_factor <- factor(unlist(type_design))
 
         # I want to get the idr threshold and use that as input for the file names and other things
 
@@ -1695,9 +1760,11 @@ process find_diff_peaks_R_process_SE {
         down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
         
 
-        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        #unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        unchanging_reg = resLFC[which(resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
 
-        others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
+        #others_reg = resLFC[which(resLFC\$padj > 0.05), ] 
+        others_reg = resLFC[which(resLFC\$padj > 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1), ]         
 
         # testing the chat gpt code to make the plot look publication ready
 
@@ -1883,6 +1950,9 @@ process find_diff_peaks_R_process_SE {
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+        # export the other peaks that are greater than 0.05 and less than |1|
+        rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
 
         # now hoping to get the peak lengths histone
 
@@ -2176,8 +2246,8 @@ process find_diff_peaks_R_process_SE {
         
         path_bam = list_of_mBams[[x]]
         print(path_bam)
-        bam_basename = basename(path_bam)
-        bam_tokens = strsplit(basename(path_bam), split = "_")[[1]]
+        bam_basename = basename(as.character(path_bam))
+        bam_tokens = strsplit(basename(as.character(path_bam)), split = "_")[[1]]
         
         # labeling the important tokens so it is easier to keep track of
         condition = bam_tokens[1]
@@ -2235,8 +2305,10 @@ process find_diff_peaks_R_process_SE {
 
 
         # now i can put both lists in to get back the experiment design
-        condition_factor = factor(rep(condition_names, times=condition_num))
+        #condition_factor = factor(rep(condition_names, times=condition_num))
 
+        # Build condition factor in column order
+        condition_factor <- factor(unlist(condition_design))
 
         # I want it so the treatment is second in the list here so it is first in the experimental design in deseq2. This way the experimental design will have the diff results going up or down in the treatment vs control
 
@@ -2244,20 +2316,35 @@ process find_diff_peaks_R_process_SE {
         #treatment = "H1low_H3k27me3"
         treatment = "${params.treatment_name}_${idr_histone}"
 
-        if (levels(condition_factor)[1] == treatment ) {
-        condition_factor = relevel(condition_factor, levels(condition_factor)[2])
-        }else {
-        condition_factor
-        }
+        # this doesnt work because you need to put ref = levels(condition_factor)[2] to assign the actual relevel
+        #if (levels(condition_factor)[1] == treatment ) {
+        #condition_factor = relevel(condition_factor, levels(condition_factor)[2])
+        #}else {
+        #condition_factor
+        #}
+
+        # have to do this instead to make the treatment always the baseline
+        #condition_factor <- relevel(condition_factor, ref = treatment)
+
+        levels_now <- levels(condition_factor)
+        control <- levels_now[ levels_now != treatment ]  # the other level
+
+        # Set control as reference → LFC = treatment / control
+        condition_factor <- relevel(condition_factor, ref = control)
+
+
         print(condition_factor)
 
         # repeating the above to have another column with type (replicates)
-        type_counts = table(unlist(type_design))
-        type_names = names(type_counts)
-        type_num = as.numeric(type_counts)
+        #type_counts = table(unlist(type_design))
+        #type_names = names(type_counts)
+        #type_num = as.numeric(type_counts)
 
         #type_factor = factor(rep(type_names, times=type_counts))
-        type_factor = factor(rep(type_names, times=type_num[1]))
+        #type_factor = factor(rep(type_names, times=type_num[1]))
+
+        # Build type factor in column order
+        type_factor <- factor(unlist(type_design))
 
         # I want to get the idr threshold and use that as input for the file names and other things
 
@@ -2315,9 +2402,11 @@ process find_diff_peaks_R_process_SE {
         down_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <= -1) ,]
         
 
-        unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        #unchanging_reg = resLFC[which(resLFC\$padj < 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
+        unchanging_reg = resLFC[which(resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1) ,]
 
-        others_reg = resLFC[which(resLFC\$padj > 0.05), ]        
+        #others_reg = resLFC[which(resLFC\$padj > 0.05), ] 
+        others_reg = resLFC[which(resLFC\$padj > 0.05 & resLFC\$log2FoldChange <1 & resLFC\$log2FoldChange > -1), ]        
 
         # testing the chat gpt code to make the plot look publication ready
 
@@ -2503,6 +2592,9 @@ process find_diff_peaks_R_process_SE {
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+
+        # export the other peaks that are greater than 0.05 and less than |1|
+        rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
 
         # now hoping to get the peak lengths histone
 

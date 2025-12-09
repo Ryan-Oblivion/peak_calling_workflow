@@ -4,11 +4,11 @@ process make_alignment_bw_process_control {
 
     debug true
 
-    label 'normal_small_resources'
+    label 'normal_big_memory'
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
 
-    publishDir "./bigwigs/${histone_label}_bigwigs/", mode: 'copy', pattern: "*${histone_label}*.bigwig"
+    publishDir "./bigwigs/${histone_label}_bigwigs/", mode: 'copy', pattern: "*${histone_label}*.bigwig", overwrite: true
 
 
     input:
@@ -29,6 +29,8 @@ process make_alignment_bw_process_control {
 
     // the cpm normalized bigwigs 
     tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_cpm*.bigwig"), emit: cpm_bigwig_meta_ch
+
+    tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_rpgc*.bigwig"), emit: rpgc_bigwig_meta_ch
 
     
 
@@ -102,6 +104,19 @@ process make_alignment_bw_process_control {
             --normalizeUsing CPM \
             --extendReads
 
+            # now to use a different normalize method
+
+            rpgc_bigwig_out_name="\$(basename \$bam .bam)_rpgc_extendreads_normalized.bigwig"
+
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$rpgc_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing RPGC \
+            --extendReads \
+            --effectiveGenomeSize "${params.rpgc_num_effectiveGenomeSize}"
+
         done
 
         echo "for loop finished"
@@ -153,6 +168,18 @@ process make_alignment_bw_process_control {
             --scaleFactor 1 \
             --normalizeUsing CPM 
 
+            # now to use a different normalize method
+
+            rpgc_bigwig_out_name="\$(basename \$bam .bam)_rpgc_NOextendreads_normalized.bigwig"
+
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$rpgc_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing RPGC \
+            --effectiveGenomeSize "${params.rpgc_num_effectiveGenomeSize}"
+
         done
 
         echo "for loop finished"
@@ -169,11 +196,11 @@ process make_alignment_bw_process_wt {
 
     debug true
 
-    label 'normal_small_resources'
+    label 'normal_big_memory'
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
 
-    publishDir "./bigwigs/${histone_label}_bigwigs/", mode: 'copy', pattern: "*${histone_label}*.bigwig"
+    publishDir "./bigwigs/${histone_label}_bigwigs/", mode: 'copy', pattern: "*${histone_label}*.bigwig", overwrite: true
 
 
     input:
@@ -194,6 +221,8 @@ process make_alignment_bw_process_wt {
 
     // the cpm normalized bigwigs 
     tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_cpm*.bigwig"), emit: cpm_bigwig_meta_ch
+
+    tuple val("${condition_label}"), val("${histone_label}"), val("${replicate_label}"), path("*_rpgc*.bigwig"), emit: rpgc_bigwig_meta_ch
 
 
     script:
@@ -261,6 +290,19 @@ process make_alignment_bw_process_wt {
             --normalizeUsing CPM \
             --extendReads
 
+            # now to use a different normalize method
+
+            rpgc_bigwig_out_name="\$(basename \$bam .bam)_rpgc_extendreads_normalized.bigwig"
+
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$rpgc_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing RPGC \
+            --extendReads \
+            --effectiveGenomeSize "${params.rpgc_num_effectiveGenomeSize}"
+
         done
 
 
@@ -311,6 +353,18 @@ process make_alignment_bw_process_wt {
             --scaleFactor 1 \
             --normalizeUsing CPM 
 
+            # now to use a different normalize method
+
+            rpgc_bigwig_out_name="\$(basename \$bam .bam)_rpgc_NOextendreads_normalized.bigwig"
+
+            bamCoverage \
+            --bam \$bam \
+            --outFileName \$rpgc_bigwig_out_name \
+            --outFileFormat "bigwig" \
+            --scaleFactor 1 \
+            --normalizeUsing RPGC \
+            --effectiveGenomeSize "${params.rpgc_num_effectiveGenomeSize}"
+
         done
 
 
@@ -330,7 +384,7 @@ process plot_histone_at_genes_process {
     
     //label 'super_big_resources'
 
-    publishDir "./heatmaps", mode: 'copy', pattern: '*'
+    publishDir "./heatmaps", mode: 'copy', pattern: '*', overwrite: true
 
 
     input:
@@ -495,7 +549,7 @@ process macs2_call_peaks_process_both {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/macs2_rj'
 
-    publishDir "./peak_files/${condition_label}", mode: 'copy', pattern: '*'
+    publishDir "./peak_files/${condition_label}", mode: 'copy', pattern: '*', overwrite: true
 
 
 
@@ -705,7 +759,7 @@ process macs2_call_peaks_process_both {
 process get_pval_bedgraph {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
-    publishDir "./peak_files/pval_signal_files", mode: 'copy', pattern: '*'
+    publishDir "./peak_files/pval_signal_files", mode: 'copy', pattern: '*', overwrite: true
 
 
     input:
@@ -751,7 +805,7 @@ process get_pval_bedgraph {
 process kenttools_get_bigwig {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/uscs_utils_rj'
     label 'normal_big_resources'
-    publishDir "./peak_files/pval_signal_files", mode: 'copy', pattern: '*'
+    publishDir "./peak_files/pval_signal_files", mode: 'copy', pattern: '*', overwrite: true
 
 
     input:
@@ -787,7 +841,7 @@ process merge_peaks_bedtools_process {
 
     label 'normal_big_resources'
 
-    publishDir "merged_broadpeaks/", mode: 'copy', pattern:'*'
+    publishDir "merged_broadpeaks/", mode: 'copy', pattern:'*', overwrite: true
 
 
     input:
@@ -856,7 +910,7 @@ process merge_concat_peaks_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
 
-    publishDir "idr_results/merged_concat_peaks", mode: 'copy', pattern: "*.bed"
+    publishDir "idr_results/merged_concat_peaks", mode: 'copy', pattern: "*.bed", overwrite: true
 
     label 'normal_big_resources'
 
@@ -1093,7 +1147,7 @@ process find_idr_in_replicates_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/idr-2.0_rj'
     label 'super_big_resources'
-    publishDir "idr_results/${histone[0]}/${condition[0]}", mode: 'copy', pattern:'*'
+    publishDir "idr_results/${histone[0]}/${condition[0]}", mode: 'copy', pattern:'*', overwrite: true
 
     // because of some experiment types (like histone H3k36me2) not having enough peaks called in all replicates, we cannot have this process ending the entire pipeline just becasue of one experiment type
     // so i will add ignore errorStrategy to this process also
@@ -4096,7 +4150,7 @@ process mk_bedgraph_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
 
-    publishDir "./bedgraph_for_seacr/", mode: 'copy', pattern: "*"
+    publishDir "./bedgraph_for_seacr/", mode: 'copy', pattern: "*", overwrite: true
 
     debug true 
 
@@ -4155,7 +4209,7 @@ process seacr_peakcalls_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/seacr_1.3_rj'
     label 'normal_big_resources'
 
-    publishDir "./seacr_peaks/", mode: 'copy', pattern: "*"
+    publishDir "./seacr_peaks/", mode: 'copy', pattern: "*", overwrite: true
 
 
 
@@ -4248,27 +4302,42 @@ process sicer2_peakcall_process {
     // i am able to put bam files directly as input becasue i added bedtools to the conda environment
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/sicer2_rj'
 
-    publishDir "./sicer2_peaks/", mode: 'copy', pattern:'*'
+    publishDir "./sicer2_peaks/", mode: 'copy', pattern:'*', overwrite: true
 
 
     input:
 
     //tuple val(tuple_key), path(bam_bai_file)
 
-    path(bed_file)
+    // path(bed_file)
+    // the bam name, path and bai paths have two indecies. 0 index is the normal bam and 1 would be the igg
+    tuple val(condition_label), val(histone_label), val(replicate_label), val(meta_name_bio_label), val(norm_igg_bam_file_name), path(norm_igg_bam_path), path(norm_igg_bai_path)
 
+    path(ref_genome)
+
+    // tuple val(control_igg_basename), path(control_igg_bam_index)
+    // tuple val(wt_igg_basename), path(wt_igg_bam_index)
+    // wt_igg_bam_index_tuple_ch
 
     output:
 
     // this output is cgisland because i am using recognicer instead of sicer
-    path("*.cgisland"), emit: sicer2_cgislands
+    // path("*.cgisland"), emit: sicer2_cgislands
 
-    path("*normalized.wig"), emit: sicer2_wig
+    // path("*normalized.wig"), emit: sicer2_wig
 
-    path("*islandfiltered.bed"), emit: sicer2_peak_file
+    // path("*islandfiltered.bed"), emit: sicer2_peak_file
+
+    path("*island.bed"), emit: sicer2_peak_file
+    path("*bed"), emit: all_sicer2_bed
 
 
     script:
+
+    normal_bam_name = norm_igg_bam_file_name[0]
+    igg_bam_name = norm_igg_bam_file_name[1]
+
+    
 
     //bam_file = bam_bai_file[0]
     //bai_file = bam_bai_file[1]
@@ -4286,18 +4355,157 @@ process sicer2_peakcall_process {
     ###################################
 
     
-    recognicer \
-    -t ${bed_file} \
+    #recognicer \
+    -t \${bed_file} \
     --species hg38 \
     --step_size 3 \
     --step_score 2 \
     --significant_reads
 
     #sicer \
-    -t \${bam_file} \
-    --e_value 1000 \
+    -t \${normal_bam_name} \
+    -c \${igg_bam_name} \
+    -s hg38 \
+    -fdr 0.3 \
+    -g 2000 \
+    -o .
+
+    sicer \
+    -t ${normal_bam_name} \
+    -c ${igg_bam_name} \
+    -s hg38 \
+    -fdr ${params.sicer2_fdr} \
+    -g ${params.sicer2_gap_size} \
+    -w ${params.sicer2_window_size} \
+    -o .
+   
+    
+
+    #--e_value 1000 \
+    #--species hg38 \
+    #--significant_reads
+
+
+
+
+
+
+
+
+    """
+}
+
+process concat_sicer2_peaks_process {
+
+    label 'normal_big_resources'
+
+    publishDir "./sicer2_peaks", mode: 'copy', pattern: '*', overwrite: true
+
+
+    input:
+
+    tuple val(conditions), val(exper_type), val(tech_rep), val(peak_file_names), path(peak_files_path)
+    // path(sicer2_peaks)
+
+
+
+    output:
+
+    path("*bed"), emit: sicer2_master_peak
+
+
+    script:
+
+    condition1 = conditions[0]
+    condition2 = conditions[-1]
+
+    concat_master_sicer2_peaks = "concat_master_${condition1}${condition2}_${exper_type}_peaks.bed"
+
+    """
+    #!/usr/bin/env bash
+
+    cat *island.bed > ${concat_master_sicer2_peaks}
+
+
+    """
+
+}
+
+process sicer2_peakcall_process_noigg {
+
+    label 'super_big_resources'
+    // cpus = 26
+
+    // i am able to put bam files directly as input becasue i added bedtools to the conda environment
+    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/sicer2_rj'
+
+    publishDir "./sicer2_peaks/", mode: 'copy', pattern:'*', overwrite: true
+
+
+    input:
+
+    //tuple val(tuple_key), path(bam_bai_file)
+
+    // path(bed_file)
+    // the bam name, path and bai paths have two indecies. 0 index is the normal bam and 1 would be the igg
+    tuple val(condition_label), val(histone_label), val(replicate_label), val(meta_name_bio_label), val(bam_file_name), path(bam_path), path(bai_path)
+
+    path(ref_genome)
+
+    // tuple val(control_igg_basename), path(control_igg_bam_index)
+    // tuple val(wt_igg_basename), path(wt_igg_bam_index)
+    // wt_igg_bam_index_tuple_ch
+
+    output:
+
+    // this output is cgisland because i am using recognicer instead of sicer
+    // path("*.cgisland"), emit: sicer2_cgislands
+
+    // path("*normalized.wig"), emit: sicer2_wig
+
+    // path("*islandfiltered.bed"), emit: sicer2_peak_file
+
+    path("*bed"), emit: sicer2_peak_file
+
+
+    script:
+
+    // normal_bam_name = norm_igg_bam_file_name[0]
+    // igg_bam_name = norm_igg_bam_file_name[1]
+
+    //bam_file = bam_bai_file[0]
+    //bai_file = bam_bai_file[1]
+
+    """
+    #!/usr/bin/env bash
+
+    ###### sicer2 parameters ##########
+
+    # only for sicer, i am using recognicer for broad peaks. --e_value : this requires user input if no control is set ( i am only using a treatment) default 1000
+    
+    # --step_size : the number of windows in one graining unit. default is 3
+    # --step_score : the minimum number of positive elements in the graining unit to call the unit positive. Default value is 2.
+    
+    ###################################
+
+    
+    #recognicer \
+    -t \${bed_file} \
     --species hg38 \
+    --step_size 3 \
+    --step_score 2 \
     --significant_reads
+
+    sicer \
+    -t ${bam_file_name} \
+    -s hg38 \
+    --e_value 1000 \
+    --significant_reads 
+   
+    
+    #--e_value 1000 \
+    #--species hg38 \
+    #--significant_reads
 
 
 
@@ -4537,7 +4745,7 @@ process multiqc_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/multiqc_rj'
     label 'normal_small_resources'
-    publishDir "./dup_info", mode: 'copy', pattern: '*'
+    publishDir "./dup_info", mode: 'copy', pattern: '*', overwrite: true
 
     input:
     tuple val(condition) , val(histone), path(log_files)
@@ -4579,7 +4787,7 @@ process plot_histones_at_peaks_process {
 
     //label 'super_big_resources'
 
-    publishDir "./heatmaps", mode: 'copy', pattern: '*'
+    publishDir "./heatmaps", mode: 'copy', pattern: '*', overwrite: true
 
     input:
     tuple val(grouping_key), val(condition_label), val(histone_label), val(replicate_label), val(bw_peak_names), path(bw_peak_filepath)
@@ -4689,11 +4897,13 @@ process plot_at_up_down_peaks_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
 
-    label 'normal_big_resources'
+    label 'normal_big_memory'
+
+    // label 'normal_big_resources'
     
     //label 'super_big_resources'
 
-    publishDir "./heatmaps/histone_signal_over_up_down_peaks", mode: 'copy', pattern: '*'
+    publishDir "./heatmaps/histone_signal_over_up_down_peaks", mode: 'copy', pattern: '*', overwrite: true
 
 
     input:
@@ -4825,6 +5035,9 @@ process plot_at_up_down_peaks_process {
     down_split_basename = "${down_peaks.baseName}".split('_')
     short_down_peak_name = "${down_split_basename[0]}_${down_split_basename[1]}_${down_split_basename[3]}"
 
+    unchanging_split_basename = "${unchanging_peaks.baseName}".split('_')
+    short_unchanging_peak_name = "${unchanging_split_basename[0]}_${unchanging_split_basename[1]}_${unchanging_split_basename[3]}"
+
 
     //up_peaks_nozero = "${up_peaks.baseName}_noZerolength.bed"
     up_peaks_nozero = "${short_up_peak_name}_noZerolength.bed"
@@ -4834,6 +5047,8 @@ process plot_at_up_down_peaks_process {
 
     //master_peaks_nozero ="${master_peaks.baseName}_noZerolength.bed"
     master_peaks_nozero ="${short_master_peak_name}_noZerolength.bed"
+
+    unchanging_peaks_nozero = "${short_unchanging_peak_name}_noZerolength.bed"
     
 
     // i need to just get the matrix for plotting signal over cpg islands and then the output heatmap and profile plot names
@@ -4890,6 +5105,9 @@ process plot_at_up_down_peaks_process {
     awk  '\$2!=\$3 {print \$0}' "${down_peaks}" > "${down_peaks_nozero}"
 
     awk  '\$2!=\$3 {print \$0}' "${master_peaks}" > "${master_peaks_nozero}"
+    
+
+    awk  '\$2!=\$3 {print \$0}' "${unchanging_peaks}" > "${unchanging_peaks_nozero}"
 
     #computeMatrix reference-point -S \${bw_names.join(' ')} \
     -R "\${down_peaks_nozero}" \
@@ -4944,7 +5162,8 @@ process plot_at_up_down_peaks_process {
     -out "\${png_heatmap_both}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel \${name_list.join(' ')} 'CpG_site_bigwig_signal' \
     --labelRotation 30 \
     --sortUsing sum \
@@ -4969,7 +5188,8 @@ process plot_at_up_down_peaks_process {
     -out "\${svg_heatmap_both}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel \${name_list.join(' ')} 'CpG_site_bigwig_signal' \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5005,7 +5225,7 @@ process plot_at_up_down_peaks_process {
     -o "\${out_matrix_scores_both}"
 
     computeMatrix reference-point -S ${bw_names.join(' ')} \
-    -R "${down_peaks_nozero}" "${master_peaks_nozero}" \
+    -R "${down_peaks_nozero}" "${unchanging_peaks_nozero}" \
     --referencePoint center \
     --beforeRegionStartLength 8000 \
     --afterRegionStartLength 8000 \
@@ -5020,7 +5240,8 @@ process plot_at_up_down_peaks_process {
     -out "${png_heatmap_both}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5028,7 +5249,7 @@ process plot_at_up_down_peaks_process {
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal Down and master Peaks"
+    #--plotTitle "Bigwig Signal Down and unchanging Peaks"
 
     plotProfile -m "${out_matrix_scores_both}" \
     -out "${png_profile_both_peaks}" \
@@ -5045,7 +5266,8 @@ process plot_at_up_down_peaks_process {
     -out "${svg_heatmap_both}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5065,9 +5287,9 @@ process plot_at_up_down_peaks_process {
     --plotTitle "Bigwig Signal over both peaks"
 
 
-    # this is for all three peaks up, down and master peaks
+    # this is for all three peaks up, down, unchanging and master peaks
     computeMatrix reference-point -S ${bw_names.join(' ')} \
-    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${master_peaks_nozero}" \
+    -R "${up_peaks_nozero}" "${down_peaks_nozero}" "${unchanging_peaks_nozero}"  \
     --referencePoint center \
     --beforeRegionStartLength 8000 \
     --afterRegionStartLength 8000 \
@@ -5082,7 +5304,8 @@ process plot_at_up_down_peaks_process {
     -out "${png_heatmap_three}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5090,7 +5313,7 @@ process plot_at_up_down_peaks_process {
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal up, Down and master Peaks"
+    #--plotTitle "Bigwig Signal up, Down and unchanging Peaks"
 
     plotProfile -m "${out_matrix_scores_three}" \
     -out "${png_profile_three_peaks}" \
@@ -5107,7 +5330,8 @@ process plot_at_up_down_peaks_process {
     -out "${svg_heatmap_three}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5115,7 +5339,7 @@ process plot_at_up_down_peaks_process {
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal Over Down and master Peaks"
+    #--plotTitle "Bigwig Signal Over Down and unchanging Peaks"
 
     plotProfile -m "${out_matrix_scores_three}" \
     -out "${svg_profile_both_peaks}" \
@@ -5124,12 +5348,12 @@ process plot_at_up_down_peaks_process {
     --perGroup \
     --dpi 300 \
     --samplesLabel ${name_list.join(' ')} \
-    --plotTitle "Bigwig Signal over up, down and master peaks"
+    --plotTitle "Bigwig Signal over up, down and unchanging peaks"
 
 
 
     computeMatrix reference-point -S ${bw_names.join(' ')} \
-    -R "${up_peaks_nozero}" "${master_peaks_nozero}" \
+    -R "${up_peaks_nozero}" "${unchanging_peaks_nozero}" \
     --referencePoint center \
     --beforeRegionStartLength 8000 \
     --afterRegionStartLength 8000 \
@@ -5144,7 +5368,8 @@ process plot_at_up_down_peaks_process {
     -out "${png_heatmap_up_master}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5152,7 +5377,7 @@ process plot_at_up_down_peaks_process {
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal Down and master Peaks"
+    #--plotTitle "Bigwig Signal up and unchanging Peaks"
 
     plotProfile -m "${out_matrix_scores_up_master}" \
     -out "${png_profile_up_master}" \
@@ -5169,7 +5394,8 @@ process plot_at_up_down_peaks_process {
     -out "${svg_heatmap_up_master}" \
     --colorMap 'Reds' \
     --zMin 0 \
-    --zMax 3 \
+    --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5177,7 +5403,7 @@ process plot_at_up_down_peaks_process {
     --heatmapWidth 8 \
     --heatmapHeight 20 \
     --dpi 300 
-    #--plotTitle "Bigwig Signal Over Down and master Peaks"
+    #--plotTitle "Bigwig Signal Over up and unchanging Peaks"
 
     plotProfile -m "${out_matrix_scores_up_master}" \
     -out "${svg_profile_up_master}" \
@@ -5207,7 +5433,7 @@ process atac_signal_over_peaks_process {
 
     errorStrategy 'ignore'
 
-    publishDir "./heatmaps/atac_signal_over_peaks/", mode: 'copy', pattern: '*'
+    publishDir "./heatmaps/atac_signal_over_peaks/", mode: 'copy', pattern: '*', overwrite: true
 
 
     input:
@@ -5222,6 +5448,7 @@ process atac_signal_over_peaks_process {
     // new additions
     path(down_atac_peaks)
     path(up_atac_peaks)
+    path(unchanging_atac_peaks)
 
     // have to change below to reflect the grouping with bigwig and peaks
     //tuple val(condition_label), val(histone_label), val(replicate_label), val(bw_names), path(bigwig_filepath)
@@ -5339,6 +5566,7 @@ process atac_signal_over_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${control_atac_bigwig} ${treatment_atac_bigwig} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5355,6 +5583,7 @@ process atac_signal_over_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${control_atac_bigwig} ${treatment_atac_bigwig} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5377,7 +5606,7 @@ process atac_signal_over_peaks_process {
     # now they want the atac peaks to be used and all signal plotted over them ##############
 
     computeMatrix reference-point -S ${control_atac_bigwig} ${treatment_atac_bigwig} \
-    -R "${up_atac_peaks}" "${down_atac_peaks}"  \
+    -R "${up_atac_peaks}" "${unchanging_atac_peaks}"  \
     --referencePoint center \
     --beforeRegionStartLength 10000 \
     --afterRegionStartLength 10000 \
@@ -5392,7 +5621,8 @@ process atac_signal_over_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
-    --regionsLabel "${up_atac_peaks.name}_ATAC_peaks" "${down_atac_peaks.name}_ATAC_peaks"  \
+    --sortRegions "descend" \
+    --regionsLabel "${up_atac_peaks.name}_ATAC_peaks" "${unchanging_atac_peaks.name}_ATAC_peaks"  \
     --samplesLabel ${control_atac_bigwig} ${treatment_atac_bigwig} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5407,6 +5637,7 @@ process atac_signal_over_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --regionsLabel "${up_atac_peaks.name}_ATAC_peaks" "${down_atac_peaks.name}_ATAC_peaks"  \
     --samplesLabel ${control_atac_bigwig} ${treatment_atac_bigwig} \
     --labelRotation 30 \
@@ -5421,7 +5652,7 @@ process atac_signal_over_peaks_process {
     # doing experiment signal over atac peaks now #####################
 
     computeMatrix reference-point -S ${bw_names.join(' ')} \
-    -R "${up_atac_peaks}" "${down_atac_peaks}"  \
+    -R "${up_atac_peaks}" "${unchanging_atac_peaks}"  \
     --referencePoint center \
     --beforeRegionStartLength 10000 \
     --afterRegionStartLength 10000 \
@@ -5436,7 +5667,8 @@ process atac_signal_over_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
-    --regionsLabel "${up_atac_peaks.name}_ATAC_peaks" "${down_atac_peaks.name}_ATAC_peaks"  \
+    --sortRegions "descend" \
+    --regionsLabel "${up_atac_peaks.name}_ATAC_peaks" "${unchanging_atac_peaks.name}_ATAC_peaks"  \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5451,7 +5683,8 @@ process atac_signal_over_peaks_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
-    --regionsLabel "${up_atac_peaks.name}_ATAC_peaks" "${down_atac_peaks.name}_ATAC_peaks"  \
+    --sortRegions "descend" \
+    --regionsLabel "${up_atac_peaks.name}_ATAC_peaks" "${unchanging_atac_peaks.name}_ATAC_peaks"  \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --sortUsing sum \
@@ -5471,7 +5704,7 @@ process bedtools_stranded_create_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
-    publishDir "./diff_genes/", mode: 'copy', pattern: '*'
+    publishDir "./diff_genes/", mode: 'copy', pattern: '*', overwrite: true
 
 
     input:
@@ -5565,9 +5798,10 @@ process signal_over_gene_tss_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools-3.5.6_rj'
 
-    label 'normal_big_resources'
+    label 'normal_big_memory'
+    // label 'normal_big_resources'
 
-    publishDir "heatmaps/signal_over_tss", mode: 'copy', pattern: '*'
+    publishDir "heatmaps/signal_over_tss", mode: 'copy', pattern: '*', overwrite: true
 
 
 
@@ -5583,6 +5817,7 @@ process signal_over_gene_tss_process {
 
     path(up_genes_norm)
     path(down_genes_norm)
+    path(unchanging_genes_norm)
 
     //tuple val(condition_label), val(histone_label), val(replicate_label), val(bw_names), path(bigwig_filepath)  // this is the version that uses data from outside the pipeline. uncomment if needed to change
 
@@ -5621,6 +5856,14 @@ process signal_over_gene_tss_process {
     both_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_${condition_type}_signal_at_both_gene_tss_20kb.pdf"
     both_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_${condition_type}_signal_at_both_gene_tss_20kb.svg"
 
+    rnaseq_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_rnaseq_gene_tss.mat.gz"
+    rnaseq_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_${condition_type}_signal_at_rnaseq_gene_tss_20kb.pdf"
+    rnaseq_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_${condition_type}_signal_at_rnaseq_gene_tss_20kb.svg"
+
+    rnaseq_genes_up_unchainging_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_rnaseq_up_unchanging_gene_tss.mat.gz"
+    rnaseq_genes_up_unchanging_tss_out_heatmap = "${histone_label}_${replicate_label}_${condition_type}_signal_at_rnaseq_up_unchanging_gene_tss.pdf"
+    rnaseq_genes_up_unchanging_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_${condition_type}_signal_at_rnaseq_up_unchanging_gene_tss.svg"
+
     minus_genes_tss_out_matrix_scores = "matrix_${histone_label}_${replicate_label}_signal_minus_gene_tss.mat.gz"
     minus_genes_tss_out_heatmap = "${histone_label}_${replicate_label}_${condition_type}_signal_at_minus_gene_tss_20kb.pdf"
     minus_genes_tss_out_heatmap_svg = "${histone_label}_${replicate_label}_${condition_type}_signal_at_minus_gene_tss_20kb.svg"
@@ -5634,6 +5877,8 @@ process signal_over_gene_tss_process {
     plus_heatmap_only_pdf = "${histone_label}_${replicate_label}_${condition_type}_signal_at_plus_gene_tss_20kb_heatmap_only.pdf"
 
     heatmap_only_pdf = "${histone_label}_${replicate_label}_${condition_type}_signal_at_both_gene_tss_20kb_heatmap_only.pdf"
+
+    rnaseq_heatmap_only_pdf = "${histone_label}_${replicate_label}_${condition_type}_signal_at_rnaseq_gene_tss_20kb_heatmap_only.pdf"
 
 
     """
@@ -5663,6 +5908,124 @@ process signal_over_gene_tss_process {
 
     
 
+    #################################################################
+
+    # now doing this for the rna seq genes and not the proseq genes
+
+    computeMatrix reference-point \
+    -S ${bw_names.join(" ")} \
+    -R ${up_genes_norm} ${down_genes_norm} ${unchanging_genes_norm} \
+    --referencePoint "TSS" \
+    --beforeRegionStartLength 5000 \
+    --afterRegionStartLength 5000 \
+    --binSize 100 \
+    --skipZeros \
+    --missingDataAsZero \
+    --sortUsing "sum" \
+    --numberOfProcessors "max" \
+    --outFileName ${rnaseq_genes_tss_out_matrix_scores}
+    
+
+    plotHeatmap \
+    --matrixFile ${rnaseq_genes_tss_out_matrix_scores} \
+    --outFileName ${rnaseq_genes_tss_out_heatmap} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --sortRegions "descend" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    # making the svg version
+    plotHeatmap \
+    --matrixFile ${rnaseq_genes_tss_out_matrix_scores} \
+    --outFileName ${rnaseq_genes_tss_out_heatmap_svg} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --sortRegions "descend" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    # plotting the heatmap only
+    plotHeatmap \
+    --matrixFile ${rnaseq_genes_tss_out_matrix_scores} \
+    --outFileName ${rnaseq_heatmap_only_pdf} \
+    --colorMap 'Reds' \
+    --whatToShow 'heatmap and colorbar' \
+    --zMin 0 \
+    --zMax "auto" \
+    --sortRegions "descend" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    ######################### up and unchanging genes only #################
+
+    computeMatrix reference-point \
+    -S ${bw_names.join(" ")} \
+    -R ${up_genes_norm} ${unchanging_genes_norm} \
+    --referencePoint "TSS" \
+    --beforeRegionStartLength 5000 \
+    --afterRegionStartLength 5000 \
+    --binSize 100 \
+    --skipZeros \
+    --missingDataAsZero \
+    --sortUsing "sum" \
+    --numberOfProcessors "max" \
+    --outFileName ${rnaseq_genes_up_unchainging_tss_out_matrix_scores}
+    
+
+    plotHeatmap \
+    --matrixFile ${rnaseq_genes_up_unchainging_tss_out_matrix_scores} \
+    --outFileName ${rnaseq_genes_up_unchanging_tss_out_heatmap} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --sortRegions "descend" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    # making the svg version
+    plotHeatmap \
+    --matrixFile ${rnaseq_genes_up_unchainging_tss_out_matrix_scores} \
+    --outFileName ${rnaseq_genes_up_unchanging_tss_out_heatmap_svg} \
+    --colorMap 'Reds' \
+    --zMin 0 \
+    --zMax "auto" \
+    --sortRegions "descend" \
+    --samplesLabel ${name_list.join(' ')} \
+    --labelRotation 30 \
+    --heatmapWidth 9 \
+    --heatmapHeight 15 \
+    --dpi 300 \
+    --sortUsing sum \
+    --perGroup 
+
+    
+
+
+    #################################################################
+
     # now plotting 
     # because I put the TSS out 20kb, I will make the region around that new tss 20kb so I dont get anything in the gene body
 
@@ -5671,9 +6034,12 @@ process signal_over_gene_tss_process {
     -S ${bw_names.join(" ")} \
     -R ${up_proseq_genes} ${down_proseq_genes} ${unchanging_proseq_genes} \
     --referencePoint "TSS" \
-    --beforeRegionStartLength 1000 \
-    --afterRegionStartLength 1000 \
+    --beforeRegionStartLength 5000 \
+    --afterRegionStartLength 5000 \
     --binSize 100 \
+    --skipZeros \
+    --missingDataAsZero \
+    --sortUsing "sum" \
     --numberOfProcessors "max" \
     --outFileName ${both_genes_tss_out_matrix_scores}
     
@@ -5684,6 +6050,7 @@ process signal_over_gene_tss_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5699,6 +6066,7 @@ process signal_over_gene_tss_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5715,6 +6083,7 @@ process signal_over_gene_tss_process {
     --whatToShow 'heatmap and colorbar' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5731,9 +6100,12 @@ process signal_over_gene_tss_process {
     -S ${bw_names.join(" ")} \
     -R up_proseq_minusStrand.tsv down_proseq_minusStrand.tsv unchanging_proseq_minusStrand.tsv \
     --referencePoint "TSS" \
-    --beforeRegionStartLength 1000 \
-    --afterRegionStartLength 1000 \
+    --beforeRegionStartLength 5000 \
+    --afterRegionStartLength 5000 \
     --binSize 100 \
+    --skipZeros \
+    --missingDataAsZero \
+    --sortUsing "sum" \
     --numberOfProcessors "max" \
     --outFileName ${minus_genes_tss_out_matrix_scores}
 
@@ -5744,6 +6116,7 @@ process signal_over_gene_tss_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5759,6 +6132,7 @@ process signal_over_gene_tss_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5775,6 +6149,7 @@ process signal_over_gene_tss_process {
     --whatToShow 'heatmap and colorbar' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5788,9 +6163,12 @@ process signal_over_gene_tss_process {
     -S ${bw_names.join(" ")} \
     -R up_proseq_plusStrand.tsv down_proseq_plusStrand.tsv unchanging_proseq_plusStrand.tsv \
     --referencePoint "TSS" \
-    --beforeRegionStartLength 1000 \
-    --afterRegionStartLength 1000 \
+    --beforeRegionStartLength 5000 \
+    --afterRegionStartLength 5000 \
     --binSize 100 \
+    --skipZeros \
+    --missingDataAsZero \
+    --sortUsing "sum" \
     --numberOfProcessors "max" \
     --outFileName ${plus_genes_tss_out_matrix_scores}
 
@@ -5801,6 +6179,7 @@ process signal_over_gene_tss_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5816,6 +6195,7 @@ process signal_over_gene_tss_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5832,6 +6212,7 @@ process signal_over_gene_tss_process {
     --whatToShow 'heatmap and colorbar' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
     --heatmapWidth 9 \
@@ -5851,7 +6232,7 @@ process diff_peaks_intersect_diff_genes_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
-    publishDir "./intersect_peaks_in_genes", mode: 'copy', pattern: '*'
+    publishDir "./intersect_peaks_in_genes", mode: 'copy', pattern: '*', overwrite: true
 
 
 
@@ -6145,7 +6526,7 @@ process get_CpG_islands_in_peaks_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
 
-    publishDir "./intersect_CpG_in_peaks", mode: 'copy', pattern: '*'
+    publishDir "./intersect_CpG_in_peaks", mode: 'copy', pattern: '*', overwrite: true
 
 
     input:
@@ -6243,7 +6624,7 @@ process get_atacPeaks_in_genetss_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
 
-    publishDir "./intersect_ATACpeaks_in_tssGenes", mode: 'copy', pattern: '*'
+    publishDir "./intersect_ATACpeaks_in_tssGenes", mode: 'copy', pattern: '*', overwrite: true
 
     
 
@@ -6380,7 +6761,7 @@ process plot_over_diff_cpg_regions_process {
 
     label 'normal_big_resources'
 
-    publishDir "heatmaps/signal_over_diff_CpG_regions", mode: 'copy', pattern: '*'
+    publishDir "heatmaps/signal_over_diff_CpG_regions", mode: 'copy', pattern: '*', overwrite: true
 
     errorStrategy 'ignore'
 
@@ -6453,6 +6834,7 @@ process plot_over_diff_cpg_regions_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --regionsLabel "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}" "${cpg_master_ch}" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
@@ -6468,6 +6850,7 @@ process plot_over_diff_cpg_regions_process {
     --colorMap 'Reds' \
     --zMin 0 \
     --zMax "auto" \
+    --sortRegions "descend" \
     --regionsLabel "${cpg_up_ch}" "${cpg_down_ch}" "${cpg_unchanging_ch}" "${cpg_master_ch}" \
     --samplesLabel ${name_list.join(' ')} \
     --labelRotation 30 \
@@ -6489,7 +6872,7 @@ process atac_enrich_counts_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
     label 'normal_big_resources'
 
-    publishDir "./enrichment_of_experiment/", mode: 'copy', pattern: '*'
+    publishDir "./enrichment_of_experiment/", mode: 'copy', pattern: '*', overwrite: true
 
     debug true
 
@@ -6512,6 +6895,7 @@ process atac_enrich_counts_process {
     //tuple val(roadmap_allpeaks_filename), val(roadmap_allpeaks_names), path(roadmap_allpeaks_path)
 
     //path(atac_bigwig)
+    // tuple val(bam_tuple_key_name), path(bam_files)
     path(bam_files)
 
 
@@ -6562,17 +6946,17 @@ process atac_enrich_counts_process {
     //out_tab_file = "${atac_bigwig.baseName}_counts.tab"
 
     // making the plot file name that will be outputted
-    out_broad_enrich_plot = "${bam_files[1].baseName}_broad_enrichment_plot.png"
-    out_broad_enrich_counts = "${bam_files[1].baseName}_broad_enrichment_counts.tab"
+    out_broad_enrich_plot = "${bam_files[0].baseName}_broad_enrichment_plot.png"
+    out_broad_enrich_counts = "${bam_files[0].baseName}_broad_enrichment_counts.tab"
 
-    out_narrow_enrich_plot = "${bam_files[1].baseName}_narrow_enrichment_plot.png"
-    out_narrow_enrich_counts = "${bam_files[1].baseName}_narrow_enrichment_counts.tab"
+    out_narrow_enrich_plot = "${bam_files[0].baseName}_narrow_enrichment_plot.png"
+    out_narrow_enrich_counts = "${bam_files[0].baseName}_narrow_enrichment_counts.tab"
 
-    out_pipeline_enrich_plot = "${bam_files[1].baseName}_pipeline_enrichment_plot.png"
-    out_pipeline_enrich_counts = "${bam_files[1].baseName}_pipeline_enrichment_counts.tab"
+    out_pipeline_enrich_plot = "${bam_files[0].baseName}_pipeline_enrichment_plot.png"
+    out_pipeline_enrich_counts = "${bam_files[0].baseName}_pipeline_enrichment_counts.tab"
 
-    out_allpeaks_enrich_plot = "${bam_files[1].baseName}_allpeaks_enrichment_plot.png"
-    out_allpeaks_enrich_counts = "${bam_files[1].baseName}_allpeaks_enrichment_counts.tab"
+    out_allpeaks_enrich_plot = "${bam_files[0].baseName}_allpeaks_enrichment_plot.png"
+    out_allpeaks_enrich_counts = "${bam_files[0].baseName}_allpeaks_enrichment_counts.tab"
 
 
 
@@ -6685,7 +7069,7 @@ process merge_bams_on_condition_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/samtools-1.21_rj'
     label 'normal_big_resources'
 
-    publishDir "atac_analysis/allmerged_bams", mode: 'copy', pattern: '*'
+    publishDir "atac_analysis/allmerged_bams", mode: 'copy', pattern: '*', overwrite: true
 
     input:
     tuple val(control_exper_type), val(control_condition), path(control_bams) 
@@ -6746,7 +7130,7 @@ process get_merged_bigwig_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
 
-    publishDir "atac_analysis/allmerged_bigwigs", mode:'copy', pattern: "*"
+    publishDir "atac_analysis/allmerged_bigwigs", mode:'copy', pattern: "*", overwrite: true
 
 
     input:
@@ -6857,7 +7241,7 @@ process atac_enrich_counts_2nd_version_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/deeptools_rj'
     label 'normal_big_resources'
 
-    publishDir "./atac_analysis/enrichment_of_experiment/", mode: 'copy', pattern: '*'
+    publishDir "./atac_analysis/enrichment_of_experiment/", mode: 'copy', pattern: '*', overwrite: true
 
     debug true
 
@@ -6969,7 +7353,7 @@ process r_atac_enrich_plot_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/r_language'
     label 'normal_big_resources'
-    publishDir "./enrichment_of_experiment/", mode: 'copy', pattern:'*'
+    publishDir "./enrichment_of_experiment/", mode: 'copy', pattern:'*', overwrite: true
 
     input:
 
@@ -7084,7 +7468,7 @@ process r_atac_enrich_plot_2nd_version_process {
 
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/r_language'
     label 'normal_big_resources'
-    publishDir "./atac_analysis/enrichment_process", mode: 'copy', pattern:'*'
+    publishDir "./atac_analysis/enrichment_process", mode: 'copy', pattern:'*', overwrite: true
 
     input:
 
@@ -7194,7 +7578,7 @@ process get_atacPeaks_in_roadmapPeaks_process {
     conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
 
-    publishDir "./intersect_atacPeaks_in_histone_peaks", mode: 'copy', pattern: '*'
+    publishDir "./intersect_atacPeaks_in_histone_peaks", mode: 'copy', pattern: '*', overwrite: true
     
     input:
 

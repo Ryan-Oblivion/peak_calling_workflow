@@ -34,7 +34,9 @@ include {
     merge_bams_on_condition_process;
     get_merged_bigwig_process;
     atac_enrich_counts_2nd_version_process;
-    r_atac_enrich_plot_2nd_version_process
+    r_atac_enrich_plot_2nd_version_process;
+    sicer2_peakcall_process_noigg;
+    concat_sicer2_peaks_process
     // macs2_call_peaks_process_wt
     
 
@@ -175,12 +177,44 @@ workflow mk_bw_call_peaks_workflow {
     make_alignment_bw_process_wt(wt_bam_meta_ch)
 
 
-    control_meta_bw_ch = make_alignment_bw_process_control.out.bigwig_meta_ch
+    if (params.raw_bigwig) {
 
-    wt_meta_bw_ch = make_alignment_bw_process_wt.out.bigwig_meta_ch
+        control_bigwig = make_alignment_bw_process_control.out.bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
 
-    control_meta_cpm_bw_ch = make_alignment_bw_process_control.out.cpm_bigwig_meta_ch
-    wt_meta_cpm_bw_ch = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
+    }
+    else if (params.cpm_bigwig) {
+
+        control_bigwig = make_alignment_bw_process_control.out.cpm_bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
+
+    }
+    else if (params.rpgc_bigwig) {
+
+        control_bigwig = make_alignment_bw_process_control.out.rpgc_bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.rpgc_bigwig_meta_ch
+
+    }
+    else {
+
+        control_bigwig = make_alignment_bw_process_control.out.bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
+
+    }
+
+
+    // control_meta_bw_ch = make_alignment_bw_process_control.out.bigwig_meta_ch
+
+    // wt_meta_bw_ch = make_alignment_bw_process_wt.out.bigwig_meta_ch
+
+    // control_meta_cpm_bw_ch = make_alignment_bw_process_control.out.cpm_bigwig_meta_ch
+    // wt_meta_cpm_bw_ch = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
+
+    // // now outputtting the rpgc bigwigs 
+    // wt_meta_rpgc_bw_ch = make_alignment_bw_process_wt.out.rpgc_bigwig_meta_ch
+
+    // control_meta_rpgc_bw_ch = make_alignment_bw_process_control.out.rpgc_bigwig_meta_ch
+
 
     // I want to view how the meta bigwig output channel looks.
     //control_meta_bw_ch.view()
@@ -194,20 +228,37 @@ workflow mk_bw_call_peaks_workflow {
         //.view()
         .set{concat_wt_control_bam_meta_ch}
     //concat_wt_control_bam_meta_ch.view()
-    macs2_call_peaks_process_both(concat_wt_control_bam_meta_ch, ref_genome_ch) // might need ref_genome
-    //macs2_call_peaks_process_wt()
 
-    // i want to get the ppois files from the macs2 process
-    ppois_files_ch = macs2_call_peaks_process_both.out.ppois_macs2_file
+    ////////////////// GIVE THE USER THE OPTION TO USE MACS2 OR SICER2 ////////////////////////////////////
 
-    get_pval_bedgraph(ppois_files_ch, ref_genome_size_ch)
+    if (params.macs2) {
 
-    pval_bedgraph_ch = get_pval_bedgraph.out.pvalue_bedgraph_file
+    
+        macs2_call_peaks_process_both(concat_wt_control_bam_meta_ch, ref_genome_ch) // might need ref_genome
+        //macs2_call_peaks_process_wt()
 
-    chrom_size_ch = get_pval_bedgraph.out.chrom_size_file
+        // i want to get the ppois files from the macs2 process
+        ppois_files_ch = macs2_call_peaks_process_both.out.ppois_macs2_file
 
-    kenttools_get_bigwig(pval_bedgraph_ch, ref_genome_size_ch)
-    //chrom_size_ch
+        get_pval_bedgraph(ppois_files_ch, ref_genome_size_ch)
+
+        pval_bedgraph_ch = get_pval_bedgraph.out.pvalue_bedgraph_file
+
+        chrom_size_ch = get_pval_bedgraph.out.chrom_size_file
+
+        kenttools_get_bigwig(pval_bedgraph_ch, ref_genome_size_ch)
+        //chrom_size_ch
+    
+    
+    }
+    // if (params.sicer2) {
+
+    //     sicer2_peakcall_process(concat_wt_control_bam_meta_ch, ref_genome_ch)
+    //     sicer2_peaks = sicer2_peakcall_process.out.sicer2_peak_file
+
+    //     sicer2_peaks.view{it -> "these are the sicer2 peaks $it"}
+    // }
+    
 
 
 
@@ -339,7 +390,8 @@ workflow mk_bw_call_peaks_workflow {
             master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
             up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
             down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
-            unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+            // unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process.out.other_peaks_emit.collect()
         }
         else if (params.SE) {
             find_diff_peaks_R_process_SE(group_concat_meta_peaks_ch, all_bams_paths)
@@ -352,7 +404,8 @@ workflow mk_bw_call_peaks_workflow {
             master_peaks_list_ch = find_diff_peaks_R_process_SE.out.master_peak_emit.collect()
             up_peaks_list_ch = find_diff_peaks_R_process_SE.out.up_peaks_emit.collect()
             down_peaks_list_ch = find_diff_peaks_R_process_SE.out.down_peaks_emit.collect()
-            unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+            // unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.other_peaks_emit.collect()
         }
         else {
 
@@ -373,7 +426,7 @@ workflow mk_bw_call_peaks_workflow {
         // unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
 
     }
-    else {
+    else if (params.broadPeak_data) {
         // now getting the channel for the broadpeaks and will have to emit it from the workflow and put into a new workflow to plot the bigwig signal onto the called broad peaks
         
         // this is what i called the channels before changing it to macspeaks...
@@ -631,7 +684,8 @@ workflow mk_bw_call_peaks_workflow {
             master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
             up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
             down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
-            unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+            // unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process.out.other_peaks_emit.collect()
         }
         else if (params.SE) {
             find_diff_peaks_R_process_SE(group_concat_idr_peaks_ch, all_bams_paths)
@@ -644,7 +698,8 @@ workflow mk_bw_call_peaks_workflow {
             master_peaks_list_ch = find_diff_peaks_R_process_SE.out.master_peak_emit.collect()
             up_peaks_list_ch = find_diff_peaks_R_process_SE.out.up_peaks_emit.collect()
             down_peaks_list_ch = find_diff_peaks_R_process_SE.out.down_peaks_emit.collect()
-            unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+            // unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.other_peaks_emit.collect()
         }
         else {
 
@@ -767,11 +822,13 @@ workflow mk_bw_call_peaks_workflow {
     //sicer2_peakcall_process(hlow_bed_for_sicer2_ch)
 
     emit:
-    control_meta_bw_ch
-    wt_meta_bw_ch
+    control_bigwig //control_meta_bw_ch
+    wt_bigwig //wt_meta_bw_ch
+    
+    
     macspeaks_ch
-    control_meta_cpm_bw_ch
-    wt_meta_cpm_bw_ch
+    // control_meta_cpm_bw_ch
+    // wt_meta_cpm_bw_ch
     group_concat_idr_peaks_ch
     master_peaks_list_ch
     up_peaks_list_ch
@@ -780,6 +837,617 @@ workflow mk_bw_call_peaks_workflow {
     //diff_peaks_tuple
     //concat_idr_peaks
 
+}
+
+
+
+workflow mk_bw_call_peaks_workflow_sicer2 {
+
+
+    take:
+    control_bams_index_tuple_ch
+    wt_bams_index_tuple_ch
+    ref_genome_ch
+    ref_genome_size_ch
+    dups_log_ch
+    control_igg_bam_index_tuple_ch
+    wt_igg_bam_index_tuple_ch
+
+    
+
+
+    main:
+
+    control_bams_index_tuple_ch
+            .concat(wt_bams_index_tuple_ch)
+            .map { key, tuple ->
+        
+            
+                bam = tuple[0]
+                bai = tuple[1]
+                basename = bam.baseName
+                file_name = bam.name
+
+                tokens = basename.tokenize("_")
+
+                condition = tokens[0]
+                histone = tokens[1]
+
+                bam
+                //tuple(histone, condition, file_name, bam)
+            
+            }
+            .collect()
+            .view{it -> "this is the all_bams_paths channel but are the igg bams here also? they should not be: $it"}
+            .set{all_bams_paths}
+
+    // i should just put the igg both in the sicer2 process and manually find which is AO or HC
+    // first I need to separate the control and wt by their histone marks
+
+    control_bams_index_tuple_ch
+        .map { unique_name, bam_index_tuple -> 
+        
+        bam_path = bam_index_tuple[0]
+        bai_path = bam_index_tuple[1]
+
+        basename = bam_path.baseName
+        tokens = basename.tokenize("_")
+        
+        condition_label = tokens[0]
+
+        histone_label = tokens[1]
+
+        replicate_label = tokens[2]
+
+        bio_label = tokens[3]
+
+        bam_file_name = bam_path.name
+
+        meta_name = "${tokens[0]}_${tokens[1]}_${tokens[2]}_${tokens[3]}"
+
+
+
+        tuple(condition_label, histone_label, replicate_label, bio_label, bam_file_name, bam_path, bai_path)//.join(','))
+
+
+        }
+        .groupTuple(by:1, sort: true) // how the grouping would look  control h3k27me3 [[H1low, H1low, H1low], H3k27me3, [r2, r3, r1], [H1low_H3k27me3_r2_S26_001.trim.st.all.blft.qft.rmdup.sorted.bam, H1low_H3k27me3_r3_S27_001.trim.st.all.blft.qft.rmdup.sorted.bam, H1low_H3k27me3_r1_S25_001.trim.st.all.blft.qft.rmdup.sorted.bam],
+        // .multiMap{row ->
+
+        // histone_key = row[1] // hoping the second element in the grouping list is the histone key. look above at a snippet of how grouping looked
+
+        // result = [:]
+        // if (histone_key.contains('H3k27me3')) { result.h3k27me3 = row} 
+
+        // if (histone_key.contains('H3k9me3')) { result.h3k9me3 = row}
+
+        // return result
+
+        // // h3k27me3: histone_key.contains('H3k27me3') ? row : null
+        // // h3k9me3: histone_key.contains('H3k9me3') ? row : null
+
+        // }
+        .set{control_bam_meta_ch} // how one of the channels look [H1low,H3k27me3,r2,H1low_H3k27me3_r2_S26_001.trim.st.all.blft.qft.rmdup.sorted.bam,/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/bin/H1low_H3k27me3_r2_S26_001.trim.st.all.blft.qft.rmdup.sorted.bam,/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/bin/H1low_H3k27me3_r2_S26_001.trim.st.all.blft.qft.rmdup.sorted.bam.bai]
+        //.view()
+    //control_bam_meta_ch.view { v -> "control $v"} // not using multimap. here is how it looks.  [[H1low, H1low, H1low], H3k27me3, [r2, r3, r1], [H1low_H3k27me3_r2_S26_001.trim.st.all.blft.qft.rmdup.sorted.bam, H1low_H3k27me3_r3_S27_001.trim.st.all.blft.qft.rmdup.sorted.bam, H1low_H3k27me3_r1_S25_001.trim.st.all.blft.qft.rmdup.sorted.bam],
+
+    //control_bam_meta_ch.view()
+
+    wt_bams_index_tuple_ch
+        .map { unique_name, bam_index_tuple -> 
+        
+        bam_path = bam_index_tuple[0]
+        bai_path = bam_index_tuple[1]
+
+        basename = bam_path.baseName
+        tokens = basename.tokenize("_")
+        
+        condition_label = tokens[0]
+
+        histone_label = tokens[1]
+
+        replicate_label = tokens[2]
+
+        bio_label = tokens[3]
+
+        bam_file_name = bam_path.name
+
+        meta_name = "${tokens[0]}_${tokens[1]}_${tokens[2]}_${tokens[3]}"
+
+        
+
+        tuple(condition_label, histone_label, replicate_label, bio_label, bam_file_name, bam_path, bai_path)//.join(', '))
+
+
+        }
+        .groupTuple(by:1, sort: true) // how the grouping would look [Scrm, Scrm, Scrm], H3k27me3, [r3, r2, r1], [Scrm_H3k27me3_r3_S3_001.trim.st.all.blft.qft.rmdup.sorted.bam, Scrm_H3k27me3_r2_S2_001.trim.st.all.blft.qft.rmdup.sorted.bam, Scrm_H3k27me3_r1_S1_001.trim.st.all.blft.qft.rmdup.sorted.bam],
+        //.view()
+        // .multiMap{row ->
+
+        // histone_key = row[1] // hoping the second element in the grouping list is the histone key. look above at a snippet of how grouping looked
+
+        // result = [:]
+        // if (histone_key.contains('H3k27me3')) { result.h3k27me3 = row} 
+
+        // if (histone_key.contains('H3k9me3')) { result.h3k9me3 = row}
+
+        // return result
+
+        // //h3k27me3: histone_key.contains('H3k27me3') ? row : null
+        // //h3k9me3: histone_key.contains('H3k9me3') ? row : null
+
+        // }
+        .set{wt_bam_meta_ch} // how one of the wt channels look with out grouping, but i ended up grouping so look above [Scrm,H3k27me3,r3,Scrm_H3k27me3_r3_S3_001.trim.st.all.blft.qft.rmdup.sorted.bam,/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/bin/Scrm_H3k27me3_r3_S3_001.trim.st.all.blft.qft.rmdup.sorted.bam,/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/peak_calling_analysis_pipeline/bin/Scrm_H3k27me3_r3_S3_001.trim.st.all.blft.qft.rmdup.sorted.bam.bai]
+    // wt_bam_meta_ch.h3k27me3.view { v -> "h3k27me3 $v"}
+    // wt_bam_meta_ch.h3k9me3.view { v -> "h3k9me3 $v"}
+
+
+    // first I need to make a process to make bigwig files out of each bam in the histone marks groups.
+    // these bigwig files will be made from the bam files 
+    // all_control_bams = control_bam_meta_ch.h3k27me3.concat(control_bam_meta_ch.h3k9me3)
+    // all_control_bams.view()
+    
+    //control_bam_meta_ch.view()
+
+    make_alignment_bw_process_control(control_bam_meta_ch)
+
+    make_alignment_bw_process_wt(wt_bam_meta_ch)
+
+
+    // control_meta_bw_ch = make_alignment_bw_process_control.out.bigwig_meta_ch
+
+    // wt_meta_bw_ch = make_alignment_bw_process_wt.out.bigwig_meta_ch
+
+    // control_meta_cpm_bw_ch = make_alignment_bw_process_control.out.cpm_bigwig_meta_ch
+    // wt_meta_cpm_bw_ch = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
+
+    if (params.raw_bigwig) {
+
+        control_bigwig = make_alignment_bw_process_control.out.bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.bigwig_meta_ch
+
+    }
+    else if (params.cpm_bigwig) {
+
+        control_bigwig = make_alignment_bw_process_control.out.cpm_bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.cpm_bigwig_meta_ch
+
+    }
+    else if (params.rpgc_bigwig) {
+
+        control_bigwig = make_alignment_bw_process_control.out.rpgc_bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.rpgc_bigwig_meta_ch
+
+    }
+    else {
+
+        control_bigwig = make_alignment_bw_process_control.out.bigwig_meta_ch
+        wt_bigwig = make_alignment_bw_process_wt.out.bigwig_meta_ch
+
+    }
+
+    // I want to view how the meta bigwig output channel looks.
+    //control_meta_bw_ch.view()
+
+    // now that i have the meta channels where I grouped them by the histone marks, I can put it into a process to call peaks on all the files for that histone mark and another process will spawn calling peaks for the other histone marks in parallel
+
+    // i think if i concat the control_bam_meta_ch and the wt_bam_meta_ch I can parallelize the process
+    wt_bam_meta_ch
+        .concat(control_bam_meta_ch)
+        .transpose()
+        //.view()
+        .set{concat_wt_control_bam_meta_ch}
+    //concat_wt_control_bam_meta_ch.view()
+
+    ////////////////// GIVE THE USER THE OPTION TO USE MACS2 OR SICER2 ////////////////////////////////////
+
+    // how does this look
+    control_igg_bam_index_tuple_ch
+        // .view{it -> "this is the control igg bam index tuple $it"}
+        .map{ key, bam_index_tuple ->
+
+        bam_path = bam_index_tuple[0]
+        bai_path = bam_index_tuple[1]
+        
+        basename = bam_path.baseName
+        bam_file_name = bam_path.name
+
+        tokens = basename.tokenize("_")
+
+        condition = tokens[0]
+        igg_label = tokens[1]
+        tech_rep = tokens[2]
+        bio_label = tokens[3]
+
+        tuple(condition, igg_label, tech_rep, bio_label, bam_file_name, bam_path, bai_path)
+
+        }
+        .set{control_igg_meta_ch}
+
+    wt_igg_bam_index_tuple_ch
+        // .view{it -> "this is the wild type igg bam index tuple $it"}
+        .map{ key, bam_index_tuple ->
+
+        bam_path = bam_index_tuple[0]
+        bai_path = bam_index_tuple[1]
+        
+        basename = bam_path.baseName
+        bam_file_name = bam_path.name
+
+        tokens = basename.tokenize("_")
+
+        condition = tokens[0]
+        igg_label = tokens[1]
+        tech_rep = tokens[2]
+        bio_label = tokens[3]
+
+        tuple(condition, igg_label, tech_rep, bio_label, bam_file_name, bam_path, bai_path)
+
+        }
+        .set{wt_igg_meta_ch}
+
+    
+    concat_wt_control_bam_meta_ch
+        .concat(control_igg_meta_ch, wt_igg_meta_ch)
+        .groupTuple(by:[0,3])
+        .view{it -> "this is attempting to get the igg in the correct place $it"} // this is how one looks  [Scr, [H3K27me3, H3K27me3], [mergedReps1, r1], AO.arnold, [Scr_H3K27me3_mergedReps1_AO.arnold.bam, Scr_H3K27me3_r1_AO.arnold_IgG_S19.filt_r1_r2_filt_coor_sorted_BL_filt_sort2.bam], [/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/Scr_H3K27me3_mergedReps1_AO.arnold.bam, /lustre/fs4/risc_lab/scratch/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/igg_bams/Scr_H3K27me3_r1_AO.arnold_IgG_S19.filt_r1_r2_filt_coor_sorted_BL_filt_sort2.bam], [/lustre/fs4/risc_lab/scratch/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/Scr_H3K27me3_mergedReps1_AO.arnold.bam.bai, /lustre/fs4/risc_lab/scratch/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/igg_bams/Scr_H3K27me3_r1_AO.arnold_IgG_S19.filt_r1_r2_filt_coor_sorted_BL_filt_sort2.bam.bai]]
+        .set{final_norm_vs_igg_bams_meta_ch}
+
+    // I need the norm wt and norm control bam channels separate, then each replicate combined with the wt or control igg
+    wt_bams_index_tuple_ch
+        .combine(wt_igg_bam_index_tuple_ch)
+        .map { norm_key, norm_bam_index, igg_key, igg_bam_index ->
+
+        norm_bam = norm_bam_index[0]
+        norm_index = norm_bam_index[1]
+
+        igg_bam = igg_bam_index[0]
+        igg_index = igg_bam_index[1]
+
+        // put all bams together
+        // wt_igg_bams = [norm_bam, igg_bam]
+
+        // get the basename of the normal and igg?
+        norm_basename = norm_bam.baseName
+        norm_tokens = norm_basename.tokenize("_")
+        norm_bam_name = norm_bam.name
+
+        norm_condition = norm_tokens[0]
+        norm_exper = norm_tokens[1]
+        norm_reps = norm_tokens[2]
+        norm_grouping_label = norm_tokens[3]
+
+
+
+
+        norm_tuple = tuple(norm_condition, norm_exper, norm_reps, norm_grouping_label, norm_bam_name, norm_bam, norm_index)
+
+        // now i want to make a tuple for the igg then group the two tuples somehow
+
+        igg_basename = igg_bam.baseName
+        igg_tokens = igg_basename.tokenize("_")
+        igg_bam_name = igg_bam.name
+
+        igg_condition = igg_tokens[0]
+        igg_exper = igg_tokens[1]
+        igg_reps = igg_tokens[2]
+        igg_grouping_label = igg_tokens[3]
+
+        igg_tuple = tuple(igg_condition, igg_exper, igg_reps, igg_grouping_label, igg_bam_name, igg_bam, igg_index)
+
+        [norm_tuple, igg_tuple].transpose()
+
+
+
+        }
+        // .groupTuple(by:[0,3])
+        // .flatten()
+        // .transpose()
+        // .groupTuple(by:[0,3])
+        // .toList()
+        // .groupTuple()
+        // .flatten() // dont use flatten
+        // .groupTuple(by:[0,3])
+        .view{it -> "lets see how the norm wt bam index with igg wt bam index looks $it"}
+        .set{norm_igg_wt_meta_tuple_ch}
+
+    control_bams_index_tuple_ch
+        .combine(control_igg_bam_index_tuple_ch)
+        .map { norm_key, norm_bam_index, igg_key, igg_bam_index ->
+
+        norm_bam = norm_bam_index[0]
+        norm_index = norm_bam_index[1]
+
+        igg_bam = igg_bam_index[0]
+        igg_index = igg_bam_index[1]
+
+        // put all bams together
+        // wt_igg_bams = [norm_bam, igg_bam]
+
+        // get the basename of the normal and igg?
+        norm_basename = norm_bam.baseName
+        norm_tokens = norm_basename.tokenize("_")
+        norm_bam_name = norm_bam.name
+
+        norm_condition = norm_tokens[0]
+        norm_exper = norm_tokens[1]
+        norm_reps = norm_tokens[2]
+        norm_grouping_label = norm_tokens[3]
+
+
+
+
+        norm_tuple = tuple(norm_condition, norm_exper, norm_reps, norm_grouping_label, norm_bam_name, norm_bam, norm_index)
+
+        // now i want to make a tuple for the igg then group the two tuples somehow
+
+        igg_basename = igg_bam.baseName
+        igg_tokens = igg_basename.tokenize("_")
+        igg_bam_name = igg_bam.name
+
+        igg_condition = igg_tokens[0]
+        igg_exper = igg_tokens[1]
+        igg_reps = igg_tokens[2]
+        igg_grouping_label = igg_tokens[3]
+
+        igg_tuple = tuple(igg_condition, igg_exper, igg_reps, igg_grouping_label, igg_bam_name, igg_bam, igg_index)
+
+        [norm_tuple, igg_tuple].transpose()
+
+
+
+        }
+        // .groupTuple(by:[0,3])
+        // .flatten()
+        // .transpose()
+        // .groupTuple(by:[0,3])
+        // .toList()
+        // .groupTuple()
+        // .flatten() // dont use flatten
+        // .groupTuple(by:[0,3])
+        .view{it -> "lets see how the norm control bam index with igg control bam index looks $it"}
+        .set{norm_igg_control_meta_tuple_ch}
+    
+    norm_igg_wt_meta_tuple_ch
+        .concat(norm_igg_control_meta_tuple_ch)
+        .view{it -> "this is the final norm_igg wt and control meta channels concatenated: $it"}
+        .set{final_norm_igg_good_meta_ch}
+
+
+    if (params.sicer2) {
+
+        // sicer2_peakcall_process(final_norm_vs_igg_bams_meta_ch, ref_genome_ch)
+        sicer2_peakcall_process(final_norm_igg_good_meta_ch, ref_genome_ch)
+
+        // seeing if sicer2 can output all the bed files without using igg
+        // sicer2_peakcall_process_noigg(concat_wt_control_bam_meta_ch, ref_genome_ch)
+
+        sicer2_peaks = sicer2_peakcall_process.out.sicer2_peak_file
+
+        sicer2_peaks
+            .map {file -> 
+            
+            basename = file.baseName
+            file_name = file.name
+            
+            tokens = basename.tokenize("_")
+
+            condition = tokens[0]
+            exper_type = tokens[1]
+            tech_reps = tokens[2]
+
+            tuple(condition, exper_type, tech_reps, file_name, file )
+
+            }
+            .groupTuple(by:1)
+            .view{it -> "how the sicer2 peaks meta ch looks: $it"}
+            .set{sicer2_peaks_meta_ch}
+
+        concat_sicer2_peaks_process(sicer2_peaks_meta_ch)
+
+        concat_sicer_peaks = concat_sicer2_peaks_process.out.sicer2_master_peak
+
+
+        concat_sicer_peaks
+                //.flatten()
+                .map { file -> 
+                
+                file_basename = file.baseName
+                file_name = file.name
+
+                tokens = file_basename.tokenize("_")
+
+                // concat_label = tokens[0]
+                // master_label = tokens[1]
+                // condition_label = tokens[2]
+                // exper_type = tokens[3]
+                // //merge_dist = tokens[4]
+                // // rep_label = tokens[4]
+
+                // tuple(condition_label, exper_type, rep_label, file_name, file)
+
+                condition_label = tokens[2]
+                exper_type = tokens[3]
+                // merge_dist = tokens[4]
+                merge_dist = "sicer_no_merge"
+
+                tuple(condition_label, exper_type, merge_dist, file_name, file)
+
+                }
+                //.groupTuple(by:1, sort:true)
+                .view{it -> "these are the sicer2 concat files $it" }
+                .set{sicer2_concat_meta_peaks_ch}
+        
+        if (params.PE) {
+            find_diff_peaks_R_process(sicer2_concat_meta_peaks_ch, all_bams_paths)
+
+            diff_peaks_tuple = find_diff_peaks_R_process.out.diff_peaks_ch
+            //diff_peaks_tuple.view()
+
+            // try keeping the peaks in separate channels
+            // then when I put this into a process or workflow, just check to see if the histones match
+            master_peaks_list_ch = find_diff_peaks_R_process.out.master_peak_emit.collect()
+            up_peaks_list_ch = find_diff_peaks_R_process.out.up_peaks_emit.collect()
+            down_peaks_list_ch = find_diff_peaks_R_process.out.down_peaks_emit.collect()
+            // unchanging_peaks_list_ch = find_diff_peaks_R_process.out.unchanging_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process.out.other_peaks_emit.collect()
+
+            // other_peaks_emit
+            
+        }
+        else if (params.SE) {
+            find_diff_peaks_R_process_SE(sicer2_concat_meta_peaks_ch, all_bams_paths)
+
+            diff_peaks_tuple = find_diff_peaks_R_process_SE.out.diff_peaks_ch
+            //diff_peaks_tuple.view()
+
+            // try keeping the peaks in separate channels
+            // then when I put this into a process or workflow, just check to see if the histones match
+            master_peaks_list_ch = find_diff_peaks_R_process_SE.out.master_peak_emit.collect()
+            up_peaks_list_ch = find_diff_peaks_R_process_SE.out.up_peaks_emit.collect()
+            down_peaks_list_ch = find_diff_peaks_R_process_SE.out.down_peaks_emit.collect()
+            // unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.unchanging_peaks_emit.collect()
+            unchanging_peaks_list_ch = find_diff_peaks_R_process_SE.out.other_peaks_emit.collect()
+        }
+        else {
+
+            onError:
+            throw new IllegalArgumentException("User Parameter Error: Please use the parameter --PE or --SE, if you have pair end reads or single end reads respectively!")
+        }
+        // sicer2_peaks.view{it -> "these are the sicer2 peaks $it"}
+    }
+    
+
+
+
+
+  
+
+    if (params.make_html_report = true) {
+        // running multiqc on the duplicate log files
+
+        // group by histone 
+        dups_log_ch
+            .flatten()
+            .map { file ->
+            
+            file_basename = file.baseName
+            tokens = file_basename.tokenize("_")
+            condition = tokens[0]
+            histone = tokens[1]
+            
+            //grouping_key  = "${condition}_${histone}"
+            tuple( condition, histone, file)
+            }
+            .groupTuple(by:1)
+            .set{dups_log_meta_ch}
+        multiqc_process(dups_log_meta_ch)
+    }
+
+
+    // I should try seacr now //////////////
+    //control_bam_meta_ch.view()
+    //wt_bam_meta_ch.view()
+    
+    // possibly concate the two above so i can run process for getting bedgraph files in parallel
+    control_bams_index_tuple_ch
+        .concat(wt_bams_index_tuple_ch)
+        //.view()
+        .set{combined_bam_index_tuple_ch}
+
+    //combined_bam_index_tuple_ch.view()
+    // it takes the reference genome also
+    mk_bedgraph_process(combined_bam_index_tuple_ch, ref_genome_size_ch)
+
+    bedgraphs_for_seacr_ch = mk_bedgraph_process.out.bedgraph_for_seacr
+    
+    // then the seacr process 
+    //seacr_peakcalls_process(bedgraphs_for_seacr_ch)
+
+    // now make a idr process for seacr peaks
+    // well seacr does not give back peaks that when merged with idr will total more that 20
+    // and idr needs to have a post merge of 20 peaks.
+    
+    /* seacr_peaks = seacr_peakcalls_process.out.seacr_peaks
+
+    seacr_peaks
+        .map{ peakpath -> 
+        
+        basename = peakpath.baseName
+        file_name = peakpath.name
+
+        
+
+        tokens = basename.tokenize("_")
+
+        condition = tokens[0]
+        histone = tokens[1]
+        replicate = tokens[2]
+        bio_rep = tokens[3]
+
+        grouping_key = "${condition}_${histone}"
+
+        tuple(grouping_key, condition, histone, replicate, bio_rep, file_name, basename, peakpath)
+        
+        }
+        .groupTuple(by:0, sort:true)
+        //.view()
+        .set{seacrpeaks_gtuple_meta_ch}
+
+
+
+    seacr_idr_process(seacrpeaks_gtuple_meta_ch)
+    */
+
+
+    // now making a process to get sicer2 peaks
+    // I can use the bam files because I added bedtools in the sicer2 conda environment I made
+
+    //combined_bam_index_tuple_ch.view()
+    //sicer2_peakcall_process(combined_bam_index_tuple_ch)
+
+    // ill just make a process to create bed files from the bams and then input it into sicer2 env that is by itself
+    // mk_bed_for_sicer2_process(combined_bam_index_tuple_ch)
+
+    // bed_for_sicer2_ch = mk_bed_for_sicer2_process.out.bed_for_sicer2
+
+    //bed_for_sicer2_ch
+        //.filter ( ~/.*H1low.*/)
+        //.view()
+        //.set{hlow_bed_for_sicer2_ch}
+    
+    //sicer2_peakcall_process(hlow_bed_for_sicer2_ch)
+
+    // emit:
+    // control_meta_bw_ch
+    // wt_meta_bw_ch
+    
+    
+    // macspeaks_ch
+    // control_meta_cpm_bw_ch
+    // wt_meta_cpm_bw_ch
+    // group_concat_idr_peaks_ch
+    // master_peaks_list_ch
+    // up_peaks_list_ch
+    // down_peaks_list_ch
+    // unchanging_peaks_list_ch
+    //diff_peaks_tuple
+    //concat_idr_peaks
+
+    emit:
+    
+    control_bigwig //control_meta_bw_ch
+    wt_bigwig //wt_meta_bw_ch
+    
+    
+    // macspeaks_ch
+    // control_meta_cpm_bw_ch
+    // wt_meta_cpm_bw_ch
+    sicer2_concat_meta_peaks_ch
+    master_peaks_list_ch
+    up_peaks_list_ch
+    down_peaks_list_ch
+    unchanging_peaks_list_ch
 }
 
 
@@ -1392,7 +2060,7 @@ workflow plot_diff_peaks_over_diff_genes_workflow {
     //signal_over_gene_tss_process( up_genes_with_20kb, down_genes_with_20kb, nochange_genes_with_20kb, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
 
     // i wasnt using the 20kb files from above.
-    signal_over_gene_tss_process( proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, up_genes_ch, down_genes_ch, combined_bigwig_meta_2grouped_ch)
+    signal_over_gene_tss_process( proseq_up_gene_ch, proseq_down_gene_ch, proseq_unchanging_gene_ch, up_genes_ch, down_genes_ch, nochanging_genes_ch, combined_bigwig_meta_2grouped_ch)
 
     // now make a process to find which peaks intersect the up and down genes
     
@@ -1422,6 +2090,7 @@ workflow plot_atac_signal_over_diff_peaks_workflow {
     // new additions
     down_atac_peaks_ch
     up_atac_peaks_ch
+    nochange_atac_peaks_ch
     combined_bigwig_meta_2grouped_ch
     cpg_island_unmasked_ch
 
@@ -1435,7 +2104,7 @@ workflow plot_atac_signal_over_diff_peaks_workflow {
     // atac_signal_over_peaks_process(control_atac_bigwig, treatment_atac_bigwig, up_peaks, down_peaks, unchanging_peaks,  down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_meta_2grouped_ch, cpg_island_unmasked_ch)
 
     // version using peaks from the pipeline
-    atac_signal_over_peaks_process(control_atac_bigwig, treatment_atac_bigwig, down_atac_peaks_ch, up_atac_peaks_ch, combined_bigwig_meta_2grouped_ch, cpg_island_unmasked_ch)
+    atac_signal_over_peaks_process(control_atac_bigwig, treatment_atac_bigwig, down_atac_peaks_ch, up_atac_peaks_ch, nochange_atac_peaks_ch, combined_bigwig_meta_2grouped_ch, cpg_island_unmasked_ch)
 
 
 
@@ -1598,8 +2267,11 @@ workflow get_proximal_distal_atac_peaks_workflow {
         proximal_down_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_down_genes
         proximal_unchanging_atac = get_atacPeaks_in_genetss_process.out.diff_peaks_unchanging_genes
 
-        proximal_up_atac
-            .concat(proximal_down_atac, proximal_unchanging_atac)
+        // now using the up atac peaks anymore
+        // proximal_up_atac
+        //     .concat(proximal_down_atac, proximal_unchanging_atac)
+        proximal_down_atac
+            .concat( proximal_unchanging_atac)
             .toList()
             .map {file ->
             
@@ -1740,7 +2412,8 @@ workflow get_roadmap_histone_enrichment_workflow {
         
         path
         }
-        .concat(up_peaks_list_true, down_peaks_list_true) // new part to test
+        .concat( down_peaks_list_true) // not using the up peaks here???
+        // .concat(up_peaks_list_true, down_peaks_list_true) // new part to test
         .flatten()
         .toList()
         //.view{path -> "how does flatten then toList look? $path"}
@@ -1829,7 +2502,12 @@ workflow get_roadmap_histone_enrichment_workflow {
         // replicate_label = tokens[2]
         // tuple(condition_label, experiment_label, replicate_label)
         // }
-        //.view()
+        .map { key, bam_bai_list ->
+            
+            bam_bai_list
+
+        }
+        .view{it -> "this should be the atac bigwig/ bams : $it"}
         .set{atac_bigwig_cat}
 
     control_proseq_bam
@@ -1869,7 +2547,7 @@ workflow get_roadmap_histone_enrichment_workflow {
         tokens = basename.tokenize("_")
 
         condition = tokens[0]
-        peak_type = tokens[1]
+        peak_type = tokens[3]
 
         tuple(peak_type, basename, filename, file)
 
