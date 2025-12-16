@@ -1,0 +1,256 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+h1low_atac_enrich = read_tsv("enrichment_of_experiment/dH1-allmerge_enrichment_counts.tab")
+scrm_atac_enrich = read_tsv("enrichment_of_experiment/scr-allmerge_enrichment_counts.tab")
+
+
+head(h1low_atac_enrich)
+head(scrm_atac_enrich)
+
+# checking how I can get the enrichment between h1low vs scrm
+print(h1low_atac_enrich$percent/scrm_atac_enrich$percent)
+
+
+#atac_enrichment_counts = DataFrame(featureType = h1low_atac_enrich$featureType, enrichment = h1low_atac_enrich$percent/scrm_atac_enrich$percent )
+
+atac_enrichment_counts = DataFrame(featureType = h1low_atac_enrich$featureType, enrichment = log2(h1low_atac_enrich$percent/scrm_atac_enrich$percent) )
+
+pos_enrichment = which(atac_enrichment_counts$enrichment > 0)
+neg_enrichment = which(atac_enrichment_counts$enrichment < 0)
+
+# using ifelse is a conditional that does this 
+atac_enrichment_counts$color = ifelse( atac_enrichment_counts$enrichment > 0, 'up_enriched', 'down_enriched')
+                                         # atac_enrichment_counts$enrichment < 0, 'red', 'gray')
+                                          
+
+print(atac_enrichment_counts)
+
+```
+
+
+```{r}
+
+print(atac_enrichment_counts$featureType)
+
+string_test = strsplit(atac_enrichment_counts$featureType, "_")
+
+new_names = sapply(string_test, function(x) {
+  paste(na.omit(x[c(1:5,12,13)]), collapse = "_")
+})
+
+new_names
+
+#new_name = paste(na.omit(string_test[[1]][1:5-12-13]), collapse = "_")
+#new_name
+
+atac_enrichment_counts["featureType"] = new_names
+
+print(atac_enrichment_counts$featureType)
+
+```
+
+
+
+```{r}
+#dim(atac_enrichment_counts)
+ggplot(data = atac_enrichment_counts, aes(x = featureType, y = enrichment, fill = color) )+
+  geom_bar(stat = "identity")+
+  scale_fill_manual(values=c( "up_enriched" ="green", "down_enriched" ="gray"))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1) )+
+  labs(title = 'ATAC-seq Enrichment H1low/Scrm log2FC')+
+  scale_y_continuous(labels = scales::label_number())
+
+#ggsave("atac_enrichment_in_histones.png", plot=last_plot())
+  
+  #scale_y_continuous(labels = scales::log10_trans())
+
+```
+
+
+## now using the narrow peaks
+
+```{r}
+
+h1low_atac_narrow_enrich = read_tsv("enrichment_of_experiment/dH1-allmerge_narrow_enrichment_counts.tab")
+scrm_atac_narrow_enrich = read_tsv("enrichment_of_experiment/scr-allmerge_narrow_enrichment_counts.tab")
+
+
+head(h1low_atac_narrow_enrich)
+head(scrm_atac_narrow_enrich)
+
+# checking how I can get the enrichment between h1low vs scrm
+print(h1low_atac_narrow_enrich$percent/scrm_atac_narrow_enrich$percent)
+
+
+#atac_enrichment_counts = DataFrame(featureType = h1low_atac_enrich$featureType, enrichment = h1low_atac_enrich$percent/scrm_atac_enrich$percent )
+
+atac_narrow_enrichment_counts = DataFrame(featureType = h1low_atac_narrow_enrich$featureType, enrichment = log2(h1low_atac_narrow_enrich$percent/scrm_atac_narrow_enrich$percent) )
+
+#pos_enrichment = which(atac_enrichment_counts$enrichment > 0)
+#neg_enrichment = which(atac_enrichment_counts$enrichment < 0)
+
+# using ifelse is a conditional that does this 
+atac_narrow_enrichment_counts$color = ifelse( atac_narrow_enrichment_counts$enrichment > 0, 'up_enriched', 'down_enriched')
+                                         # atac_enrichment_counts$enrichment < 0, 'red', 'gray')
+                                          
+
+print(atac_narrow_enrichment_counts)
+```
+
+## now the narrow plot
+
+```{r}
+
+ggplot(data = atac_narrow_enrichment_counts, aes(x = featureType, y = enrichment, fill = color) )+
+  geom_bar(stat = "identity")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
+    plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
+  scale_fill_manual(values = c("gray","green"))+
+  labs(title = 'ATAC-seq Narrow Enrichment H1low/Scrm log2FC', caption = "This is k562 ChIP-seq narrow peak data from roadmap. \nDeeptools was used to generate counts from ATAC-seq H1low and scrambled bam files,\n to get the number of reads that align in each of the roadmap narrow peaks. The percentage of \nreads in peaks vs total reads is the column I use to get the accessibility enrichment score.\n I take log2 of the percentage of H1low reads divided by the percentage of Scrm reads ratio,\n which gives the log fold enrichment of accessibility")+
+  scale_y_continuous(labels = scales::label_number())
+  
+
+ggsave("atac_enrichment_in_narrow_histones.png", plot=last_plot(), width = 12, height = 8, units = "in", dpi = 300)
+
+```
+
+
+# Now I should attempt to create a similar graph to above but using the up and unchanging ATAC-seq peaks 
+# but first I need to incoorporate in the pipeline; finding which histone modifications they align in. similar to how I did the cpg islands in peaks.
+
+# so find the atac up peaks that align in histone modifications and call that up_ATAC_{histone}_peaks and unchanging_ATAC_{histone}_peaks
+
+```{r}
+
+up_atac_in_peaks = list.files("./intersect_atacPeaks_in_histone_peaks/", pattern = "up*", full.names = TRUE)
+
+nochange_atac_in_peaks = list.files("./intersect_atacPeaks_in_histone_peaks/", pattern = "nochange*", full.names = TRUE)
+
+all_up_atac_regions = list.files("./bin/atac-seq_bed/", pattern = "scrvslow-up.bed", full.names = TRUE)
+all_nochange_atac_regions = list.files("./bin/atac-seq_bed/", pattern = "rep-peaks-scrvslow-nochange.bed", full.names = TRUE)
+
+# now I need to divide all the up peaks by the up regions
+
+up_df_stats = do.call(rbind, lapply(up_atac_in_peaks, function(x) {
+  
+  file_basename = basename(x)
+  
+  df_name = paste(file_basename, "_df")
+  
+  df = read_tsv(x, col_names = FALSE)
+  
+  as.data.frame(df)
+  
+  histone_mark = strsplit(df_name, "_")[[1]][3]
+  
+  name_of_atac_file = paste0("atac_", histone_mark)
+  
+  #counts = length(df_name[,1])
+  
+  new_df = data.frame("number_of_peaks" = nrow(df), "roadmap_data" = name_of_atac_file)
+  
+  # seeing if i can then bind the dataframes by rows 
+  #rbind(df_name, up_df_stats)
+  
+}))
+
+
+# now i can do the same for the no change atac peaks
+
+nochange_df_stats = do.call(rbind, lapply(nochange_atac_in_peaks, function(x) {
+  
+  file_basename = basename(x)
+  
+  df_name = paste(file_basename, "_df")
+  
+  df = read_tsv(x, col_names = FALSE)
+  
+  as.data.frame(df)
+  
+  histone_mark = strsplit(df_name, "_")[[1]][3]
+  
+  name_of_atac_file = paste0("atac_", histone_mark)
+  
+  #counts = length(df_name[,1])
+  
+  new_df = data.frame("number_of_peaks" = nrow(df), "roadmap_data" = name_of_atac_file)
+  
+  # seeing if i can then bind the dataframes by rows 
+  #rbind(df_name, up_df_stats)
+  
+}))
+
+# now what i need to do is get the percentage of up atac peaks that were in each of the histone marks by dividing that column by the total number of atac peaks. I will do that for the nochange also
+
+# first I need to get the total number of all up and nochange atac peaks, by loading in the data and finding the number of rows
+all_up_atac_peaks = data.frame(read_tsv("./bin/atac-seq_bed/scrvslow-up.bed"))
+
+total_up_atac_peaks = nrow(all_up_atac_peaks)
+total_up_atac_peaks
+
+# then i will continue this below
+
+up_df_stats["percentage_of_UP_atac_peaks"] = 100*(up_df_stats$number_of_peaks/total_up_atac_peaks)
+up_df_stats
+
+# now the nochange atac peaks
+all_nochange_atac_peaks = data.frame(read_tsv("./bin/atac-seq_bed/rep-peaks-scrvslow-nochange.bed"))
+
+total_nochange_atac_peaks = nrow(all_nochange_atac_peaks)
+total_nochange_atac_peaks
+
+nochange_df_stats["percentage_of_nochange_atac_peaks"] = 100*(nochange_df_stats$number_of_peaks/total_nochange_atac_peaks)
+nochange_df_stats
+
+
+log2_up_vs_nochange_atack_peaks = log2(up_df_stats$percentage_of_UP_atac_peaks/nochange_df_stats$percentage_of_nochange_atac_peaks)
+
+up_vs_nochange_atack_ratio_df = data.frame(roadmap_data = up_df_stats$roadmap_data, log2FC = log2_up_vs_nochange_atack_peaks)
+
+up_vs_nochange_atack_ratio_df
+
+up_vs_nochange_atack_ratio_df["colors"] = ifelse(up_vs_nochange_atack_ratio_df$log2FC > 0, "up", "down")
+
+up_vs_nochange_atack_ratio_df
+
+```
+
+# now plotting the data
+
+```{r}
+
+ggplot(data = up_vs_nochange_atack_ratio_df, aes(x = roadmap_data, y = log2FC, fill = colors) )+
+  geom_bar(stat = "identity")+
+  scale_fill_manual(values=c( "up" ="green", "down" ="gray"))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9), plot.caption = element_text(hjust = 0, size = 9),
+    plot.margin = margin(t = 10, r = 10, b = 30, l = 10) )+
+  labs(title = 'up ATAC-seq vs unchanging ATAC-seq peaks in roadmap Histones log2FC', caption = "This plot shows the log2FC  between\n the up ATAC peaks vs the unchanging ATAC-seq peaks that are found\n to intersect each of the roadmap histone peak data.")+
+  scale_y_continuous(labels = scales::label_number())
+
+ggsave("Log2FC_up-ATAC_vs_unchanging-ATAC_roadmap.png", plot = last_plot(), width = 12, height = 8, units = "in", dpi = 300)
+
+```
+
+
+# this was just testing and scrapping
+```{r}
+df = read_tsv("./intersect_atacPeaks_in_histone_peaks/nochange_atacPeaks_E123-DNase.macs2.narrowPeak_narrow.bed", show_col_types = FALSE, col_names = FALSE)
+
+file_name = list.files("./intersect_atacPeaks_in_histone_peaks/", pattern = "nochange_atacPeaks_E123-DNase.macs2.narrowPeak_narrow.bed", full.names = FALSE)
+
+
+histone_mark = strsplit(file_name, "_")[[1]][3]
+histone_mark
+
+name_of_atac_file = paste0("atac_", histone_mark)
+
+new_df = data.frame("number_of_peaks" = nrow(df), "name_column" = name_of_atac_file)
+
+new_df
+```
+
