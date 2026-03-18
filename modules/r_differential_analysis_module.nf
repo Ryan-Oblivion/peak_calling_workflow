@@ -36,9 +36,14 @@ process find_diff_peaks_R_process {
     tuple val("${full_condition}"), val("${idr_histone}"), path("${up_peaks_out}"), path("${down_peaks_out}"), path("${unchanging_peaks_out}"), emit: diff_peaks_ch 
 
     path("${up_peaks_out}"), emit: up_peaks_emit
+    path("${up_peaks_out_table}")
     path("${down_peaks_out}"), emit: down_peaks_emit
+    path("${down_peaks_out_table}")
     path("${unchanging_peaks_out}"), emit: unchanging_peaks_emit
+    path("${unchanging_peaks_out_table}")
     path("${other_peaks_out}"), emit: other_peaks_emit
+    path("${other_peaks_out_table}")
+    path("*.tsv"), emit: deseq2_results_sizefactors_emit
 
 
 
@@ -67,6 +72,11 @@ process find_diff_peaks_R_process {
     down_peaks_out = "down_${idr_histone}_${full_condition}_regulated_peaks.bed"
     unchanging_peaks_out = "unchanging_${idr_histone}_${full_condition}_regulated_peaks.bed"
     other_peaks_out = "others_${idr_histone}_${full_condition}_regulated_peaks.bed"
+
+    up_peaks_out_table = "up_${idr_histone}_${full_condition}_regulated_peaks.tsv"
+    down_peaks_out_table = "down_${idr_histone}_${full_condition}_regulated_peaks.tsv"
+    unchanging_peaks_out_table = "unchanging_${idr_histone}_${full_condition}_regulated_peaks.tsv"
+    other_peaks_out_table = "others_${idr_histone}_${full_condition}_regulated_peaks.tsv"
 
     // masterPeak100kb = false
     // masterPeak10kb = false
@@ -357,8 +367,25 @@ process find_diff_peaks_R_process {
                                     design = ~ condition_factor)
 
 
+        #############################################################################################
+        # now checking to see if I can estimate and save the szie factors to a file 
+        dds = estimateSizeFactors(dds)
+
+        size_factor_table = sizeFactors(dds)
+
+        write.table(as.data.frame(size_factor_table), file = "size_factor_calculation.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        #############################################################################################
+
         # using the function on our data
         DDS = DESeq(dds)
+
+        ##############################
+        # saving the deseq2 results table
+        deseq_results_table = results(DDS)
+
+        write.table(as.data.frame(deseq_results_table), file = "deseq_results_table.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        ##############################
+
 
         norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
 
@@ -578,17 +605,29 @@ process find_diff_peaks_R_process {
 
         pca_plot_vst
 
+        #up_reg_gr = makeGRangesFromDataFrame(as.data.frame(up_reg), keep.extra.columns = TRUE)
+        #down_reg_gr = makeGRangesFromDataFrame(as.data.frame(down_reg), keep.extra.columns = TRUE)
+        #unchanging_reg_gr = makeGRangesFromDataFrame(as.data.frame(unchanging_reg), keep.extra.columns = TRUE)
+        #others_reg_gr = makeGRangesFromDataFrame(as.data.frame(others_reg), keep.extra.columns = TRUE)
 
         rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+        #rtracklayer::export.bed(up_reg_gr, con = "\${up_peaks_out}")
+        write.table(as.data.frame(up_reg), file = "${up_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+        #rtracklayer::export.bed(down_re_gr, con = "\${down_peaks_out}")
+        write.table(as.data.frame(down_reg), file = "${down_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+        #rtracklayer::export.bed(unchanging_reg_gr, con = "\${unchanging_peaks_out}")
+        write.table(as.data.frame(unchanging_reg), file = "${unchanging_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # export the other peaks that are greater than 0.05 and less than |1|
         rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
+        #rtracklayer::export.bed(others_reg_gr, con = "\${other_peaks_out}")
+        write.table(as.data.frame(others_reg), file = "${other_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now hoping to get the peak lengths histone
 
@@ -1000,8 +1039,24 @@ process find_diff_peaks_R_process {
                                     design = ~ condition_factor)
 
 
+        #############################################################################################
+        # now checking to see if I can estimate and save the szie factors to a file 
+        dds = estimateSizeFactors(dds)
+
+        size_factor_table = sizeFactors(dds)
+
+        write.table(as.data.frame(size_factor_table), file = "size_factor_calculation.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        #############################################################################################
+
         # using the function on our data
         DDS = DESeq(dds)
+
+        ##############################
+        # saving the deseq2 results table
+        deseq_results_table = results(DDS)
+
+        write.table(as.data.frame(deseq_results_table), file = "deseq_results_table.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        ##############################
 
         norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
 
@@ -1221,16 +1276,29 @@ process find_diff_peaks_R_process {
         pca_plot_vst
 
 
+        #up_reg_gr = makeGRangesFromDataFrame(as.data.frame(up_reg), keep.extra.columns = TRUE)
+        #down_reg_gr = makeGRangesFromDataFrame(as.data.frame(down_reg), keep.extra.columns = TRUE)
+        #unchanging_reg_gr = makeGRangesFromDataFrame(as.data.frame(unchanging_reg), keep.extra.columns = TRUE)
+        #others_reg_gr = makeGRangesFromDataFrame(as.data.frame(others_reg), keep.extra.columns = TRUE)
+
         rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+        #rtracklayer::export.bed(up_reg_gr, con = "\${up_peaks_out}")
+        write.table(as.data.frame(up_reg), file = "${up_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+        #rtracklayer::export.bed(down_re_gr, con = "\${down_peaks_out}")
+        write.table(as.data.frame(down_reg), file = "${down_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+        #rtracklayer::export.bed(unchanging_reg_gr, con = "\${unchanging_peaks_out}")
+        write.table(as.data.frame(unchanging_reg), file = "${unchanging_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # export the other peaks that are greater than 0.05 and less than |1|
         rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
+        #rtracklayer::export.bed(others_reg_gr, con = "\${other_peaks_out}")
+        write.table(as.data.frame(others_reg), file = "${other_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now hoping to get the peak lengths histone
 
@@ -1416,10 +1484,14 @@ process find_diff_peaks_R_process_SE {
     tuple val("${full_condition}"), val("${idr_histone}"), path("${up_peaks_out}"), path("${down_peaks_out}"), path("${unchanging_peaks_out}"), emit: diff_peaks_ch 
 
     path("${up_peaks_out}"), emit: up_peaks_emit
+    path("${up_peaks_out_table}")
     path("${down_peaks_out}"), emit: down_peaks_emit
+    path("${down_peaks_out_table}")
     path("${unchanging_peaks_out}"), emit: unchanging_peaks_emit
+    path("${unchanging_peaks_out_table}")
     path("${other_peaks_out}"), emit: other_peaks_emit
-
+    path("${other_peaks_out_table}")
+    path("*.tsv"), emit: deseq2_results_sizefactors_emit
 
 
     script:
@@ -1442,6 +1514,11 @@ process find_diff_peaks_R_process_SE {
     down_peaks_out = "down_${idr_histone}_${full_condition}_regulated_peaks.bed"
     unchanging_peaks_out = "unchanging_${idr_histone}_${full_condition}_regulated_peaks.bed"
     other_peaks_out = "others_${idr_histone}_${full_condition}_regulated_peaks.bed"
+
+    up_peaks_out_table = "up_${idr_histone}_${full_condition}_regulated_peaks.tsv"
+    down_peaks_out_table = "down_${idr_histone}_${full_condition}_regulated_peaks.tsv"
+    unchanging_peaks_out_table = "unchanging_${idr_histone}_${full_condition}_regulated_peaks.tsv"
+    other_peaks_out_table = "others_${idr_histone}_${full_condition}_regulated_peaks.tsv"
 
     resize_num = params.masterPeak100kb ? 100000 : (params.masterPeak10kb ? 10000 : (params.masterPeak30kb ? 30000 : 1))
 
@@ -1726,8 +1803,25 @@ process find_diff_peaks_R_process_SE {
                                     design = ~ condition_factor)
 
 
+        #############################################################################################
+        # now checking to see if I can estimate and save the szie factors to a file 
+        dds = estimateSizeFactors(dds)
+
+        size_factor_table = sizeFactors(dds)
+
+        write.table(as.data.frame(size_factor_table), file = "size_factor_calculation.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        #############################################################################################
+
+
         # using the function on our data
         DDS = DESeq(dds)
+
+        ##############################
+        # saving the deseq2 results table
+        deseq_results_table = results(DDS)
+
+        write.table(as.data.frame(deseq_results_table), file = "deseq_results_table.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        ##############################
 
         norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
 
@@ -1948,16 +2042,29 @@ process find_diff_peaks_R_process_SE {
         pca_plot_vst
 
 
+        #up_reg_gr = makeGRangesFromDataFrame(as.data.frame(up_reg), keep.extra.columns = TRUE)
+        #down_reg_gr = makeGRangesFromDataFrame(as.data.frame(down_reg), keep.extra.columns = TRUE)
+        #unchanging_reg_gr = makeGRangesFromDataFrame(as.data.frame(unchanging_reg), keep.extra.columns = TRUE)
+        #others_reg_gr = makeGRangesFromDataFrame(as.data.frame(others_reg), keep.extra.columns = TRUE)
+
         rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+        #rtracklayer::export.bed(up_reg_gr, con = "\${up_peaks_out}")
+        write.table(as.data.frame(up_reg), file = "${up_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+        #rtracklayer::export.bed(down_re_gr, con = "\${down_peaks_out}")
+        write.table(as.data.frame(down_reg), file = "${down_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+        #rtracklayer::export.bed(unchanging_reg_gr, con = "\${unchanging_peaks_out}")
+        write.table(as.data.frame(unchanging_reg), file = "${unchanging_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # export the other peaks that are greater than 0.05 and less than |1|
         rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
+        #rtracklayer::export.bed(others_reg_gr, con = "\${other_peaks_out}")
+        write.table(as.data.frame(others_reg), file = "${other_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now hoping to get the peak lengths histone
 
@@ -2369,8 +2476,26 @@ process find_diff_peaks_R_process_SE {
                                     design = ~ condition_factor)
 
 
+        #############################################################################################
+        # now checking to see if I can estimate and save the szie factors to a file 
+        dds = estimateSizeFactors(dds)
+
+        size_factor_table = sizeFactors(dds)
+
+        write.table(as.data.frame(size_factor_table), file = "size_factor_calculation.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        #############################################################################################
+
+
         # using the function on our data
         DDS = DESeq(dds)
+
+        ##############################
+        # saving the deseq2 results table
+        deseq_results_table = results(DDS)
+
+        write.table(as.data.frame(deseq_results_table), file = "deseq_results_table.tsv", sep = "\\t", quote = FALSE, col.names = NA)
+        ##############################
+
 
         norm_DDS = counts(DDS, normalized = TRUE) # normalization with respect to the sequencing depth
 
@@ -2589,17 +2714,30 @@ process find_diff_peaks_R_process_SE {
 
         pca_plot_vst
 
+        # there should be a way to extract the deseq2 results as a granges object
+        #up_reg_gr = makeGRangesFromDataFrame(as.data.frame(up_reg), keep.extra.columns = TRUE)
+        #down_reg_gr = makeGRangesFromDataFrame(as.data.frame(down_reg), keep.extra.columns = TRUE)
+        #unchanging_reg_gr = makeGRangesFromDataFrame(as.data.frame(unchanging_reg), keep.extra.columns = TRUE)
+        #others_reg_gr = makeGRangesFromDataFrame(as.data.frame(others_reg), keep.extra.columns = TRUE)
 
         rtracklayer::export.bed(row.names(up_reg), con = "${up_peaks_out}")
+        #rtracklayer::export.bed(up_reg_gr, con = "\${up_peaks_out}")
+        write.table(as.data.frame(up_reg), file = "${up_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         rtracklayer::export.bed(row.names(down_reg), con = "${down_peaks_out}")
+        #rtracklayer::export.bed(down_re_gr, con = "\${down_peaks_out}")
+        write.table(as.data.frame(down_reg), file = "${down_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now exporting the unchanging peaks
 
         rtracklayer::export.bed(row.names(unchanging_reg), con = "${unchanging_peaks_out}")
+        #rtracklayer::export.bed(unchanging_reg_gr, con = "\${unchanging_peaks_out}")
+        write.table(as.data.frame(unchanging_reg), file = "${unchanging_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # export the other peaks that are greater than 0.05 and less than |1|
         rtracklayer::export.bed(row.names(others_reg), con = "${other_peaks_out}")
+        #rtracklayer::export.bed(others_reg_gr, con = "\${other_peaks_out}")
+        write.table(as.data.frame(others_reg), file = "${other_peaks_out_table}", sep = "\\t", quote = FALSE, col.names = NA)
 
         # now hoping to get the peak lengths histone
 
