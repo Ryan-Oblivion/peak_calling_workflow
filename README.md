@@ -55,6 +55,7 @@ atac_analysis = false // if the user wants to do the atac seq analysis, see sect
 PE = false // this is for the pair end reads experiment so the pipeline knows what it is 
 SE = false // this is for the single end reads experiment so the pipeline knows how to handle it
 macs2 = false
+macs3 = false // this is only for narrow peak data (and atac-seq data) for now. will update both macs2 for both broad and narrow and add settings in macs3 for broad data
 raw_bigwig = false
 cpm_bigwig = false
 rpgc_bigwig = false
