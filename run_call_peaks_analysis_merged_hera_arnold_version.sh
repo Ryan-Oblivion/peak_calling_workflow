@@ -1,15 +1,23 @@
 #!/bin/env bash
 
 #SBATCH --mem=20GB
-#SBATCH --mail-type=FAIL,END
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=1-00:00:00
 #SBATCH --job-name=nextflow_chip
-#SBATCH --partition=hpc_l40s_b 
+#SBATCH --partition=hpc_l40_a
+
+
+# --account=risc_condo_bank
+
 #hpc_l40s_b
 #hpc_a10_a 
-
+#hpc_l40_a
+#hpc_l40s
+#hpc_l40_b
+#hpc_bigmem_a
+#risc_a
+# --mail-type=FAIL,END
 
 source /lustre/fs4/home/rjohnson/.bashrc_rj_test.sh
 # source /ru-auth/local/home/rjohnson/.bashrc_rj_test.sh # or use this, should be the same thing 
@@ -48,19 +56,62 @@ conda activate nextflow_three
 # --masterPeak30kb false : add this parameter but make it true if you want the peaks to ber merged by this amount; default is false, but one needs to be selected
 ##########################################
 
+# nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
+# --control_bams './merged_bams/H1lo_*{bam,bam.bai}' \
+# --wt_bams './merged_bams/Scr_*{bam,bam.bai}' \
+# --PE true \
+# --sicer2 \
+# --make_html_report true \
+# --dups_log './dup_info/*_dups.log' \
+# --plot_idr 0.4 \
+# --return_idr 1 \
+# --treatment_name 'H1lo' \
+# --masterPeak100kb true \
+# --atac_analysis true \
+# --nochange_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/nextflow_R_script_outputs/ATAC/unchanging_ATAC_dH1scr_regulated_peaks.bed' \
+# --up_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/nextflow_R_script_outputs/ATAC/up_ATAC_dH1scr_regulated_peaks.bed' \
+# --down_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/nextflow_R_script_outputs/ATAC/down_ATAC_dH1scr_regulated_peaks.bed' \
+# --control_ATAC_bam '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/atac_bams/atac_shifted_bams/merged_shifted_bams/dH1_ATAC_allmerged*{bam,bam.bai}' \
+# --treatment_ATAC_bam '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/atac_bams/atac_shifted_bams/merged_shifted_bams/scr_ATAC_allmerged*{bam,bam.bai}' \
+# --rpgc_bigwig true \
+# --rpgc_num_effectiveGenomeSize '2864785220' 
+
 nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
---control_bams './merged_bams/H1lo_*{bam,bam.bai}' \
---wt_bams './merged_bams/Scr_*{bam,bam.bai}' \
+--control_bams './merged_bams/Scr_*{bam,bam.bai}' \
+--wt_bams './merged_bams/H1lo_*{bam,bam.bai}' \
+--PE true \
+--sicer2 true \
+--sicer2_fdr '0.3' \
+--sicer2_gap_size '2000' \
 --make_html_report true \
---dups_log './dup_info/*_dups.log' \
 --plot_idr 0.4 \
---return_idr 0.4 \
+--return_idr 1 \
 --treatment_name 'H1lo' \
 --masterPeak100kb true \
---nochange_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/nextflow_R_script_outputs/ATAC/unchanging_ATAC_regulated_peaks.bed' \
---up_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/nextflow_R_script_outputs/ATAC/up_ATAC_regulated_peaks.bed' \
---down_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/nextflow_R_script_outputs/ATAC/down_ATAC_regulated_peaks.bed'
+--atac_analysis true \
+--rpgc_bigwig true \
+--nochange_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/NEXPCP-Nextflow_Peak_Calling_Pipeline/macs3_4replicates_from_irene_nextflow_R_script_outputs/ATAC/unchanging_ATAC_dH1scr_regulated_peaks.bed' \
+--up_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/NEXPCP-Nextflow_Peak_Calling_Pipeline/macs3_4replicates_from_irene_nextflow_R_script_outputs/ATAC/up_ATAC_dH1scr_regulated_peaks.bed' \
+--down_ATAC_peaks_bed '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/NEXPCP-Nextflow_Peak_Calling_Pipeline/macs3_4replicates_from_irene_nextflow_R_script_outputs/ATAC/down_ATAC_dH1scr_regulated_peaks.bed' \
+--control_ATAC_bam '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/atac_bams/atac_shifted_bams/merged_shifted_bams/dH1_ATAC_allmerged*{bam,bam.bai}' \
+--treatment_ATAC_bam '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/test_atac_data_pipeline/atac_bams/atac_shifted_bams/merged_shifted_bams/scr_ATAC_allmerged*{bam,bam.bai}' \
+--rpgc_num_effectiveGenomeSize '2864785220' \
+--control_igg '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/igg_bams/Scr_*AO.arnold*IgG*{bam,bam.bai}' \
+--wt_igg '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/merged_bams/igg_bams/H1lo*AO.arnold*IgG*{bam,bam.bai}'
 
+
+
+# not using the rna seq genes I called anymore
+# using irene's 
+# --wtvs_lowup '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/H1low_vs_Scrm_up_rna_seq_gr_obj.bed'  \
+# --wtvs_lowdown_nochange '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/H1low_vs_Scrm_down_rna_seq_gr_obj.bed' \
+# --wtvs_lownochanging '/lustre/fs4/home/rjohnson/pipelines/merged_hera_arnold_analysis/peak_calling_workflow/H1low_vs_Scrm_unchanging_rna_seq_gr_obj.bed' \
+
+# \
+# -with-dag peak_calling_nf_pipeline_flowchart.pdf \
+# -preview
+
+# --rpgc_effectiveGenomeSize true \
 
 
 # nextflow call_peaks_analysis_pipeline.nf -profile peak_calling_analysis -resume \
