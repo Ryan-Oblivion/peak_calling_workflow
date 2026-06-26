@@ -1000,7 +1000,9 @@ process macs3_call_peaks_process_both {
 }
 
 process get_pval_bedgraph {
-    conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
+    
+    // using the apptainer for this process now
+    // conda '/ru-auth/local/home/rjohnson/miniconda3/envs/bedtools_rj'
     label 'normal_big_resources'
     publishDir "./peak_files/pval_signal_files", mode: 'copy', pattern: '*', overwrite: true
 
